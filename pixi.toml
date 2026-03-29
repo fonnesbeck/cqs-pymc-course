@@ -1,0 +1,25 @@
+[workspace]
+authors = ["Chris Fonnesbeck <fonnesbeck@gmail.com>"]
+channels = ["conda-forge"]
+name = "keywords_studio_workshop"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+marimo = ">=0.21.1,<0.22"
+pymc = ">=5.28.1,<6"
+arviz-stats = ">=1.0.0,<2"
+arviz-plots = ">=1.0.0,<2"
+plotly = ">=6.6.0,<7"
+nutpie = ">=0.16.8,<0.17"
+polars = ">=1.39.3,<2"
+preliz = ">=0.24.0,<0.25"
+causalpy = ">=0.8.0,<0.9"
+matplotlib = ">=3.10.8,<4"
+scipy = ">=1.17.1,<2"
+graphviz = ">=14.1.2,<15"
+xarray = ">=2026.2.0,<2027"
+pandas = ">=3.0.1,<4"
+tabulate = ">=0.10.0,<0.11"
