@@ -100,79 +100,83 @@ To run a notebook as a read-only app (code hidden by default):
 
 ## Schedule
 
-### Day 1 (July 20): **Introduction to Bayesian Inference and PyMC** (3 hours)
+### Day 1 (July 20): **Introduction to Bayesian Inference and Prior Selection** (3 hours)
 
-**Part A — Bayesian Inference (90 min):**
-- Why Bayesian? Probability as uncertainty quantification
-- Bayes' theorem: priors, likelihoods, and posteriors
-- The Beta-Binomial model as a worked example
-- Overview of common distribution families (continuous, discrete, bounded)
-- Choosing likelihoods for different data types (continuous, counts, proportions)
-- Choosing priors for different parameter types (location, scale, rates)
-- Prior predictive simulation — checking that your model makes sense before seeing data
+**Part A — Bayesian Inference (90 min)** — `Session_1.1-Bayesian_Inference.py`
+- Probability as uncertainty quantification and Bayes' theorem (worked example: testing for a rare disease)
+- The Beta-Binomial model and how posteriors evolve with data
+- A/B testing: comparing two variants
+- Continuous likelihoods: Bayesian estimation of rates and means
+- Mini case studies: hierarchical shrinkage on baseball batting averages, Bayesian bandits
 
-**Part B — Building Models with PyMC (90 min):**
-- The PyMC model context and random variable API
-- Core building blocks: stochastic variables, deterministic transforms, observed data
-- Distribution classes and parameterizations
-- Building a complete model from scratch (dose-response example)
-- Prior predictive checks as part of the modeling workflow
-- Parameter transformations and constraints
+**Part B — Prior and Likelihood Selection (90 min)** — `Session_1.2-Prior_and_Likelihood_Selection.py`
+- Distribution families: continuous, discrete, bounded
+- Choosing likelihoods for different data types (counts, proportions, continuous)
+- Choosing priors for location, scale, and rate parameters
+- Prior predictive simulation as a sanity check
+- Interactive prior elicitation with PreliZ; LKJ priors for correlation matrices
 
-### Day 2 (July 21): **Model Fitting and Diagnostics** (3 hours)
+### Day 2 (July 21): **Building Models with PyMC** (3 hours)
 
-**Part A — MCMC and Inference (90 min):**
+**Part A — PyTensor and the PyMC API (90 min)** — `Session_2.1-PyTensor_and_PyMC_API.py`
+- PyTensor: symbolic variables, computational graphs, automatic differentiation
+- The PyMC `Model` context and random-variable API
+- Distribution classes, observed data, and deterministics
+- Custom distributions
+
+**Part B — Building Models with PyMC (90 min)** — `Session_2.2-Building_Models_with_PyMC.py`
+- Building a complete model from scratch
+- Factor potentials and parameter transformations
+- Prior predictive checks inside the workflow
+- Prediction and forecasting with `pm.set_data` / `pm.sample_posterior_predictive`
+- Worked exercise: smart-drug clinical trial
+
+### Day 3 (July 22): **Model Fitting and Diagnostics** (3 hours)
+
+**Part A — MCMC and Convergence Diagnostics (90 min)** — `Session_3.1-MCMC_and_Convergence_Diagnostics.py`
+- Warm-up: comparing two sampling results (`DataTree` objects) in the wild
+- What `pm.sample()` actually returns
 - MCMC fundamentals: from Metropolis to HMC to NUTS
-- Understanding `pm.sample()` output and the InferenceData object
-- Convergence diagnostics: R-hat, ESS, MCSE, divergences
-- Diagnosing common problems: non-identifiability, funnels, multimodality
+- Convergence diagnostics: R-hat, ESS, MCSE, divergences, energy plots
 
-**Part B — Model Checking and Repair (90 min):**
-- Posterior predictive checks and calibration (LOO-PIT)
-- Fixing problematic models: reparameterization, stronger priors
-- Centered vs. non-centered parameterizations
+**Part B — When Sampling Fails (90 min)** — `Session_3.2-When_Sampling_Fails.py`
+- Non-identifiability, divergences, and inefficient sampling — diagnosis and fixes
+- Sampler configuration tips (`target_accept`, initialization, adaptation)
+- Posterior predictive checks and PSIS-LOO model comparison
+- Exercise: change-point analysis on coal-mining disasters
 
-### Day 3 (July 22): **Bayesian Regression and Workflow** (3 hours)
+### Day 4 (July 23): **Regression and Hierarchical Models** (3 hours)
 
-**Part A — Linear Regression (90 min):**
-- Bayesian linear regression: specification, fitting, and interpretation
-- Prior specification for regression coefficients
-- Using `preliz` for principled prior selection
-- Model comparison with LOO cross-validation
+**Part A — Linear Regression (90 min)** — `Session_4.1-Linear_Regression.py`
+- Bayesian linear regression: specification, fitting, interpretation
+- Intercept-only baseline → linear → species-stratified models
+- Model comparison with PSIS-LOO; robust regression with Student-t likelihoods
 - Out-of-sample prediction with posterior predictive distributions
+- Case study: fish-weight prediction, with decision analysis on the posterior predictive
 
-**Part B — Bayesian Workflow Case Study (90 min):**
-- The iterative Bayesian workflow: explore → build → check priors → fit → diagnose → check posteriors → iterate
-- Case study: COVID-19 excess deaths — counterfactual forecasting with model iteration and comparison
-
-### Day 4 (July 23): **Generalized Linear and Hierarchical Models** (3 hours)
-
-**Part A — Generalized Linear Models (90 min):**
-- Why linear regression isn't enough: counts, proportions, skewed data
-- The GLM framework: linear predictor + link function + distribution family
-- Poisson regression for count data
-- Handling overdispersion with Negative Binomial regression
-- Logistic regression for binary outcomes
-
-**Part B — Hierarchical Models (90 min):**
+**Part B — Hierarchical Models (90 min)** — `Session_4.2-Hierarchical_Models.py`
 - The pooling problem: complete pooling vs. no pooling vs. partial pooling
-- Shrinkage estimation and borrowing strength across groups
-- Building hierarchical models: varying intercepts and varying slopes
-- Diagnosing and fixing hierarchical model pathologies (funnels, divergences)
-- Model comparison: pooled vs. unpooled vs. hierarchical
+- Shrinkage and borrowing strength across groups
+- Varying-intercept and varying-slope models
+- Centered vs. non-centered parameterizations
+- Group-level predictors; correlated intercepts and slopes
+- Case study: radon levels in Minnesota homes
 
 ### Day 5 (July 24): **Time Series and Gaussian Processes** (3 hours)
 
-**Part A — Time Series (90 min):**
-- Temporal dependence and autocorrelation
-- Autoregressive (AR) models in a Bayesian framework
-- State space models and Gaussian random walks
-- Seasonal decomposition and trend modeling (Prophet-style: trend + Fourier seasonality)
-- Stochastic volatility models
+**Part A — State-Space Time Series (90 min)** — `Session_5.1-State_Space_Time_Series.py`
+- Motivation: latent-state and observation equations; Kalman filter intuition
+- The smallest non-trivial state-space model: position and velocity
+- Structural components — the lego blocks: LevelTrend, Seasonality, Cycle, Autoregressive, Regression, MeasurementError
+- Component decomposition: filtered, predicted, and smoothed states
+- Scenario forecasting with structural time-series models
+- Multivariate extension: restricted Bayesian VAR
 
-**Part B — Gaussian Processes (90 min):**
-- Distributions over functions: the Gaussian process
-- Kernel/covariance functions: ExpQuad, Matérn, Periodic, Linear
-- GP regression in PyMC with `pm.gp.Marginal`
-- Hilbert Space GP (HSGP) approximation for scalability
-- GPs as a flexible approach to time series and spatial data
+**Part B — Gaussian Processes (90 min)** — `Session_5.2-Gaussian_Processes.py`
+- From basis functions and random walks to priors over functions
+- From the multivariate Normal to the Gaussian process
+- Covariance functions and the kernel zoo (ExpQuad, Matérn, Periodic, Linear); combining kernels
+- GP regression with `pm.gp.Marginal`
+- Non-Gaussian observations with latent GPs; sparse approximations
+- Hilbert Space GP (HSGP) approximation and 2-D spatial GPs
+- Decision guide: which GP method to use when

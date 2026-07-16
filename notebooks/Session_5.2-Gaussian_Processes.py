@@ -4,19 +4,12 @@ __generated_with = "0.23.9"
 app = marimo.App(width="medium")
 
 
-@app.cell(hide_code=True)
-def _():
+with app.setup:
     import marimo as mo
-
-    return (mo,)
-
-
-@app.cell(hide_code=True)
-def _():
+    import inspect
     import base64
     import warnings
     from pathlib import Path
-
     import numpy as np
     import pandas as pd
     import pymc as pm
@@ -26,65 +19,36 @@ def _():
     import matplotlib.pyplot as plt
     import matplotlib.cm as cmap
     from patsy import dmatrix
+    from pymc.gp.util import plot_gp_dist
 
     PYMC_BLUE = "#154A72"
     PYMC_GREEN = "#81C240"
     PYMC_LIGHT_BLUE = "#4A9EDE"
     PYMC_DARK_GREEN = "#40611F"
-
     RANDOM_SEED = 42
     RNG = np.random.default_rng(RANDOM_SEED)
-
     warnings.filterwarnings("ignore", category=FutureWarning)
     warnings.filterwarnings("ignore", category=RuntimeWarning)
     warnings.filterwarnings("ignore", category=UserWarning)
-
     data_path = Path(__file__).parent / "data"
-
     def to_np(expr):
         """Compile a pytensor tensor expression to numpy."""
         return pytensor.function([], expr)()
 
 
-    return (
-        Path,
-        RANDOM_SEED,
-        RNG,
-        az,
-        base64,
-        cmap,
-        data_path,
-        dmatrix,
-        np,
-        pd,
-        plt,
-        pm,
-        pt,
-        to_np,
-    )
-
-
 @app.cell(hide_code=True)
-def _(Path, base64, mo):
-    logo_path = Path(__file__).parent / "images" / "pymc-labs-logo.png"
-    if logo_path.exists():
-        logo_b64 = base64.b64encode(logo_path.read_bytes()).decode()
-        logo_html = f'<img src="data:image/png;base64,{logo_b64}" width="300" style="margin-bottom: 0.5rem;">'
-    else:
-        logo_html = ""
-
+def _():
     mo.md(
-        f"""
-        {logo_html}
+        """
 
-        # Bayesian Non-parametric Models with Gaussian Processes
+        # Session 5.2: Gaussian Processes
         """
     )
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Bayesian non-parametric models are of interest because they provide a flexible and powerful framework for modeling complex data without making strong assumptions about the underlying distribution.
 
@@ -96,7 +60,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Spline Models
 
@@ -108,7 +72,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Swing Decisions Data
 
@@ -118,17 +82,18 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(data_path, pd):
-    swing_decisions = (
-        pd.read_csv(data_path / "batter_grades_2023.csv", index_col=0)
-        .query('(throws=="R") & (n_pa>100)')[["batter_id", "batter", "age", "swing_decision"]]
-    )
+def _():
+    swing_decisions = pd.read_csv(
+        data_path / "batter_grades_2023.csv", index_col=0
+    ).query('(throws=="R") & (n_pa>100)')[
+        ["batter_id", "batter", "age", "swing_decision"]
+    ]
     swing_decisions.head()
     return (swing_decisions,)
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     If we visualize the data, it is clear that there is a lot of annual variation, but some evidence for a non-linear trend of swing decision grade by batter age.
     """)
@@ -136,7 +101,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(plt, swing_decisions):
+def _(swing_decisions):
     swing_decisions.plot.scatter(
         x="age",
         y="swing_decision",
@@ -150,7 +115,7 @@ def _(plt, swing_decisions):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Spline model
 
@@ -172,7 +137,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(np, swing_decisions):
+def _(swing_decisions):
     num_knots = 7
     knot_list = np.quantile(swing_decisions.age, np.linspace(0, 1, num_knots))
     knot_list
@@ -180,7 +145,7 @@ def _(np, swing_decisions):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Below is a plot of the locations of the knots over the data.
     """)
@@ -188,7 +153,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(knot_list, plt, swing_decisions):
+def _(knot_list, swing_decisions):
     knot_ax = swing_decisions.plot.scatter(
         x="age",
         y="swing_decision",
@@ -204,7 +169,7 @@ def _(knot_list, plt, swing_decisions):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     We can use `patsy` to create the matrix $B$ that will be the b-spline basis for the regression. The degree is set to 3 to create a cubic b-spline.
     """)
@@ -212,7 +177,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(dmatrix, knot_list, swing_decisions):
+def _(knot_list, swing_decisions):
     age = swing_decisions.age.unique()
     age.sort()
 
@@ -225,7 +190,7 @@ def _(dmatrix, knot_list, swing_decisions):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     The b-spline basis is plotted below, showing the *domain* of each piece of the spline. The height of each curve indicates how influential the corresponding model covariate (one per spline region) will be on the model's inference of that region. The overlapping regions represent the knots, showing how the smooth transition from one region to the next is formed.
     """)
@@ -233,7 +198,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(B, age, np, pd, plt):
+def _(B, age):
     spline_basis_df = (
         pd.DataFrame(B)
         .assign(age=age)
@@ -252,7 +217,7 @@ def _(B, age, np, pd, plt):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Fit the model
 
@@ -262,7 +227,7 @@ def _(mo):
 
 
 @app.cell
-def _(B, np, pm, swing_decisions):
+def _(B, swing_decisions):
     def build_spline_model():
         coords = {
             "splines": np.arange(B.shape[1]),
@@ -298,7 +263,7 @@ def _(spline_model):
 
 
 @app.cell
-def _(RANDOM_SEED, pm, spline_model):
+def _(spline_model):
     with spline_model:
         spline_trace = pm.sample(
             draws=1000,
@@ -310,14 +275,14 @@ def _(RANDOM_SEED, pm, spline_model):
 
 
 @app.cell
-def _(pm, spline_model, spline_trace):
+def _(spline_model, spline_trace):
     with spline_model:
         pm.sample_posterior_predictive(spline_trace, extend_inferencedata=True)
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Parameter Estimates
 
@@ -327,13 +292,13 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(az, spline_trace):
+def _(spline_trace):
     az.summary(spline_trace, var_names=["a", "w", "sigma"])
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Another visualization of the fit spline values is to plot them multiplied against the basis matrix. The knot boundaries are shown as vertical lines again, but now the spline basis is multiplied against the values of $w$ (represented as the rainbow-colored curves). The dot product of $B$ and $w$ (the actual computation in the linear model) is shown in black.
     """)
@@ -341,7 +306,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(B, age, knot_list, np, pd, plt, spline_trace):
+def _(B, age, knot_list, spline_trace):
     wp = spline_trace.posterior["w"].mean(("chain", "draw")).values
 
     spline_weighted_df = (
@@ -373,7 +338,7 @@ def _(B, age, knot_list, np, pd, plt, spline_trace):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Model predictions
 
@@ -383,7 +348,7 @@ def _(mo):
 
 
 @app.cell
-def _(RANDOM_SEED, age, pm, spline_model, spline_trace):
+def _(age, spline_model, spline_trace):
     with spline_model:
         pm.set_data({"player_age_ind": age - age.min()})
         spline_post_pred = pm.sample_posterior_predictive(
@@ -394,7 +359,7 @@ def _(RANDOM_SEED, age, pm, spline_model, spline_trace):
 
 
 @app.cell(hide_code=True)
-def _(age, az, knot_list, plt, spline_post_pred, swing_decisions):
+def _(age, knot_list, spline_post_pred, swing_decisions):
     spline_pred_summary = az.summary(
         spline_post_pred,
         group="posterior_predictive",
@@ -428,7 +393,7 @@ def _(age, az, knot_list, plt, spline_post_pred, swing_decisions):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Gaussian Processes
 
@@ -440,7 +405,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Building models with Gaussians
 
@@ -483,7 +448,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(np):
+def _():
     def exponential_cov(x, y, scale, length_scale):
         """Exponential quadratic covariance between two arrays."""
         return scale * np.exp(-0.5 * np.subtract.outer(x, y) ** 2 / length_scale)
@@ -492,7 +457,7 @@ def _(np):
 
 
 @app.cell(hide_code=True)
-def _(exponential_cov, np, plt):
+def _(exponential_cov):
     _fig, (_ax1, _ax2) = plt.subplots(1, 2, figsize=(12, 5))
     _xrange = np.linspace(0, 5)
     _ax1.plot(_xrange, exponential_cov(0, _xrange, 1, 1))
@@ -510,7 +475,7 @@ def _(exponential_cov, np, plt):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     The mean function just returns a constant value of zero.
 
@@ -522,7 +487,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Sampling from a Gaussian Process Prior
 
@@ -537,7 +502,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(exponential_cov, np):
+def _(exponential_cov):
     def gp_conditional_demo(x_new, x, y, scale, length_scale):
         B_block = exponential_cov(x_new, x, scale, length_scale)
         C_block = exponential_cov(x, x, scale, length_scale)
@@ -557,7 +522,7 @@ def _(exponential_cov, np):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     We will start with a Gaussian process prior with hyperparameters $\theta_0=1$, $\theta_1=0.1$. We will also assume a zero function as the mean, so we can plot a band that represents one standard deviation from the mean.
     """)
@@ -565,7 +530,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(exponential_cov, np, plt):
+def _(exponential_cov):
     gp_scale, gp_length_scale = 1, 0.1
     sigma_0 = exponential_cov(0, 0, gp_scale, gp_length_scale)
     xpts = np.arange(-3, 3, step=0.01)
@@ -576,7 +541,7 @@ def _(exponential_cov, np, plt):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     The demonstration below builds up a realization sequentially: we start by sampling a single point at $x=1$ from an unconditional Gaussian, then conditionally sample additional points one at a time. As the density of points grows, the result approaches one realization (function) from the prior GP. The error bars show the conditional standard deviation at each point on the grid.
     """)
@@ -584,15 +549,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(
-    exponential_cov,
-    gp_conditional_demo,
-    gp_length_scale,
-    gp_predict_demo,
-    gp_scale,
-    np,
-    plt,
-):
+def _(exponential_cov, gp_conditional_demo, gp_length_scale, gp_predict_demo, gp_scale):
     def sample_gp_sequentially(seed=42):
         rng = np.random.default_rng(seed)
         x_pred_grid = np.linspace(-3, 3, 1000)
@@ -634,7 +591,7 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Of course, sampling sequentially is just a heuristic to demonstrate how the covariance structure works. We can just as easily sample several points at once from the joint multivariate Gaussian. As the density of points becomes high, the result approaches one realization (function) from the prior GP. If we run this many times, we get an idea of the types of functions that the GP prior can generate.
 
@@ -644,7 +601,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Gaussian processes regression
 
@@ -654,7 +611,7 @@ def _(mo):
 
 
 @app.cell
-def _(np, plt, pm, to_np):
+def _():
     def simulate_gp_data(seed=1, n=100, l_true=1.0, eta_true=3.0, sigma_true=2.0):
         rng = np.random.default_rng(seed)
         x = np.linspace(0, 10, n)
@@ -686,7 +643,7 @@ def _(np, plt, pm, to_np):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Marginal Likelihood Implementation
 
@@ -762,7 +719,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Covariance functions
 
@@ -786,7 +743,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(cmap, np, plt):
+def _():
     def plot_cov(X, K, stationary=True):
         K = K + 1e-8 * np.eye(X.shape[0])
         x = X.flatten()
@@ -835,51 +792,61 @@ def _(cmap, np, plt):
 
 
 @app.cell(hide_code=True)
-def _(np):
+def _():
     X_grid = np.linspace(0, 2, 200)[:, None]
     return (X_grid,)
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     gp_kernel_options = ["ExpQuad", "Matern 1/2", "Cosine", "Linear"]
 
-    expquad_lengthscale_slider = mo.ui.slider(0.05, 2.0, value=0.30, step=0.05, label="Lengthscale")
-    expquad_amplitude_slider = mo.ui.slider(0.1, 5.0, value=1.0, step=0.1, label="Amplitude")
-
-    matern12_lengthscale_slider = mo.ui.slider(0.05, 2.0, value=0.30, step=0.05, label="Lengthscale")
-    matern12_amplitude_slider = mo.ui.slider(0.1, 5.0, value=1.0, step=0.1, label="Amplitude")
-
-    cosine_lengthscale_slider = mo.ui.slider(0.05, 2.0, value=0.30, step=0.05, label="Period scale")
-    cosine_amplitude_slider = mo.ui.slider(0.1, 5.0, value=1.0, step=0.1, label="Amplitude")
-
-    linear_offset_slider = mo.ui.slider(-2.0, 2.0, value=1.0, step=0.1, label="Offset c")
-    linear_amplitude_slider = mo.ui.slider(0.1, 5.0, value=1.0, step=0.1, label="Amplitude")
-
-    product_left_kernel = mo.ui.dropdown(gp_kernel_options, value="Cosine", label="Left kernel")
-    product_right_kernel = mo.ui.dropdown(gp_kernel_options, value="Linear", label="Right kernel")
-
-    sum_left_kernel = mo.ui.dropdown(gp_kernel_options, value="Cosine", label="Left kernel")
-    sum_right_kernel = mo.ui.dropdown(gp_kernel_options, value="Linear", label="Right kernel")
-    return (
-        cosine_amplitude_slider,
-        cosine_lengthscale_slider,
-        expquad_amplitude_slider,
-        expquad_lengthscale_slider,
-        linear_amplitude_slider,
-        linear_offset_slider,
-        matern12_amplitude_slider,
-        matern12_lengthscale_slider,
-        product_left_kernel,
-        product_right_kernel,
-        sum_left_kernel,
-        sum_right_kernel,
+    expquad_lengthscale_slider = mo.ui.slider(
+        0.05, 2.0, value=0.30, step=0.05, label="Lengthscale"
     )
+    expquad_amplitude_slider = mo.ui.slider(
+        0.1, 5.0, value=1.0, step=0.1, label="Amplitude"
+    )
+
+    matern12_lengthscale_slider = mo.ui.slider(
+        0.05, 2.0, value=0.30, step=0.05, label="Lengthscale"
+    )
+    matern12_amplitude_slider = mo.ui.slider(
+        0.1, 5.0, value=1.0, step=0.1, label="Amplitude"
+    )
+
+    cosine_lengthscale_slider = mo.ui.slider(
+        0.05, 2.0, value=0.30, step=0.05, label="Period scale"
+    )
+    cosine_amplitude_slider = mo.ui.slider(
+        0.1, 5.0, value=1.0, step=0.1, label="Amplitude"
+    )
+
+    linear_offset_slider = mo.ui.slider(
+        -2.0, 2.0, value=1.0, step=0.1, label="Offset c"
+    )
+    linear_amplitude_slider = mo.ui.slider(
+        0.1, 5.0, value=1.0, step=0.1, label="Amplitude"
+    )
+
+    product_left_kernel = mo.ui.dropdown(
+        gp_kernel_options, value="Cosine", label="Left kernel"
+    )
+    product_right_kernel = mo.ui.dropdown(
+        gp_kernel_options, value="Linear", label="Right kernel"
+    )
+
+    sum_left_kernel = mo.ui.dropdown(
+        gp_kernel_options, value="Cosine", label="Left kernel"
+    )
+    sum_right_kernel = mo.ui.dropdown(
+        gp_kernel_options, value="Linear", label="Right kernel"
+    )
+    return cosine_amplitude_slider, cosine_lengthscale_slider, expquad_amplitude_slider, expquad_lengthscale_slider, linear_amplitude_slider, linear_offset_slider, matern12_amplitude_slider, matern12_lengthscale_slider, product_left_kernel, product_right_kernel, sum_left_kernel, sum_right_kernel
 
 
 @app.cell
-def _(pm):
-
+def _():
     def kernel_covariance(kernel_name, amplitude, lengthscale, offset):
         if kernel_name == "ExpQuad":
             return amplitude**2 * pm.gp.cov.ExpQuad(1, lengthscale), True
@@ -900,7 +867,7 @@ def _(pm):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Exponential quadratic covariance
 
@@ -914,20 +881,13 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(expquad_amplitude_slider, expquad_lengthscale_slider, mo):
+def _(expquad_amplitude_slider, expquad_lengthscale_slider):
     mo.hstack([expquad_lengthscale_slider, expquad_amplitude_slider], gap=2)
     return
 
 
 @app.cell(hide_code=True)
-def _(
-    X_grid,
-    expquad_amplitude_slider,
-    expquad_lengthscale_slider,
-    kernel_covariance,
-    plot_cov,
-    to_np,
-):
+def _(X_grid, expquad_amplitude_slider, expquad_lengthscale_slider, kernel_covariance, plot_cov):
     _cov, _stationary = kernel_covariance(
         "ExpQuad",
         expquad_amplitude_slider.value,
@@ -939,7 +899,7 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Matern $\nu=1/2$ covariance
 
@@ -953,20 +913,13 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(matern12_amplitude_slider, matern12_lengthscale_slider, mo):
+def _(matern12_amplitude_slider, matern12_lengthscale_slider):
     mo.hstack([matern12_lengthscale_slider, matern12_amplitude_slider], gap=2)
     return
 
 
 @app.cell(hide_code=True)
-def _(
-    X_grid,
-    kernel_covariance,
-    matern12_amplitude_slider,
-    matern12_lengthscale_slider,
-    plot_cov,
-    to_np,
-):
+def _(X_grid, kernel_covariance, matern12_amplitude_slider, matern12_lengthscale_slider, plot_cov):
     _cov, _stationary = kernel_covariance(
         "Matern 1/2",
         matern12_amplitude_slider.value,
@@ -978,7 +931,7 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Cosine covariance
 
@@ -992,20 +945,13 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(cosine_amplitude_slider, cosine_lengthscale_slider, mo):
+def _(cosine_amplitude_slider, cosine_lengthscale_slider):
     mo.hstack([cosine_lengthscale_slider, cosine_amplitude_slider], gap=2)
     return
 
 
 @app.cell(hide_code=True)
-def _(
-    X_grid,
-    cosine_amplitude_slider,
-    cosine_lengthscale_slider,
-    kernel_covariance,
-    plot_cov,
-    to_np,
-):
+def _(X_grid, cosine_amplitude_slider, cosine_lengthscale_slider, kernel_covariance, plot_cov):
     _cov, _stationary = kernel_covariance(
         "Cosine",
         cosine_amplitude_slider.value,
@@ -1017,7 +963,7 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Linear
 
@@ -1035,20 +981,13 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(linear_amplitude_slider, linear_offset_slider, mo):
+def _(linear_amplitude_slider, linear_offset_slider):
     mo.hstack([linear_offset_slider, linear_amplitude_slider], gap=2)
     return
 
 
 @app.cell(hide_code=True)
-def _(
-    X_grid,
-    kernel_covariance,
-    linear_amplitude_slider,
-    linear_offset_slider,
-    plot_cov,
-    to_np,
-):
+def _(X_grid, kernel_covariance, linear_amplitude_slider, linear_offset_slider, plot_cov):
     _cov, _stationary = kernel_covariance(
         "Linear",
         linear_amplitude_slider.value,
@@ -1060,7 +999,7 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Combining Kernels
 
@@ -1072,21 +1011,13 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo, product_left_kernel, product_right_kernel):
+def _(product_left_kernel, product_right_kernel):
     mo.hstack([product_left_kernel, product_right_kernel], gap=1)
     return
 
 
 @app.cell(hide_code=True)
-def _(
-    X_grid,
-    default_kernel_params,
-    kernel_covariance,
-    plot_cov,
-    product_left_kernel,
-    product_right_kernel,
-    to_np,
-):
+def _(X_grid, default_kernel_params, kernel_covariance, plot_cov, product_left_kernel, product_right_kernel):
     _left_cov, _left_stationary = kernel_covariance(
         product_left_kernel.value, *default_kernel_params(product_left_kernel.value)
     )
@@ -1102,7 +1033,7 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Compare this to the result when the kernels are added instead of multiplied. When you add two kernels you are essentially specifying an `OR` operation. So, a summed kernel will have a high value if either of the constituent kernels has a high value.
     """)
@@ -1110,21 +1041,13 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo, sum_left_kernel, sum_right_kernel):
+def _(sum_left_kernel, sum_right_kernel):
     mo.hstack([sum_left_kernel, sum_right_kernel], gap=1)
     return
 
 
 @app.cell(hide_code=True)
-def _(
-    X_grid,
-    default_kernel_params,
-    kernel_covariance,
-    plot_cov,
-    sum_left_kernel,
-    sum_right_kernel,
-    to_np,
-):
+def _(X_grid, default_kernel_params, kernel_covariance, plot_cov, sum_left_kernel, sum_right_kernel):
     _left_cov, _left_stationary = kernel_covariance(
         sum_left_kernel.value, *default_kernel_params(sum_left_kernel.value)
     )
@@ -1140,7 +1063,7 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Now that we have a general idea about covariance functions, let's begin by choosing one for our first model.
 
@@ -1150,7 +1073,7 @@ def _(mo):
 
 
 @app.cell
-def _(pm, sim_x, sim_y):
+def _(sim_x, sim_y):
     def build_sim_marginal_model():
         with pm.Model() as sim_model:
             ell = pm.Gamma("ell", alpha=2, beta=1)
@@ -1168,7 +1091,7 @@ def _(pm, sim_x, sim_y):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### The `.marginal_likelihood` method
 
@@ -1198,7 +1121,7 @@ def _(sim_model):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Let's fit the model using Markov chain Monte Carlo (MCMC).
     """)
@@ -1206,7 +1129,7 @@ def _(mo):
 
 
 @app.cell
-def _(RANDOM_SEED, pm, sim_model):
+def _(sim_model):
     with sim_model:
         sim_post = pm.sample(nuts_sampler="nutpie", chains=2, random_seed=RANDOM_SEED)
     sim_post
@@ -1214,7 +1137,7 @@ def _(RANDOM_SEED, pm, sim_model):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     We can collect the results into a `DataFrame` to display, and compare to the values that we used to simulate the data.
     """)
@@ -1222,7 +1145,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(az, sim_eta_true, sim_l_true, sim_post, sim_sigma_true):
+def _(sim_eta_true, sim_l_true, sim_post, sim_sigma_true):
     sim_summary = az.summary(
         sim_post, var_names=["ell", "eta", "sigma"], round_to=2, kind="stats"
     )
@@ -1232,7 +1155,7 @@ def _(az, sim_eta_true, sim_l_true, sim_post, sim_sigma_true):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### The `.conditional` distribution
 
@@ -1253,7 +1176,7 @@ def _(mo):
 
 
 @app.cell
-def _(np, sim_gp, sim_model):
+def _(sim_gp, sim_model):
     sim_X_new = np.linspace(0, 20, 600)[:, None]
     with sim_model:
         sim_gp.conditional("f_pred", sim_X_new)
@@ -1262,7 +1185,7 @@ def _(np, sim_gp, sim_model):
 
 
 @app.cell
-def _(pm, sim_model, sim_post):
+def _(sim_model, sim_post):
     with sim_model:
         sim_pred_samples = pm.sample_posterior_predictive(
             sim_post.sel(draw=slice(0, 20)), var_names=["f_pred"]
@@ -1277,9 +1200,7 @@ def _(sim_pred_samples):
 
 
 @app.cell(hide_code=True)
-def _(az, plt, sim_X_new, sim_f_true, sim_pred_samples, sim_x, sim_y):
-    from pymc.gp.util import plot_gp_dist
-
+def _(sim_X_new, sim_f_true, sim_pred_samples, sim_x, sim_y):
     _fig = plt.figure(figsize=(12, 5))
     _ax = _fig.gca()
 
@@ -1296,11 +1217,11 @@ def _(az, plt, sim_X_new, sim_f_true, sim_pred_samples, sim_x, sim_y):
     _ax.set_title("Posterior distribution over $f(x)$ at the observed values")
     _ax.legend()
     plt.gca()
-    return (plot_gp_dist,)
+    return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Real-world example: Fastball spin rates
 
@@ -1310,7 +1231,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(data_path, pd):
+def _():
     spin_rates = pd.read_csv(
         data_path / "fastball_spin_rates.csv",
         index_col=0,
@@ -1321,7 +1242,7 @@ def _(data_path, pd):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Consider Michael Kopech:
     """)
@@ -1329,7 +1250,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(plt, spin_rates):
+def _(spin_rates):
     kopech_fb_spin = (
         spin_rates.assign(day_of_year=spin_rates.game_date.dt.day_of_year)
         .loc["Kopech, Michael"]
@@ -1347,7 +1268,7 @@ def _(plt, spin_rates):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     We can build a similar model to what we used for the simulated data.
     """)
@@ -1355,7 +1276,7 @@ def _(mo):
 
 
 @app.cell
-def _(kopech_fb_spin, pm, spin_rates):
+def _(kopech_fb_spin, spin_rates):
     def build_spin_rate_model():
         with pm.Model() as spin_rate_model:
             ell = pm.LogNormal("ell", 0, 1)
@@ -1379,7 +1300,7 @@ def _(kopech_fb_spin, pm, spin_rates):
 
 
 @app.cell
-def _(RANDOM_SEED, pm, spin_rate_model):
+def _(spin_rate_model):
     with spin_rate_model:
         spin_rate_trace = pm.sample(
             draws=1000,
@@ -1391,7 +1312,7 @@ def _(RANDOM_SEED, pm, spin_rate_model):
 
 
 @app.cell(hide_code=True)
-def _(az, plt, spin_rate_trace):
+def _(spin_rate_trace):
     az.plot_trace(spin_rate_trace, var_names=["ell", "eta", "sigma"])
     plt.tight_layout()
     plt.gcf()
@@ -1399,7 +1320,7 @@ def _(az, plt, spin_rate_trace):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Now, let's generate estimates for the 2023 season.
     """)
@@ -1407,7 +1328,7 @@ def _(mo):
 
 
 @app.cell
-def _(kopech_fb_spin, np, pm, spin_rate_gp, spin_rate_model, spin_rate_trace):
+def _(kopech_fb_spin, spin_rate_gp, spin_rate_model, spin_rate_trace):
     spin_X_pred = np.arange(
         kopech_fb_spin.day_of_year.min(), kopech_fb_spin.day_of_year.max()
     ).reshape(-1, 1)
@@ -1420,7 +1341,7 @@ def _(kopech_fb_spin, np, pm, spin_rate_gp, spin_rate_model, spin_rate_trace):
 
 
 @app.cell(hide_code=True)
-def _(az, kopech_fb_spin, plt, spin_X_pred, spin_rate_samples):
+def _(kopech_fb_spin, spin_X_pred, spin_rate_samples):
     _ax = kopech_fb_spin.plot.scatter(
         x="day_of_year", y="avg_spin_rate", c="k", s=50, figsize=(10, 4)
     )
@@ -1433,7 +1354,7 @@ def _(az, kopech_fb_spin, plt, spin_X_pred, spin_rate_samples):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     We can also use the `.predict` method on the GP to get the posterior mean and variance at a single posterior draw, giving a closed-form mean and 2σ band.
     """)
@@ -1441,16 +1362,7 @@ def _(mo):
 
 
 @app.cell
-def _(
-    az,
-    kopech_fb_spin,
-    np,
-    plt,
-    spin_X_pred,
-    spin_rate_gp,
-    spin_rate_model,
-    spin_rate_trace,
-):
+def _(kopech_fb_spin, spin_X_pred, spin_rate_gp, spin_rate_model, spin_rate_trace):
     with spin_rate_model:
         _mu, _var = spin_rate_gp.predict(
             spin_X_pred,
@@ -1479,7 +1391,7 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Multi-output GPs
 
@@ -1499,7 +1411,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(plt, spin_rates):
+def _(spin_rates):
     n_outputs = 5
     top_pitchers = (
         spin_rates.groupby("pitcher_name").size().nlargest(n_outputs).reset_index()
@@ -1510,9 +1422,9 @@ def _(plt, spin_rates):
 
     _fig, _ax = plt.subplots(1, 1, figsize=(14, 6))
     for _pitcher in top_pitchers["pitcher_name"]:
-        _pdata = spin_rates.assign(
-            day_of_year=spin_rates.game_date.dt.day_of_year
-        ).loc[_pitcher]
+        _pdata = spin_rates.assign(day_of_year=spin_rates.game_date.dt.day_of_year).loc[
+            _pitcher
+        ]
         _ax.scatter(_pdata["day_of_year"], _pdata["avg_spin_rate"], label=_pitcher)
     _ax.set_xlabel("Day of year")
     _ax.set_ylabel("Average spin rate (rpm)")
@@ -1534,7 +1446,7 @@ def _(spin_rates, top_pitchers):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Here is a convenience function for taking the Hadamard product of the coregionalization kernel and an arbitrary covariance function:
     """)
@@ -1542,7 +1454,7 @@ def _(mo):
 
 
 @app.cell
-def _(pm):
+def _():
     def get_icm(input_dim, kernel, W=None, kappa=None, B=None, active_dims=None):
         """Hadamard product of a Coregion kernel and an input covariance function."""
         coreg = pm.gp.cov.Coregion(
@@ -1554,7 +1466,7 @@ def _(pm):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     The model is essentially the same as the single-pitcher GP, except for the more complex covariance function that captures the dependence between pitchers (*i.e.* the assumption that they are governed by a similar underlying process).
     """)
@@ -1562,7 +1474,7 @@ def _(mo):
 
 
 @app.cell
-def _(RNG, get_icm, multi_X, multi_y, n_outputs, pm, pt):
+def _(get_icm, multi_X, multi_y, n_outputs):
     def build_multi_spin_rate_model():
         with pm.Model() as multi_spin_rate_model:
             ell = pm.Gamma("ell", alpha=2, beta=0.5)
@@ -1590,7 +1502,7 @@ def _(RNG, get_icm, multi_X, multi_y, n_outputs, pm, pt):
 
 
 @app.cell
-def _(RANDOM_SEED, multi_spin_rate_model, pm):
+def _(multi_spin_rate_model):
     with multi_spin_rate_model:
         multi_trace = pm.sample(
             nuts_sampler="nutpie",
@@ -1603,7 +1515,7 @@ def _(RANDOM_SEED, multi_spin_rate_model, pm):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Again, we specify a grid of inputs to predict over — every day of the season for each of the five pitchers — and add the GP conditional to the model:
     """)
@@ -1611,7 +1523,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(analysis_subset, n_outputs, np):
+def _(analysis_subset, n_outputs):
     multi_days_pred = np.arange(
         analysis_subset.day_of_year.min(), analysis_subset.day_of_year.max()
     )
@@ -1623,15 +1535,7 @@ def _(analysis_subset, n_outputs, np):
 
 
 @app.cell
-def _(
-    RANDOM_SEED,
-    az,
-    multi_X_new,
-    multi_gp,
-    multi_spin_rate_model,
-    multi_trace,
-    pm,
-):
+def _(multi_X_new, multi_gp, multi_spin_rate_model, multi_trace):
     _multi_posterior = az.extract(
         multi_trace,
         group="posterior",
@@ -1659,18 +1563,7 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(
-    analysis_subset,
-    az,
-    multi_X_new,
-    multi_days_pred,
-    multi_gp_samples,
-    multi_pitcher_ind,
-    n_outputs,
-    plot_gp_dist,
-    plt,
-    top_pitchers,
-):
+def _(analysis_subset, multi_X_new, multi_days_pred, multi_gp_samples, multi_pitcher_ind, n_outputs, top_pitchers):
     multi_f_pred = az.extract(
         multi_gp_samples, group="posterior_predictive", var_names="preds"
     ).values.T  # (sample, point)
@@ -1701,7 +1594,7 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Latent Variable Implementation
 
@@ -1739,7 +1632,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Robust regression
 
@@ -1749,7 +1642,7 @@ def _(mo):
 
 
 @app.cell
-def _(RANDOM_SEED, np, plt, pm, to_np):
+def _():
     def simulate_robust_data(seed=RANDOM_SEED + 7, n=100):
         rng = np.random.default_rng(seed)
         X = np.linspace(0, 10, n)[:, None]
@@ -1790,7 +1683,7 @@ def _(RANDOM_SEED, np, plt, pm, to_np):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Here's the model in PyMC. We use a $\text{Gamma}(2, 1)$ prior over the lengthscale parameter, and weakly informative $\text{HalfCauchy}(2)$ priors over the covariance function scale and noise scale. A $\text{Gamma}(2, 0.1)$ prior is assigned to the degrees of freedom parameter of the noise. Finally, a GP prior is placed on the unknown function.
     """)
@@ -1798,7 +1691,7 @@ def _(mo):
 
 
 @app.cell
-def _(pm, robust_X, robust_y):
+def _(robust_X, robust_y):
     def build_robust_model():
         with pm.Model() as robust_model:
             ls = pm.Gamma("ls", alpha=2, beta=1)
@@ -1818,7 +1711,7 @@ def _(pm, robust_X, robust_y):
 
 
 @app.cell
-def _(RANDOM_SEED, pm, robust_model):
+def _(robust_model):
     with robust_model:
         robust_trace = pm.sample(
             nuts_sampler="nutpie",
@@ -1830,7 +1723,7 @@ def _(RANDOM_SEED, pm, robust_model):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Below are the posteriors of the covariance function hyperparameters.
     """)
@@ -1838,7 +1731,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(az, plt, robust_trace):
+def _(robust_trace):
     az.plot_trace(robust_trace, var_names=["eta", "sigma", "ls", "nu"])
     plt.tight_layout()
     plt.gcf()
@@ -1846,7 +1739,7 @@ def _(az, plt, robust_trace):
 
 
 @app.cell(hide_code=True)
-def _(plot_gp_dist, plt, robust_X, robust_f_true, robust_trace, robust_y):
+def _(robust_X, robust_f_true, robust_trace, robust_y):
     _fig = plt.figure(figsize=(12, 5))
     _ax = _fig.gca()
 
@@ -1864,7 +1757,7 @@ def _(plot_gp_dist, plt, robust_X, robust_f_true, robust_trace, robust_y):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Exercise: UK coal-mining disasters with a latent GP
 
@@ -1880,7 +1773,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(np, plt):
+def _():
     # fmt: off
     disasters_array = np.array([
         4, 5, 4, 0, 1, 4, 3, 4, 0, 6, 3, 3, 4, 0, 2, 6, 3, 3, 5, 4,
@@ -1900,15 +1793,21 @@ def _(np, plt):
     _ax.set_ylabel("Disaster count")
     plt.tight_layout()
     plt.gca()
+    return disaster_years, disasters_array
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ## Exercise: Latent Poisson GP for count data
+    """)
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.callout(
         mo.md(r"""
-    **Exercise (coding, ~10 min). Latent Poisson GP for count data**
-
     1. Build a `pm.gp.Latent` model for `disasters_array` using `disaster_years[:, None]` as the input.
     2. Use `pm.find_constrained_prior` to choose a `Gamma` prior for the Matérn-5/2 lengthscale with 94% mass in `[2, 10]` years.
     3. Put a weakly-informative prior on the GP amplitude, exponentiate the latent GP to get a positive `rate`, and use a `Poisson` likelihood.
@@ -1922,44 +1821,49 @@ def _(mo):
 
 @app.cell
 def _():
-    # YOUR CODE HERE.
-    #
-    # Suggested outline:
-    #
-    # def build_disaster_latent_gp():
-    #     ell_params = pm.find_constrained_prior(
-    #         pm.Gamma,
-    #         lower=2,
-    #         upper=10,
-    #         init_guess={"alpha": 2, "beta": 0.5},
-    #         mass=0.94,
-    #     )
-    #     with pm.Model() as disaster_model:
-    #         ell = pm.Gamma("ell", **ell_params)
-    #         eta = pm.HalfNormal("eta", sigma=2)
-    #         cov = eta**2 * pm.gp.cov.Matern52(1, ls=ell)
-    #         gp = pm.gp.Latent(cov_func=cov)
-    #         f = gp.prior("f", X=disaster_years[:, None])
-    #         rate = pm.Deterministic("rate", pm.math.exp(f))
-    #         pm.Poisson("y", mu=rate, observed=disasters_array)
-    #     return disaster_model
-    #
-    # disaster_model = build_disaster_latent_gp()
-    # with disaster_model:
-    #     disaster_trace = pm.sample(nuts_sampler="nutpie", chains=2, random_seed=RANDOM_SEED)
-    # Replace this no-op with your solution.
-    _ = None
+    def _exercise_disaster_gp():
+        # YOUR CODE HERE.
+        #
+        # Suggested outline:
+        #
+        # def build_disaster_latent_gp():
+        #     ell_params = pm.find_constrained_prior(
+        #         pm.Gamma,
+        #         lower=2,
+        #         upper=10,
+        #         init_guess={"alpha": 2, "beta": 0.5},
+        #         mass=0.94,
+        #     )
+        #     with pm.Model() as disaster_model:
+        #         ell = pm.Gamma("ell", **ell_params)
+        #         eta = pm.HalfNormal("eta", sigma=2)
+        #         cov = eta**2 * pm.gp.cov.Matern52(1, ls=ell)
+        #         gp = pm.gp.Latent(cov_func=cov)
+        #         f = gp.prior("f", X=disaster_years[:, None])
+        #         rate = pm.Deterministic("rate", pm.math.exp(f))
+        #         pm.Poisson("y", mu=rate, observed=disasters_array)
+        #     return disaster_model
+        #
+        # disaster_model = build_disaster_latent_gp()
+        # with disaster_model:
+        #     disaster_trace = pm.sample(random_seed=RANDOM_SEED)
+        disaster_trace = ...
+        if disaster_trace is ...:
+            return mo.callout(
+                mo.md(
+                    "Replace `...` with your model and sampling code, then re-run this cell."
+                ),
+                kind="info",
+            )
+        return az.summary(disaster_trace, var_names=["ell", "eta"])
 
+    _exercise_disaster_gp()
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
-    mo.accordion(
-        {
-            "Show solution": mo.md(r"""
-    ```python
-    def build_disaster_latent_gp():
+def _(disaster_years, disasters_array):
+    def solution_disaster_gp():
         ell_params = pm.find_constrained_prior(
             pm.Gamma,
             lower=2,
@@ -1975,35 +1879,39 @@ def _(mo):
             f = gp.prior("f", X=disaster_years[:, None])
             rate = pm.Deterministic("rate", pm.math.exp(f))
             pm.Poisson("y", mu=rate, observed=disasters_array)
-        return disaster_model
+            disaster_trace = pm.sample(random_seed=RANDOM_SEED)
 
-    disaster_model = build_disaster_latent_gp()
-    with disaster_model:
-        disaster_trace = pm.sample(
-            nuts_sampler="nutpie",
-            chains=2,
-            random_seed=RANDOM_SEED,
+        summary = az.summary(disaster_trace, var_names=["ell", "eta"])
+
+        rate_samples = az.extract(disaster_trace, var_names="rate").values
+        rate_mean = rate_samples.mean(axis=1)
+        rate_hdi = az.hdi(disaster_trace["posterior"], prob=0.94)["rate"].to_numpy()
+
+        fig, ax = plt.subplots(figsize=(10, 4))
+        ax.bar(disaster_years, disasters_array, color="#154A72", alpha=0.35, width=0.8)
+        ax.plot(
+            disaster_years,
+            rate_mean,
+            color="firebrick",
+            lw=2,
+            label="Posterior mean rate",
         )
+        ax.fill_between(
+            disaster_years, rate_hdi[:, 0], rate_hdi[:, 1], color="firebrick", alpha=0.2
+        )
+        ax.set_xlabel("Year")
+        ax.set_ylabel("Disaster count / rate")
+        ax.legend()
+        fig.tight_layout()
+        return mo.vstack([summary, fig])
 
-    az.summary(disaster_trace, var_names=["ell", "eta"])
-    ```
-
-    Plot the inferred rate:
-
-    ```python
-    rate_samples = az.extract(disaster_trace, var_names="rate").values
-    rate_mean = rate_samples.mean(axis=1)
-    rate_hdi = az.hdi(disaster_trace["posterior"], prob=0.94)["rate"].to_numpy()
-
-    fig, ax = plt.subplots(figsize=(10, 4))
-    ax.bar(disaster_years, disasters_array, color="#154A72", alpha=0.35, width=0.8)
-    ax.plot(disaster_years, rate_mean, color="firebrick", lw=2, label="Posterior mean rate")
-    ax.fill_between(disaster_years, rate_hdi[:, 0], rate_hdi[:, 1], color="firebrick", alpha=0.2)
-    ax.set_xlabel("Year")
-    ax.set_ylabel("Disaster count / rate")
-    ax.legend()
-    ```
-
+    mo.accordion(
+        {
+            "Solution": mo.vstack(
+                [
+                    mo.md(f"```python\n{inspect.getsource(solution_disaster_gp)}\n```"),
+                    mo.lazy(solution_disaster_gp, show_loading_indicator=True),
+                    mo.md(r"""
     For the optional PPC, simulate replicated counts and compare a count-dispersion statistic such as variance / mean:
 
     ```python
@@ -2020,14 +1928,16 @@ def _(mo):
     ```
 
     If the observed ratio is far in the tail of `sim_ratios`, the Poisson variance assumption is too tight. The usual next move is a `NegativeBinomial` likelihood with the same latent GP rate and an additional dispersion parameter.
-    """)
+    """),
+                ]
+            ),
         }
     )
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Faster Gaussian processes
 
@@ -2062,7 +1972,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Dense dataset
 
@@ -2072,7 +1982,7 @@ def _(mo):
 
 
 @app.cell
-def _(RANDOM_SEED, np, plt, pm, to_np):
+def _():
     def simulate_dense_data(seed=RANDOM_SEED, n=2000):
         rng = np.random.default_rng(seed)
         X = 10 * np.sort(rng.uniform(size=n))[:, None]
@@ -2104,7 +2014,7 @@ def _(RANDOM_SEED, np, plt, pm, to_np):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     The inducing points don't need to coincide with observations — they're auxiliary variables introduced solely to compress the GP. The sparse GP will:
 
@@ -2120,7 +2030,7 @@ def _(mo):
 
 
 @app.cell
-def _(RNG, dense_X, np, plt, pm):
+def _(dense_X):
     def plot_sparse_covariance_approx():
         idx = np.sort(RNG.choice(dense_X.shape[0], 200, replace=False))
         X_viz = dense_X[idx]
@@ -2178,7 +2088,7 @@ def _(RNG, dense_X, np, plt, pm):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     We can specify a sparse marginal likelihood model via `MarginalApprox`, where the approximation method can be chosen. We will use the **fully independent training conditional (FITC)** algorithm, with the critical approximation being the imposition of a conditional independence assumption on the joint prior over training and test cases. We will initialize 20 inducing points with the **K-means** algorithm.
     """)
@@ -2186,7 +2096,7 @@ def _(mo):
 
 
 @app.cell
-def _(dense_X, dense_y, pm):
+def _(dense_X, dense_y):
     def build_sparse_model():
         with pm.Model() as sparse_model:
             ls = pm.Gamma("ls", alpha=2, beta=1)
@@ -2207,7 +2117,7 @@ def _(dense_X, dense_y, pm):
 
 
 @app.cell
-def _(RANDOM_SEED, pm, sparse_model):
+def _(sparse_model):
     with sparse_model:
         sparse_trace = pm.sample(
             nuts_sampler="nutpie",
@@ -2219,7 +2129,7 @@ def _(RANDOM_SEED, pm, sparse_model):
 
 
 @app.cell(hide_code=True)
-def _(az, plt, sparse_trace):
+def _(sparse_trace):
     az.plot_trace(sparse_trace, var_names=["eta", "ls"])
     plt.tight_layout()
     plt.gcf()
@@ -2227,7 +2137,7 @@ def _(az, plt, sparse_trace):
 
 
 @app.cell
-def _(np, pm, sparse_gp, sparse_model, sparse_trace):
+def _(sparse_gp, sparse_model, sparse_trace):
     sparse_X_new = np.linspace(-1, 11, 200)[:, None]
     with sparse_model:
         sparse_gp.conditional("f_pred", sparse_X_new)
@@ -2238,18 +2148,7 @@ def _(np, pm, sparse_gp, sparse_model, sparse_trace):
 
 
 @app.cell(hide_code=True)
-def _(
-    az,
-    dense_X,
-    dense_f_true,
-    dense_y,
-    np,
-    plot_gp_dist,
-    plt,
-    sparse_X_new,
-    sparse_Xu,
-    sparse_pred_samples,
-):
+def _(dense_X, dense_f_true, dense_y, sparse_X_new, sparse_Xu, sparse_pred_samples):
     _fig = plt.figure(figsize=(12, 5))
     _ax = _fig.gca()
 
@@ -2279,7 +2178,7 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Hilbert Space Approximate Gaussian Processes (HSGP)
 
@@ -2302,7 +2201,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### How does it work?
 
@@ -2316,7 +2215,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(np, plt):
+def _():
     def plot_basis_functions():
         pymc_blue = "#154A72"
         pymc_green = "#81C240"
@@ -2353,7 +2252,7 @@ def _(np, plt):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### How `L` and `c` affect the basis
 
@@ -2367,7 +2266,7 @@ def _(mo):
 
 
 @app.cell
-def _(np, plt, pm):
+def _():
     def plot_hsgp_basis_L_effect():
         pymc_blue = "#154A72"
         pymc_green = "#81C240"
@@ -2426,7 +2325,7 @@ def _(np, plt, pm):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     - **Left ($L = S$, $c = 1$).** The basis pinches to zero exactly at the data edges. The HSGP approximation becomes poor as you approach $x = \pm 5$, and how quickly depends on the lengthscale.
     - **Middle ($c = 1.2$).** The Riutort-Mayol *et al.* recommended minimum. The pinch is pushed just outside the data range, which is usually enough.
@@ -2442,7 +2341,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### The two knobs
 
@@ -2480,7 +2379,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(np, plt, swing_decisions):
+def _(swing_decisions):
     def plot_hsgp_parameter_curves():
         from matplotlib.ticker import MultipleLocator
 
@@ -2498,7 +2397,11 @@ def _(np, plt, swing_decisions):
             valid = c_val >= (4.1 * (ell_grid / S))
             m_curve[~valid] = np.nan
             ax.semilogy(
-                ell_grid, m_curve, color=cmap_curves(colors[i]), label=f"c = {c_val}", lw=2
+                ell_grid,
+                m_curve,
+                color=cmap_curves(colors[i]),
+                label=f"c = {c_val}",
+                lw=2,
             )
 
         ax.grid(True, alpha=0.4)
@@ -2517,7 +2420,7 @@ def _(np, plt, swing_decisions):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Each curve marks where the HSGP approximation is reliable for that value of $c$. **The right value depends on your prior over $\ell$.** Our prior puts 90% of its mass on $\ell \in [1, 15]$ years (player age), so we pick $c$ and $m$ such that the entire prior range falls inside a valid region — and `approx_hsgp_hyperparams` does exactly that calculation for us, which is what the model below uses. Smaller $m$ is better for speed; $c$ has no effect on cost.
     """)
@@ -2525,7 +2428,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     #### Swing decision data
 
@@ -2535,7 +2438,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(plt, swing_decisions):
+def _(swing_decisions):
     swing_decisions.plot.scatter(
         x="age",
         y="swing_decision",
@@ -2549,7 +2452,7 @@ def _(plt, swing_decisions):
 
 
 @app.cell(hide_code=True)
-def _(np, swing_decisions):
+def _(swing_decisions):
     ages_unique = np.sort(swing_decisions.age.unique())
     age_ind_obs = swing_decisions.age.values - ages_unique.min()
     swing_decision_obs_arr = swing_decisions.swing_decision.values
@@ -2558,7 +2461,7 @@ def _(np, swing_decisions):
 
 
 @app.cell
-def _(age_ind_obs, ages_unique, pm, swing_decision_obs_arr):
+def _(age_ind_obs, ages_unique, swing_decision_obs_arr):
     def build_hsgp_swing_decision_model():
         import warnings
 
@@ -2607,7 +2510,7 @@ def _(age_ind_obs, ages_unique, pm, swing_decision_obs_arr):
 
 
 @app.cell
-def _(RANDOM_SEED, pm, swing_decision_model):
+def _(swing_decision_model):
     with swing_decision_model:
         swing_decision_trace = pm.sample(
             draws=2000,
@@ -2622,7 +2525,7 @@ def _(RANDOM_SEED, pm, swing_decision_model):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     The resulting diagnostics look pretty good. We use ArviZ's energy plot to check for any HMC pathology, and a trace plot for the hyperparameters.
     """)
@@ -2630,14 +2533,14 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(az, plt, swing_decision_trace):
+def _(swing_decision_trace):
     az.plot_energy(swing_decision_trace)
     plt.gcf()
     return
 
 
 @app.cell(hide_code=True)
-def _(az, plt, swing_decision_trace):
+def _(swing_decision_trace):
     az.plot_trace(swing_decision_trace, var_names=["eta", "ell", "sigma", "intercept"])
     plt.tight_layout()
     plt.gcf()
@@ -2645,11 +2548,14 @@ def _(az, plt, swing_decision_trace):
 
 
 @app.cell(hide_code=True)
-def _(ages_unique, plot_gp_dist, plt, swing_decision_trace, swing_decisions):
+def _(ages_unique, swing_decision_trace, swing_decisions):
     _fig, _ax = plt.subplots(1, 1, figsize=(18, 10))
 
     _f = (
-        (swing_decision_trace.posterior["intercept"] + swing_decision_trace.posterior["f"])
+        (
+            swing_decision_trace.posterior["intercept"]
+            + swing_decision_trace.posterior["f"]
+        )
         .sel(chain=0)
         .values
     )  # (draw, age)
@@ -2662,7 +2568,7 @@ def _(ages_unique, plot_gp_dist, plt, swing_decision_trace, swing_decisions):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### When NOT to reach for HSGP
 
@@ -2677,7 +2583,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Multi-input GPs
 
@@ -2691,7 +2597,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(data_path, pd):
+def _():
     pitch_data = pd.read_csv(data_path / "taken_pitches_walker.csv")
     called_strike = pitch_data[["bats", "location_x", "location_z", "is_strike"]].copy()
     called_strike.head()
@@ -2699,7 +2605,7 @@ def _(data_path, pd):
 
 
 @app.cell(hide_code=True)
-def _(called_strike, plt):
+def _(called_strike):
     _fig, _ax = plt.subplots(figsize=(5, 6))
     for _flag, _color, _label in [(0, "C0", "ball"), (1, "C1", "strike")]:
         _sub = called_strike[called_strike.is_strike == _flag]
@@ -2724,7 +2630,7 @@ def _(called_strike):
 
 
 @app.cell
-def _(pm, strike_X, strike_y):
+def _(strike_X, strike_y):
     def build_called_strike_model():
         with pm.Model() as called_strike_model:
             ls = pm.Gamma("ls", alpha=2, beta=2, shape=2)
@@ -2743,7 +2649,7 @@ def _(pm, strike_X, strike_y):
 
 
 @app.cell
-def _(RANDOM_SEED, called_strike_model, pm):
+def _(called_strike_model):
     with called_strike_model:
         strike_trace = pm.sample(
             nuts_sampler="nutpie",
@@ -2755,7 +2661,7 @@ def _(RANDOM_SEED, called_strike_model, pm):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     A key step for generating a visualization is creating a 2D grid to predict over, which here we can use PyMC's `cartesian` function to do.
     """)
@@ -2763,7 +2669,7 @@ def _(mo):
 
 
 @app.cell
-def _(called_strike_gp, called_strike_model, np, pm, strike_trace):
+def _(called_strike_gp, called_strike_model, strike_trace):
     x_pred_strike = np.linspace(-1.5, 1.5, 100)
     z_pred_strike = np.linspace(0.5, 4.5, 100)
     X_pred_strike = pm.math.cartesian(x_pred_strike[:, None], z_pred_strike[:, None])
@@ -2778,7 +2684,7 @@ def _(called_strike_gp, called_strike_model, np, pm, strike_trace):
 
 
 @app.cell(hide_code=True)
-def _(X_pred_strike, plt, strike_preds):
+def _(X_pred_strike, strike_preds):
     plt.figure(figsize=(5, 6))
     plt.scatter(
         X_pred_strike[:, 0],
@@ -2798,7 +2704,7 @@ def _(X_pred_strike, plt, strike_preds):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Other GP Packages
 
@@ -2889,7 +2795,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Want to learn more?
 

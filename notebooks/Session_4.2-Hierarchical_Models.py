@@ -4,18 +4,11 @@ __generated_with = "0.23.9"
 app = marimo.App(width="medium")
 
 
-@app.cell(hide_code=True)
-def _():
+with app.setup:
     import marimo as mo
-
-    return (mo,)
-
-
-@app.cell(hide_code=True)
-def _():
+    import inspect
     import base64
     from pathlib import Path
-
     import numpy as np
     import pymc as pm
     import pymc_extras as pmx
@@ -27,12 +20,12 @@ def _():
     import matplotlib.pyplot as plt
     import warnings
     import xarray as xr
+    import pymc.dims as pmd
 
     PYMC_BLUE = "#154A72"
     PYMC_GREEN = "#81C240"
     PYMC_LIGHT_BLUE = "#4A9EDE"
     PYMC_DARK_GREEN = "#40611F"
-
     pymc_template = go.layout.Template()
     pymc_template.layout = go.Layout(
         colorway=[
@@ -48,36 +41,25 @@ def _():
         font=dict(color="#333"),
         title=dict(font=dict(color=PYMC_BLUE)),
     )
-    pio.templates["pymc_labs"] = pymc_template
-    pio.templates.default = "plotly_white+pymc_labs"
-
+    pio.templates["course"] = pymc_template
+    pio.templates.default = "plotly_white+course"
     RANDOM_SEED = 20090425
     RNG = np.random.default_rng(RANDOM_SEED)
-
     warnings.filterwarnings("ignore", module="mkl_fft")
     warnings.filterwarnings("ignore", category=RuntimeWarning)
-    return Path, RANDOM_SEED, az, base64, go, np, pl, plt, pm, pmx, px, xr
 
 
 @app.cell(hide_code=True)
-def header(Path, base64, mo):
-    logo_path = Path(__file__).parent / "images" / "pymc-labs-logo.png"
-    if logo_path.exists():
-        logo_b64 = base64.b64encode(logo_path.read_bytes()).decode()
-        logo_html = f'<img src="data:image/png;base64,{logo_b64}" width="300" style="margin-bottom: 0.5rem;">'
-    else:
-        logo_html = ""
+def header():
+    mo.md("""
 
-    mo.md(f"""
-    {logo_html}
-
-    # Hierarchical Models
+    # Session 4.2: Hierarchical Models
     """)
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Hierarchical or multilevel modeling is another generalization of regression modeling.
 
@@ -97,7 +79,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(Path, base64, mo):
+def _():
     def make_radon_html():
         radon_img_path = Path(__file__).parent / "images" / "how_radon_enters.jpg"
         if radon_img_path.exists():
@@ -127,7 +109,7 @@ def _(Path, base64, mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Data organization
     """)
@@ -135,7 +117,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     First, we import the data from a local file, and extract Minnesota's data.
     """)
@@ -143,7 +125,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     The original data exists as several independent datasets, which we will import, merge, and process here. First is the data on measurements from individual homes from across the United States. We will extract just the subset from Minnesota.
     """)
@@ -151,13 +133,13 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(Path):
+def _():
     data_path = Path(__file__).parent / "data"
     return (data_path,)
 
 
 @app.cell(hide_code=True)
-def _(data_path, pl):
+def _(data_path):
     srrs2 = pl.read_csv(data_path / "srrs2.dat")
 
     srrs2 = srrs2.rename({col: col.strip() for col in srrs2.columns})
@@ -168,7 +150,7 @@ def _(data_path, pl):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Next, obtain the county-level predictor, uranium, by combining two variables.
     """)
@@ -176,7 +158,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(data_path, pl, srrs_mn):
+def _(data_path, srrs_mn):
     cty = pl.read_csv(data_path / "cty.dat")
     srrs_mn_1 = srrs_mn.with_columns(
         (
@@ -191,7 +173,7 @@ def _(data_path, pl, srrs_mn):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Use the Polars `join` method to combine home- and county-level information in a single DataFrame.
     """)
@@ -206,7 +188,7 @@ def _(cty_mn, srrs_mn_1):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Let's encode the county names and make local copies of the variables we will use.
     We also need a lookup table (`dict`) for each unique county, for indexing.
@@ -215,7 +197,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(np, pl, srrs_mn_2):
+def _(srrs_mn_2):
     srrs_mn_3 = srrs_mn_2.with_columns(
         pl.col("county").map_elements(str.strip, return_dtype=pl.Utf8).alias("county")
     )
@@ -245,7 +227,7 @@ def _(np, pl, srrs_mn_2):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Distribution of radon levels in MN (log scale):
     """)
@@ -253,7 +235,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(px, srrs_mn_3):
+def _(srrs_mn_3):
     _output = px.histogram(
         srrs_mn_3,
         x="log_radon",
@@ -266,7 +248,7 @@ def _(px, srrs_mn_3):
 
 
 @app.cell(hide_code=True)
-def _(px, srrs_mn_3):
+def _(srrs_mn_3):
     floor_counts = srrs_mn_3.get_column("floor").value_counts().sort("floor")
     _output = px.bar(
         x=["Basement", "Floor"],
@@ -279,7 +261,7 @@ def _(px, srrs_mn_3):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Conventional approaches
 
@@ -305,7 +287,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     > **A note on the model API used here.** PyMC v6 ships a dim-first construction API at `pymc.dims` (commonly imported as `pmd`). Distributions take `dims=...` directly, broadcasting through named dimensions automatically. We use it for the hierarchical models in this notebook because that's where dim-first construction pays off most. The classic `pm.Normal(..., dims=...)` API you may see online still works and is fully supported; the two APIs interoperate within the same `pm.Model` block. We mix them later when we get to LKJ correlated effects (the LKJ prior currently lives only in the classic namespace).
 
@@ -314,15 +296,8 @@ def _(mo):
     return
 
 
-@app.cell(hide_code=True)
-def _():
-    import pymc.dims as pmd
-
-    return (pmd,)
-
-
 @app.cell
-def _(floor_measure, log_radon, np, pmd, pmx):
+def _(floor_measure, log_radon):
     @pmx.as_model(coords={"obs_id": np.arange(len(log_radon))})
     def build_pooled():
         floor_ind = pmd.Data("floor_ind", floor_measure, dims="obs_id")
@@ -344,7 +319,7 @@ def _(floor_measure, log_radon, np, pmd, pmx):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     You may be wondering why we are using the `pm.Data` container above even though the variable `floor_ind` is not an observed variable nor a parameter of the model. As you'll see, this will make our lives much easier when we'll plot and diagnose our model.ArviZ will thus include `floor_ind` as a variable in the `constant_data` group of the resulting {ref}`InferenceData <xarray_for_arviz>` object. Moreover, including `floor_ind` in the `InferenceData` object makes sharing and reproducing analysis much easier, all the data needed to analyze or rerun the model is stored there.
     """)
@@ -352,7 +327,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Before running the model let's do some **prior predictive checks**.
 
@@ -362,7 +337,7 @@ def _(mo):
 
 
 @app.cell
-def _(RANDOM_SEED, pm, pooled_model):
+def _(pooled_model):
     with pooled_model:
         prior_checks = pm.sample_prior_predictive(random_seed=RANDOM_SEED)
     prior_checks
@@ -370,7 +345,7 @@ def _(RANDOM_SEED, pm, pooled_model):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ArviZ `InferenceData` uses `xarray.Dataset`s under the hood, which give access to several common plotting functions with `.plot`. In this case, we want scatter plot of the mean log radon level (which is stored in variable `a`) for each of the two levels we are considering. If our desired plot is supported by xarray plotting capabilities, we can take advantage of xarray to automatically generate both plot and labels for us. Notice how everything is directly plotted and annotated, the only change we need to do is renaming the y axis label from `a` to `Mean log radon level`.
     """)
@@ -378,7 +353,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(prior_checks, xr):
+def _(prior_checks):
     prior = prior_checks.prior.dataset.squeeze(drop=True)
 
     _output = (
@@ -392,7 +367,7 @@ def _(prior_checks, xr):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     I'm no radon expert, but before seeing the data, these priors seem to allow for quite a wide range of the mean log radon level, both as measured either in a basement or on a floor. But don't worry, we can always change these priors if sampling gives us hints that they might not be appropriate -- after all, priors are assumptions, not oaths; and as with most assumptions, they can be tested.
 
@@ -404,7 +379,7 @@ def _(mo):
 
 
 @app.cell
-def _(RANDOM_SEED, pm, pooled_model):
+def _(pooled_model):
     with pooled_model:
         pooled_trace = pm.sample(random_seed=RANDOM_SEED)
     pooled_trace
@@ -412,7 +387,7 @@ def _(RANDOM_SEED, pm, pooled_model):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     No divergences and a sampling that only took seconds! Here the chains look very good (good R hat, good effective sample size, small sd). The model also estimated a negative floor effect, as we expected.
     """)
@@ -420,14 +395,14 @@ def _(mo):
 
 
 @app.cell
-def _(az, pooled_trace):
+def _(pooled_trace):
     _output = az.summary(pooled_trace, round_to=2)
     _output
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Let's plot the expected radon levels in basements (`alpha`) and on floors (`alpha + beta`) in relation to the data used to fit the model:
     """)
@@ -435,7 +410,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(np, pooled_trace, px, srrs_mn_3):
+def _(pooled_trace, srrs_mn_3):
     def plot_pooled_fit():
         xvals = np.linspace(-0.2, 1.2, 100)
         return px.scatter(
@@ -457,7 +432,7 @@ def _(np, pooled_trace, px, srrs_mn_3):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     This looks reasonable, though notice that there is a great deal of residual variability in the data.
 
@@ -467,7 +442,7 @@ def _(mo):
 
 
 @app.cell
-def _(county, floor_measure, log_radon, mn_counties, np, pmd, pmx):
+def _(county, floor_measure, log_radon, mn_counties):
     coords = {"county": mn_counties, "obs_id": np.arange(len(log_radon))}
 
     @pmx.as_model(coords=coords)
@@ -492,7 +467,7 @@ def _(county, floor_measure, log_radon, mn_counties, np, pmd, pmx):
 
 
 @app.cell
-def _(RANDOM_SEED, pm, unpooled_model):
+def _(unpooled_model):
     with unpooled_model:
         unpooled_trace = pm.sample(random_seed=RANDOM_SEED)
     unpooled_trace
@@ -500,7 +475,7 @@ def _(RANDOM_SEED, pm, unpooled_model):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     The sampling was clean here too; Let's look at the expected values for both basement (dimension 0) and floor (dimension 1) in each county:
     """)
@@ -508,14 +483,14 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(az, unpooled_trace):
+def _(unpooled_trace):
     _output = az.plot_forest(unpooled_trace, var_names=["alpha"], combined=True)
     _output
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     To identify counties with high radon levels, we can plot the ordered mean estimates, as well as their 89% ETI:
     """)
@@ -523,7 +498,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(az, mn_counties, np, plt, unpooled_trace):
+def _(mn_counties, unpooled_trace):
     unpooled_means = unpooled_trace.posterior.dataset.mean(dim=("chain", "draw"))
     unpooled_eti = az.eti(unpooled_trace).dataset
     unpooled_means_iter = unpooled_means.sortby("alpha")
@@ -552,7 +527,7 @@ def _(az, mn_counties, np, plt, unpooled_trace):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Now that we have fit both conventional (_i.e._ non-hierarchcial) models, let's see how their inferences differ. Here are visual comparisons between the pooled and unpooled estimates for a subset of counties representing a range of sample sizes.
     """)
@@ -560,7 +535,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(np, pl, plt, post_mean, srrs_mn_3, unpooled_means, xr):
+def _(post_mean, srrs_mn_3, unpooled_means):
     def plot_county_comparison():
         sample_counties = (
             "LAC QUI PARLE",
@@ -597,7 +572,7 @@ def _(np, pl, plt, post_mean, srrs_mn_3, unpooled_means, xr):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Neither of these models are satisfactory:
 
@@ -612,7 +587,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(Path, base64, mo):
+def _():
     def embed_model_images():
         img_dir = Path(__file__).parent / "images"
 
@@ -652,7 +627,7 @@ def _(Path, base64, mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Partial pooling model
 
@@ -666,7 +641,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Let's start with a very simple partial pooling model, which ignores the effect of floor vs. basement measurement.
     """)
@@ -674,7 +649,7 @@ def _(mo):
 
 
 @app.cell
-def _(coords, county, log_radon, pmd, pmx):
+def _(coords, county, log_radon):
     @pmx.as_model(coords=coords)
     def build_partial_pooling():
         county_idx = pmd.Data("county_idx", county, dims="obs_id")
@@ -697,7 +672,7 @@ def _(coords, county, log_radon, pmd, pmx):
 
 
 @app.cell
-def _(RANDOM_SEED, partial_pooling, pm):
+def _(partial_pooling):
     with partial_pooling:
         partial_pooling_trace = pm.sample(tune=2000, random_seed=RANDOM_SEED)
     partial_pooling_trace
@@ -705,7 +680,7 @@ def _(RANDOM_SEED, partial_pooling, pm):
 
 
 @app.cell(hide_code=True)
-def _(az, partial_pooling_trace, pl, plt, srrs_mn_3, unpooled_trace):
+def _(partial_pooling_trace, srrs_mn_3, unpooled_trace):
     N_county = (
         srrs_mn_3.group_by("county")
         .agg(pl.count("idnum"))
@@ -757,7 +732,7 @@ def _(az, partial_pooling_trace, pl, plt, srrs_mn_3, unpooled_trace):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Notice the difference between the unpooled and partially-pooled estimates, particularly at smaller sample sizes: As expected, the former are both more extreme and more imprecise. Indeed, in the partially-pooled model, estimates in small-sample-size counties are informed by the population parameters -- hence more precise estimates. Moreover, the smaller the sample size, the more regression towards the overall mean (the dashed gray line) -- hence less extreme estimates. In other words, the model is skeptical of extreme deviations from the population mean in counties where data is sparse. This is known as **shrinkage**.
     """)
@@ -765,7 +740,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Now let's go back and integrate the `floor` predictor, but allowing the intercept to vary by county.
 
@@ -789,7 +764,7 @@ def _(mo):
 
 
 @app.cell
-def _(coords, county, floor_measure, log_radon, pmd, pmx):
+def _(coords, county, floor_measure, log_radon):
     @pmx.as_model(coords=coords)
     def build_varying_intercept():
         floor_idx = pmd.Data("floor_idx", floor_measure, dims="obs_id")
@@ -814,7 +789,7 @@ def _(coords, county, floor_measure, log_radon, pmd, pmx):
 
 
 @app.cell
-def _(RANDOM_SEED, pm, varying_intercept):
+def _(varying_intercept):
     with varying_intercept:
         varying_intercept_trace = pm.sample(tune=2000, random_seed=RANDOM_SEED)
     varying_intercept_trace
@@ -822,7 +797,7 @@ def _(RANDOM_SEED, pm, varying_intercept):
 
 
 @app.cell(hide_code=True)
-def _(az, varying_intercept_trace):
+def _(varying_intercept_trace):
     _output = az.plot_forest(
         varying_intercept_trace, var_names=["alpha"], combined=True
     )
@@ -831,14 +806,14 @@ def _(az, varying_intercept_trace):
 
 
 @app.cell(hide_code=True)
-def _(az, varying_intercept_trace):
+def _(varying_intercept_trace):
     _output = az.plot_dist(varying_intercept_trace, var_names=["sigma_a", "beta"])
     _output
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     The estimate for the `floor` coefficient is approximately -0.66, which can be interpreted as houses without basements having about half ($\exp(-0.66) = 0.52$) the radon levels of those with basements, after accounting for county.
     """)
@@ -846,14 +821,14 @@ def _(mo):
 
 
 @app.cell
-def _(az, varying_intercept_trace):
+def _(varying_intercept_trace):
     _output = az.summary(varying_intercept_trace, var_names=["beta"])
     _output
     return
 
 
 @app.cell(hide_code=True)
-def _(plt, varying_intercept_trace, xr):
+def _(varying_intercept_trace):
     def plot_varying_intercept_radon():
         xvals = xr.DataArray(
             [0, 1], dims="Level", coords={"Level": ["Basement", "Floor"]}
@@ -877,7 +852,7 @@ def _(plt, varying_intercept_trace, xr):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     It is easy to show that the partial pooling model provides more objectively reasonable estimates than either the pooled or unpooled models, at least for counties with small sample sizes.
     """)
@@ -885,16 +860,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(
-    np,
-    pl,
-    plt,
-    post_mean,
-    srrs_mn_3,
-    unpooled_means,
-    varying_intercept_trace,
-    xr,
-):
+def _(post_mean, srrs_mn_3, unpooled_means, varying_intercept_trace):
     def plot_partial_pooling_comparison():
         sample_counties = (
             "LAC QUI PARLE",
@@ -937,9 +903,9 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
-    ### Exercise: Varying intercept and slope model
+    ## Exercise: Varying intercept and slope model
 
     The most general model allows both the intercept and slope to vary by county:
 
@@ -952,78 +918,73 @@ def _(mo):
 
 @app.cell
 def _():
-    # @pmx.as_model(coords=coords)
-    # def varying_intercept_slope_model():
-    #     ...
-    #
-    # varying_intercept_slope = varying_intercept_slope_model()
-    # varying_intercept_slope
-    ...
+    def _exercise_varying_intercept_slope():
+        # YOUR CODE HERE — build the varying-intercept, varying-slope model, e.g.:
+        #
+        # @pmx.as_model(coords=coords)
+        # def varying_intercept_slope_model():
+        #     ...
+        #
+        # model = varying_intercept_slope_model()
+        model = ...
+        if model is ...:
+            return mo.callout(
+                mo.md("Replace `...` with your model, then re-run this cell."),
+                kind="info",
+            )
+        return model.to_graphviz()
+
+    _exercise_varying_intercept_slope()
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _(coords, county, floor_measure, log_radon):
+    def solution_varying_intercept_slope():
+        @pmx.as_model(coords=coords)
+        def varying_intercept_slope_model():
+            floor_idx = pmd.Data("floor_idx", floor_measure, dims="obs_id")
+            county_idx = pmd.Data("county_idx", county, dims="obs_id")
+            mu_a = pmd.Normal("mu_a", mu=0.0, sigma=10.0)
+            sigma_a = pmd.HalfNormal("sigma_a", sigma=2)
+            mu_b = pmd.Normal("mu_b", mu=0.0, sigma=10.0)
+            sigma_b = pmd.HalfNormal("sigma_b", sigma=2)
+            alpha = pmd.Normal("alpha", mu=mu_a, sigma=sigma_a, dims="county")
+            beta = pmd.Normal("beta", mu=mu_b, sigma=sigma_b, dims="county")
+            sigma_y = pmd.HalfNormal("sigma_y", sigma=2)
+            y_hat = alpha[county_idx] + beta[county_idx] * floor_idx
+            pmd.Normal(
+                "y_like",
+                mu=y_hat,
+                sigma=sigma_y,
+                observed=pmd.as_xtensor(log_radon, dims=("obs_id",)),
+                dims="obs_id",
+            )
+
+        return varying_intercept_slope_model()
+
+    varying_intercept_slope = solution_varying_intercept_slope()
+
     mo.accordion(
         {
-            "Solution": mo.md(f"""```python
-    @pmx.as_model(coords=coords)
-    def varying_intercept_slope_model():
-        floor_idx = pmd.Data("floor_idx", floor_measure, dims="obs_id")
-        county_idx = pmd.Data("county_idx", county, dims="obs_id")
-        mu_a = pmd.Normal("mu_a", mu=0.0, sigma=10.0)
-        sigma_a = pmd.HalfNormal("sigma_a", sigma=2)
-        mu_b = pmd.Normal("mu_b", mu=0.0, sigma=10.0)
-        sigma_b = pmd.HalfNormal("sigma_b", sigma=2)
-        alpha = pmd.Normal("alpha", mu=mu_a, sigma=sigma_a, dims="county")
-        beta = pmd.Normal("beta", mu=mu_b, sigma=sigma_b, dims="county")
-        sigma_y = pmd.HalfNormal("sigma_y", sigma=2)
-        y_hat = alpha[county_idx] + beta[county_idx] * floor_idx
-        pmd.Normal(
-            "y_like",
-            mu=y_hat,
-            sigma=sigma_y,
-            observed=pmd.as_xtensor(log_radon, dims=("obs_id",)),
-            dims="obs_id",
-        )
-
-    varying_intercept_slope = varying_intercept_slope_model()
-    varying_intercept_slope
-    ```""")
+            "Solution": mo.vstack(
+                [
+                    mo.md(
+                        f"```python\n{inspect.getsource(solution_varying_intercept_slope)}\n```"
+                    ),
+                    varying_intercept_slope.to_graphviz(),
+                    mo.md(
+                        "_This model (`varying_intercept_slope`) is sampled below, so the rest of the notebook works whether or not you complete the exercise._"
+                    ),
+                ]
+            ),
         }
     )
-    return
-
-
-@app.cell(hide_code=True)
-def _(coords, county, floor_measure, log_radon, pmd, pmx):
-    @pmx.as_model(coords=coords)
-    def varying_intercept_slope_model():
-        floor_idx = pmd.Data("floor_idx", floor_measure, dims="obs_id")
-        county_idx = pmd.Data("county_idx", county, dims="obs_id")
-        mu_a = pmd.Normal("mu_a", mu=0.0, sigma=10.0)
-        sigma_a = pmd.HalfNormal("sigma_a", sigma=2)
-        mu_b = pmd.Normal("mu_b", mu=0.0, sigma=10.0)
-        sigma_b = pmd.HalfNormal("sigma_b", sigma=2)
-        alpha = pmd.Normal("alpha", mu=mu_a, sigma=sigma_a, dims="county")
-        beta = pmd.Normal("beta", mu=mu_b, sigma=sigma_b, dims="county")
-        sigma_y = pmd.HalfNormal("sigma_y", sigma=2)
-        y_hat = alpha[county_idx] + beta[county_idx] * floor_idx
-        pmd.Normal(
-            "y_like",
-            mu=y_hat,
-            sigma=sigma_y,
-            observed=pmd.as_xtensor(log_radon, dims=("obs_id",)),
-            dims="obs_id",
-        )
-
-    varying_intercept_slope = varying_intercept_slope_model()
-    varying_intercept_slope
     return (varying_intercept_slope,)
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Plot the model DAG just to check your model is correct.
     """)
@@ -1031,15 +992,17 @@ def _(mo):
 
 
 @app.cell
-def _(RANDOM_SEED, pm, varying_intercept_slope):
+def _(varying_intercept_slope):
     with varying_intercept_slope:
-        varying_intercept_slope_trace = pm.sample(tune=2000, target_accept=0.95, random_seed=RANDOM_SEED)
+        varying_intercept_slope_trace = pm.sample(
+            tune=2000, target_accept=0.95, random_seed=RANDOM_SEED
+        )
     varying_intercept_slope_trace
     return (varying_intercept_slope_trace,)
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Notice that the trace of this model includes divergences, which can be problematic depending on where and how frequently they occur. These can occur in some hierarchical models, and they can be avoided by using the **non-centered parametrization**.
     """)
@@ -1047,7 +1010,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Non-centered Parameterization
 
@@ -1059,7 +1022,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(plt, varying_intercept_slope_trace):
+def _(varying_intercept_slope_trace):
     def plot_centered_traces():
         # Extract posterior samples for chain 0 using polars
         sigma_b_df = (
@@ -1087,7 +1050,7 @@ def _(plt, varying_intercept_slope_trace):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Notice that when the chain reaches the lower end of the parameter space for $\sigma_b$, it appears to get "stuck" and the entire sampler, including the random slopes `beta`, mixes poorly.
 
@@ -1097,7 +1060,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(go, varying_intercept_slope_trace):
+def _(varying_intercept_slope_trace):
     def plot_centered_funnel():
         x = (
             varying_intercept_slope_trace.posterior["beta"]
@@ -1145,7 +1108,7 @@ def _(go, varying_intercept_slope_trace):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     When the group variance is small, this implies that the individual random slopes are themselves close to the group mean. This results in a _funnel_-shaped relationship between the samples of group variance and any of the slopes (particularly those with a smaller sample size).
 
@@ -1157,7 +1120,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Option A: low-rank mass-matrix adaptation
 
@@ -1173,7 +1136,7 @@ def _(mo):
 
 
 @app.cell
-def _(RANDOM_SEED, pm, varying_intercept_slope):
+def _(varying_intercept_slope):
     with varying_intercept_slope:
         centered_lowrank_trace = pm.sample(
             tune=2000,
@@ -1186,7 +1149,7 @@ def _(RANDOM_SEED, pm, varying_intercept_slope):
 
 
 @app.cell(hide_code=True)
-def _(centered_lowrank_trace, mo, pl, varying_intercept_slope_trace):
+def _(centered_lowrank_trace, varying_intercept_slope_trace):
     centered_divergences = int(
         varying_intercept_slope_trace.sample_stats["diverging"].sum().values
     )
@@ -1217,7 +1180,7 @@ def _(centered_lowrank_trace, mo, pl, varying_intercept_slope_trace):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Option B: non-centered parameterization (reparameterize the model)
 
@@ -1227,7 +1190,7 @@ def _(mo):
 
 
 @app.cell
-def _(coords, county, floor_measure, log_radon, pmd, pmx):
+def _(coords, county, floor_measure, log_radon):
     @pmx.as_model(coords=coords)
     def build_noncentered():
         floor_idx = pmd.Data("floor_idx", floor_measure, dims="obs_id")
@@ -1256,7 +1219,7 @@ def _(coords, county, floor_measure, log_radon, pmd, pmx):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     This is a [**non-centered** parameterization](https://twiecki.io/blog/2017/02/08/bayesian-hierchical-non-centered/). By this, we mean that the random deviates are no longer explicitly modeled as being centered on $\mu_b$. Instead, they are independent standard normals $\upsilon$, which are then scaled by the appropriate value of $\sigma_b$, before being location-transformed by the mean.
 
@@ -1266,7 +1229,7 @@ def _(mo):
 
 
 @app.cell
-def _(RANDOM_SEED, pm, varying_intercept_slope_noncentered):
+def _(varying_intercept_slope_noncentered):
     with varying_intercept_slope_noncentered:
         noncentered_trace = pm.sample(
             tune=3000,
@@ -1278,7 +1241,7 @@ def _(RANDOM_SEED, pm, varying_intercept_slope_noncentered):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Notice that the bottlenecks in the traces are gone.
     """)
@@ -1286,7 +1249,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(noncentered_trace, plt):
+def _(noncentered_trace):
     def plot_noncentered_traces():
         # Extract posterior samples for chain 0 using polars
         sigma_b_df = (
@@ -1314,7 +1277,7 @@ def _(noncentered_trace, plt):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     And correspondingly, the low end of the posterior distribution of the slope random effect variance can now be sampled efficiently.
     """)
@@ -1322,7 +1285,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(go, noncentered_trace):
+def _(noncentered_trace):
     def plot_noncentered_funnel():
         x = noncentered_trace.posterior["beta"].sel(county="AITKIN").values.flatten()
         y = noncentered_trace.posterior["sigma_b"].values.flatten()
@@ -1364,7 +1327,7 @@ def _(go, noncentered_trace):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     As a result, we are now fully exploring the support of the posterior. This results in less bias in these parameters.
     """)
@@ -1372,7 +1335,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(az, varying_intercept_slope_trace):
+def _(varying_intercept_slope_trace):
     # Compare sigma_b posteriors for centered vs non-centered parameterizations
     _output = az.plot_dist(varying_intercept_slope_trace, var_names=["sigma_b"])
     _output
@@ -1380,14 +1343,14 @@ def _(az, varying_intercept_slope_trace):
 
 
 @app.cell(hide_code=True)
-def _(az, noncentered_trace):
+def _(noncentered_trace):
     _output = az.plot_dist(noncentered_trace, var_names=["sigma_b"])
     _output
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Notice that `sigma_b` now has a lot of density near zero, which would indicate that counties don't vary that much in their answer to the `floor` "treatment".
 
@@ -1399,7 +1362,7 @@ def _(mo):
 
 
 @app.cell
-def _(az, varying_intercept_slope_trace):
+def _(varying_intercept_slope_trace):
     _output = az.summary(
         varying_intercept_slope_trace, var_names=["sigma_a", "sigma_b"]
     )
@@ -1408,7 +1371,7 @@ def _(az, varying_intercept_slope_trace):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     To wrap up this model, let's plot the relationship between radon and floor for each county:
     """)
@@ -1416,7 +1379,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(noncentered_trace, plt, xr):
+def _(noncentered_trace):
     def plot_noncentered_radon():
         xvals = xr.DataArray(
             [0, 1], dims="Level", coords={"Level": ["Basement", "Floor"]}
@@ -1440,7 +1403,7 @@ def _(noncentered_trace, plt, xr):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     This, while both the intercept and the slope vary by county, there is far less variation in the slope.
     """)
@@ -1448,7 +1411,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     > **Note for learners:** This section is an advanced extension. It introduces correlated random effects
     > via an LKJ prior. The rest of the notebook does not depend on this section — you may skip to
@@ -1458,7 +1421,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Correlated Random Effects
 
@@ -1505,7 +1468,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Implementing correlated intercepts and slopes
 
@@ -1515,7 +1478,7 @@ def _(mo):
 
 
 @app.cell
-def _(coords, county, floor_measure, log_radon, mn_counties, np, pm, pmd, pmx):
+def _(coords, county, floor_measure, log_radon, mn_counties):
     re_coords = {
         "county": mn_counties,
         "obs_id": np.arange(len(log_radon)),
@@ -1544,7 +1507,7 @@ def _(coords, county, floor_measure, log_radon, mn_counties, np, pm, pmd, pmx):
         )
 
         alpha = re[:, 0]  # intercept column
-        beta = re[:, 1]   # slope column
+        beta = re[:, 1]  # slope column
 
         sigma_y = pmd.HalfNormal("sigma_y", sigma=2)
         y_hat = alpha[county_idx] + beta[county_idx] * floor_idx
@@ -1563,7 +1526,7 @@ def _(coords, county, floor_measure, log_radon, mn_counties, np, pm, pmd, pmx):
 
 
 @app.cell
-def _(RANDOM_SEED, correlated_random_effects, pm):
+def _(correlated_random_effects):
     with correlated_random_effects:
         correlated_re_trace = pm.sample(
             tune=2000,
@@ -1576,7 +1539,7 @@ def _(RANDOM_SEED, correlated_random_effects, pm):
 
 
 @app.cell(hide_code=True)
-def _(az, correlated_re_trace):
+def _(correlated_re_trace):
     correlated_summary = az.summary(
         correlated_re_trace,
         var_names=["chol_cov_corr", "chol_cov_stds", "mu_re"],
@@ -1587,7 +1550,7 @@ def _(az, correlated_re_trace):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     The off-diagonal entries of `chol_cov_corr` give the posterior for the correlation between county intercepts and county slopes. If the credible interval crosses zero, the data don't strongly support correlated random effects on this dataset, and the independent-effects model from the previous section is a reasonable simplification.
     """)
@@ -1595,7 +1558,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Adding group-level predictors
 
@@ -1621,7 +1584,7 @@ def _(mo):
 
 
 @app.cell
-def _(coords, county, floor_measure, log_radon, pmd, pmx, u):
+def _(coords, county, floor_measure, log_radon, u):
     @pmx.as_model(coords=coords)
     def build_hierarchical_intercept():
         u_county = pmd.Data("u_county", u, dims="county")
@@ -1630,13 +1593,9 @@ def _(coords, county, floor_measure, log_radon, pmd, pmx, u):
         sigma_a = pmd.HalfCauchy("sigma_a", beta=5)
         gamma_0 = pmd.Normal("gamma_0", mu=0.0, sigma=10.0)
         gamma_1 = pmd.Normal("gamma_1", mu=0.0, sigma=10.0)
-        mu_a = pmd.Deterministic(
-            "mu_a", gamma_0 + gamma_1 * u_county, dims="county"
-        )
+        mu_a = pmd.Deterministic("mu_a", gamma_0 + gamma_1 * u_county, dims="county")
         epsilon_a = pmd.Normal("epsilon_a", mu=0, sigma=1, dims="county")
-        alpha = pmd.Deterministic(
-            "alpha", mu_a + sigma_a * epsilon_a, dims="county"
-        )
+        alpha = pmd.Deterministic("alpha", mu_a + sigma_a * epsilon_a, dims="county")
         beta = pmd.Normal("beta", mu=0.0, sigma=10.0)
         sigma_y = pmd.HalfNormal("sigma_y", sigma=2)
         y_hat = alpha[county_idx] + beta * floor_idx
@@ -1654,7 +1613,7 @@ def _(coords, county, floor_measure, log_radon, pmd, pmx, u):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Do you see the new level, with `sigma_a` and `gamma`, which is two-dimensional because it contains the linear model for `a_county`?
     """)
@@ -1662,7 +1621,7 @@ def _(mo):
 
 
 @app.cell
-def _(RANDOM_SEED, hierarchical_intercept, pm):
+def _(hierarchical_intercept):
     with hierarchical_intercept:
         hierarchical_intercept_trace = pm.sample(tune=2000, random_seed=RANDOM_SEED)
     hierarchical_intercept_trace
@@ -1670,7 +1629,7 @@ def _(RANDOM_SEED, hierarchical_intercept, pm):
 
 
 @app.cell(hide_code=True)
-def _(az, go, hierarchical_intercept_trace, np, u):
+def _(hierarchical_intercept_trace, u):
     def plot_uranium_intercept():
         uranium = u
         post = hierarchical_intercept_trace.posterior.dataset.assign_coords(
@@ -1751,7 +1710,7 @@ def _(az, go, hierarchical_intercept_trace, np, u):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Uranium is indeed strongly associated with baseline radon levels in each county. The graph above shows the average relationship and its uncertainty: the baseline radon level in an average county as a function of uranium, as well as the 89% ETI of this radon level (dashed line and envelope). The blue points and orange bars represent the relationship between baseline radon and uranium, but now for each county. As you see, the uncertainty is bigger now, because it adds on top of the average uncertainty -- each county has its idyosyncracies after all.
 
@@ -1761,7 +1720,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(az, varying_intercept_trace):
+def _(varying_intercept_trace):
     # Plot forest for both models side by side
     _output = az.plot_forest(
         varying_intercept_trace, var_names=["alpha"], combined=True
@@ -1771,7 +1730,7 @@ def _(az, varying_intercept_trace):
 
 
 @app.cell(hide_code=True)
-def _(az, hierarchical_intercept_trace):
+def _(hierarchical_intercept_trace):
     _output = az.plot_forest(
         hierarchical_intercept_trace, var_names=["alpha"], combined=True
     )
@@ -1780,7 +1739,7 @@ def _(az, hierarchical_intercept_trace):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     We see that the compatibility intervals are narrower for the model including the county-level covariate. This is expected, as the effect of a covariate is to reduce the variation in the outcome variable -- provided the covariate is of predictive value. More importantly, with this model we were able to squeeze even more information out of the data.
     """)
@@ -1788,7 +1747,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Correlations among levels
 
@@ -1804,7 +1763,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(pl, srrs_mn_3):
+def _(srrs_mn_3):
     # Create new variable for mean of floor across counties
     avg_floor_data = (
         srrs_mn_3.group_by("county")
@@ -1817,7 +1776,7 @@ def _(pl, srrs_mn_3):
 
 
 @app.cell
-def _(avg_floor_data, coords, county, floor_measure, log_radon, pmd, pmx, u):
+def _(avg_floor_data, coords, county, floor_measure, log_radon, u):
     ctx_coords = {
         **coords,
         "coeff": ["intercept", "uranium", "avg_floor"],
@@ -1826,9 +1785,7 @@ def _(avg_floor_data, coords, county, floor_measure, log_radon, pmd, pmx, u):
     @pmx.as_model(coords=ctx_coords)
     def build_contextual_effect():
         u_county = pmd.Data("u_county", u, dims="county")
-        avg_floor_county = pmd.Data(
-            "avg_floor_county", avg_floor_data, dims="county"
-        )
+        avg_floor_county = pmd.Data("avg_floor_county", avg_floor_data, dims="county")
         floor_idx = pmd.Data("floor_idx", floor_measure, dims="obs_id")
         county_idx = pmd.Data("county_idx", county, dims="obs_id")
         sigma_a = pmd.HalfCauchy("sigma_a", beta=5)
@@ -1841,9 +1798,7 @@ def _(avg_floor_data, coords, county, floor_measure, log_radon, pmd, pmx, u):
             dims="county",
         )
         epsilon_a = pmd.Normal("epsilon_a", mu=0, sigma=1, dims="county")
-        alpha = pmd.Deterministic(
-            "alpha", mu_a + sigma_a * epsilon_a, dims="county"
-        )
+        alpha = pmd.Deterministic("alpha", mu_a + sigma_a * epsilon_a, dims="county")
         beta = pmd.Normal("beta", mu=0.0, sigma=10)
         sigma_y = pmd.HalfNormal("sigma_y", sigma=2)
         y_hat = alpha[county_idx] + beta * floor_idx
@@ -1861,7 +1816,7 @@ def _(avg_floor_data, coords, county, floor_measure, log_radon, pmd, pmx, u):
 
 
 @app.cell
-def _(RANDOM_SEED, contextual_effect, pm):
+def _(contextual_effect):
     with contextual_effect:
         contextual_effect_trace = pm.sample(tune=2000, random_seed=RANDOM_SEED)
     contextual_effect_trace
@@ -1869,14 +1824,14 @@ def _(RANDOM_SEED, contextual_effect, pm):
 
 
 @app.cell
-def _(az, contextual_effect_trace):
+def _(contextual_effect_trace):
     _output = az.summary(contextual_effect_trace, var_names="gamma", round_to=2)
     _output
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     So we might infer from this that counties with higher proportions of houses without basements tend to have higher baseline levels of radon. This seems to be new, as up to this point we saw that `floor` was _negatively_ associated with radon levels. But remember this was at the household-level: radon tends to be higher in houses with basements. But at the county-level it seems that the less basements on average in the county, the more radon. So it's not that contradictory. What's more, the estimate for $\gamma_2$ is quite uncertain and overlaps with zero, so it's possible that the relationship is not that strong. And finally, let's note that $\gamma_2$ estimates something else than uranium's effect, as this is already taken into account by $\gamma_1$ -- it answers the question "once we know uranium level in the county, is there any value in learning about the proportion of houses without basements?".
 
@@ -1886,7 +1841,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Model Comparison with LOO
 
@@ -1928,15 +1883,7 @@ def _(mo):
 
 
 @app.cell
-def _(
-    contextual_effect,
-    contextual_effect_trace,
-    pm,
-    pooled_model,
-    pooled_trace,
-    unpooled_model,
-    unpooled_trace,
-):
+def _(contextual_effect, contextual_effect_trace, pooled_model, pooled_trace, unpooled_model, unpooled_trace):
     # Compute log-likelihood for each model (required for LOO)
     with pooled_model:
         pm.compute_log_likelihood(pooled_trace)
@@ -1950,7 +1897,7 @@ def _(
 
 
 @app.cell
-def _(az, contextual_effect_trace, pooled_trace, unpooled_trace):
+def _(contextual_effect_trace, pooled_trace, unpooled_trace):
     # Compare models using LOO
     model_comparison = az.compare(
         {
@@ -1964,7 +1911,7 @@ def _(az, contextual_effect_trace, pooled_trace, unpooled_trace):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     The comparison table includes:
 
@@ -1980,14 +1927,14 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(az, model_comparison):
+def _(model_comparison):
     _output = az.plot_compare(model_comparison)
     _output
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Prediction
 
@@ -2002,7 +1949,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     That is,
 
@@ -2014,7 +1961,7 @@ def _(mo):
 
 
 @app.cell
-def _(RANDOM_SEED, contextual_effect_trace, np):
+def _(contextual_effect_trace):
     # Compute posterior predictive for specific houses in ST LOUIS and KANABEC
     ctx_post = contextual_effect_trace.posterior
     alpha_69 = ctx_post["alpha"].sel(county="ST LOUIS").values
@@ -2035,7 +1982,7 @@ def _(RANDOM_SEED, contextual_effect_trace, np):
 
 
 @app.cell(hide_code=True)
-def _(az, stl_pred, xr):
+def _(stl_pred):
     pp_data = xr.Dataset(
         {
             "ST LOUIS": xr.DataArray(stl_pred[0].flatten(), dims="draw"),
@@ -2048,7 +1995,7 @@ def _(az, stl_pred, xr):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Prediction for a house within a new county is a little trickier. It is actually easier to create a new model to work with, **but use the trace from the original model for posterior predictive sampling**.
 
@@ -2064,7 +2011,7 @@ def _(mo):
 
 
 @app.cell
-def _(contextual_effect_trace, np, pm, pmx):
+def _(contextual_effect_trace):
     @pmx.as_model()
     def build_new_county():
         u_new = np.array([-0.2, 0.3])
@@ -2091,14 +2038,14 @@ def _(contextual_effect_trace, np, pm, pmx):
 
 
 @app.cell(hide_code=True)
-def _(az, pp_new):
+def _(pp_new):
     _output = az.plot_dist(pp_new, group="posterior_predictive")
     _output
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ## Benefits of Multilevel Models
 
@@ -2110,7 +2057,7 @@ def _(mo):
 
     - Allowing for variation among individual-level coefficients across groups.
 
-    As an alternative approach to hierarchical modeling for this problem, check out a [geospatial approach](https://www.pymc-labs.io/blog-posts/spatial-gaussian-process-01/) to modeling radon levels.
+    As an alternative approach to hierarchical modeling for this problem, radon levels can also be modeled spatially with Gaussian processes, which we cover in Session 5.2.
     """)
     return
 

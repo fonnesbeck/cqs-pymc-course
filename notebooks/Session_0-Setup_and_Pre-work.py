@@ -1,29 +1,28 @@
 import marimo
 
-__generated_with = "0.23.5"
+__generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 
-@app.cell(hide_code=True)
-def _():
+with app.setup:
     import marimo as mo
-
-    return (mo,)
-
-
-@app.cell(hide_code=True)
-def _():
     import numpy as np
     import plotly.express as px
     import plotly.graph_objects as go
     import plotly.io as pio
     from scipy import stats
+    import base64
+    from pathlib import Path
+    import importlib
+    import pymc as pm
+    import arviz as az
+    import polars as pl
+    import matplotlib.pyplot as plt
 
     PYMC_BLUE = "#154A72"
     PYMC_GREEN = "#81C240"
     PYMC_LIGHT_BLUE = "#4A9EDE"
     PYMC_DARK_GREEN = "#40611F"
-
     pymc_template = go.layout.Template()
     pymc_template.layout = go.Layout(
         colorway=[
@@ -39,25 +38,13 @@ def _():
         font=dict(color="#333"),
         title=dict(font=dict(color=PYMC_BLUE)),
     )
-    pio.templates["pymc_labs"] = pymc_template
-    pio.templates.default = "plotly_white+pymc_labs"
-    return PYMC_BLUE, PYMC_GREEN, go, np, px, stats
+    pio.templates["course"] = pymc_template
+    pio.templates.default = "plotly_white+course"
 
 
 @app.cell(hide_code=True)
-def header(mo):
-    import base64
-    from pathlib import Path
-
-    logo_path = Path(__file__).parent / "images" / "pymc-labs-logo.png"
-    if logo_path.exists():
-        logo_b64 = base64.b64encode(logo_path.read_bytes()).decode()
-        logo_html = f'<img src="data:image/png;base64,{logo_b64}" width="300" style="margin-bottom: 0.5rem;">'
-    else:
-        logo_html = ""
-
+def header():
     mo.md(f"""
-    {logo_html}
 
     # Workshop Setup & Pre-work
 
@@ -87,7 +74,7 @@ def header(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     The widgets below are wired to a Plotly histogram. Move the slider to change the sample size, or pick a different distribution from the dropdown. The chart updates immediately.
     """)
@@ -95,7 +82,7 @@ def _(mo):
 
 
 @app.cell
-def _(mo):
+def _():
     intro_n = mo.ui.slider(50, 5000, value=500, step=50, label="Sample size")
     intro_dist = mo.ui.dropdown(
         ["Normal", "Exponential", "Uniform"],
@@ -107,7 +94,7 @@ def _(mo):
 
 
 @app.cell
-def _(intro_dist, intro_n, np):
+def _(intro_dist, intro_n):
     intro_rng = np.random.default_rng(seed=0)
     if intro_dist.value == "Normal":
         intro_samples = intro_rng.normal(0, 1, size=intro_n.value)
@@ -119,7 +106,7 @@ def _(intro_dist, intro_n, np):
 
 
 @app.cell(hide_code=True)
-def _(PYMC_BLUE, intro_dist, intro_n, intro_samples, px):
+def _(intro_dist, intro_n, intro_samples):
     intro_fig = px.histogram(
         x=intro_samples,
         nbins=40,
@@ -134,7 +121,7 @@ def _(PYMC_BLUE, intro_dist, intro_n, intro_samples, px):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Three cells just talked to each other reactively: a UI cell created the widgets, a compute cell read `intro_n.value` and `intro_dist.value` to draw samples, and a render cell drew the chart. You'll see this same split throughout the notebook: cells that do real work stay visible, and the marimo plumbing around them is hidden.
     """)
@@ -142,7 +129,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ---
 
@@ -154,9 +141,7 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def environment_check(mo):
-    import importlib
-
+def environment_check():
     required = {
         "numpy": "NumPy (numerical computing)",
         "scipy": "SciPy (scientific computing)",
@@ -208,7 +193,7 @@ def environment_check(mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Let's also verify that PyMC can sample a trivial model. First, define and fit the model:
     """)
@@ -216,9 +201,7 @@ def _(mo):
 
 
 @app.cell
-def pymc_smoke_test(np):
-    import pymc as pm
-
+def pymc_smoke_test():
     with pm.Model():
         mu = pm.Normal("mu", mu=0, sigma=1)
         pm.Normal("obs", mu=mu, sigma=1, observed=np.array([0.5, 1.0, -0.3]))
@@ -229,7 +212,7 @@ def pymc_smoke_test(np):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     Then summarize the posterior with ArviZ:
     """)
@@ -238,14 +221,12 @@ def _(mo):
 
 @app.cell
 def arviz_smoke_test(smoke_trace):
-    import arviz as az
-
     az.summary(smoke_trace)
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ---
 
@@ -257,7 +238,7 @@ def _(mo):
 
 
 @app.cell
-def numpy_basics(np):
+def numpy_basics():
     a = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
     b = np.linspace(0, 1, 5)
     c = a * 2 + 1
@@ -266,7 +247,7 @@ def numpy_basics(np):
 
 
 @app.cell(hide_code=True)
-def numpy_basics_render(a, b, c, d, mo, np):
+def numpy_basics_render(a, b, c, d):
     mo.md(f"""
     - `a` → `{a}`
     - `b` → `{np.array2string(b, precision=2)}`
@@ -277,7 +258,7 @@ def numpy_basics_render(a, b, c, d, mo, np):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     **Broadcasting** lets you operate on arrays of different shapes. Below, a `(3, 1)` column of row means is subtracted from a `(3, 4)` matrix without writing a loop:
     """)
@@ -285,7 +266,7 @@ def _(mo):
 
 
 @app.cell
-def broadcasting_demo(np):
+def broadcasting_demo():
     matrix = np.arange(12).reshape(3, 4)
     row_means = matrix.mean(axis=1, keepdims=True)
     centered = matrix - row_means
@@ -293,7 +274,7 @@ def broadcasting_demo(np):
 
 
 @app.cell(hide_code=True)
-def broadcasting_render(centered, matrix, mo, row_means):
+def broadcasting_render(centered, matrix, row_means):
     mo.vstack(
         [
             mo.md("`matrix` (3×4):"),
@@ -308,7 +289,7 @@ def broadcasting_render(centered, matrix, mo, row_means):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     For random number generation, always use `default_rng` with a seed for reproducibility:
     """)
@@ -316,7 +297,7 @@ def _(mo):
 
 
 @app.cell
-def random_generation(np):
+def random_generation():
     rng = np.random.default_rng(seed=42)
     uniform_samples = rng.uniform(0, 1, size=5)
     normal_samples = rng.normal(loc=0, scale=1, size=5)
@@ -324,7 +305,7 @@ def random_generation(np):
 
 
 @app.cell(hide_code=True)
-def random_generation_render(mo, normal_samples, np, uniform_samples):
+def random_generation_render(normal_samples, uniform_samples):
     mo.md(f"""
     - `rng.uniform(0, 1, size=5)` → `{np.array2string(uniform_samples, precision=3)}`
     - `rng.normal(0, 1, size=5)` → `{np.array2string(normal_samples, precision=3)}`
@@ -333,7 +314,7 @@ def random_generation_render(mo, normal_samples, np, uniform_samples):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ---
 
@@ -346,8 +327,6 @@ def _(mo):
 
 @app.cell
 def polars_basics():
-    import polars as pl
-
     demo_df = pl.DataFrame(
         {
             "name": ["Alice", "Bob", "Carol", "Dave", "Eve"],
@@ -357,11 +336,11 @@ def polars_basics():
         }
     )
     demo_df
-    return demo_df, pl
+    return (demo_df,)
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     **Filtering** with `df.filter(...)`:
     """)
@@ -369,14 +348,14 @@ def _(mo):
 
 
 @app.cell
-def polars_filter(demo_df, pl):
+def polars_filter(demo_df):
     high_scorers = demo_df.filter(pl.col("score") > 85).select("name", "score")
     high_scorers
     return
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     **Group-by aggregation** with `df.group_by(...).agg(...)`:
     """)
@@ -384,7 +363,7 @@ def _(mo):
 
 
 @app.cell
-def polars_groupby(demo_df, pl):
+def polars_groupby(demo_df):
     group_stats = demo_df.group_by("group").agg(
         pl.col("score").mean().alias("mean_score"),
         pl.col("hours").sum().alias("total_hours"),
@@ -395,7 +374,7 @@ def polars_groupby(demo_df, pl):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     **Adding computed columns** with `df.with_columns(...)`:
     """)
@@ -403,7 +382,7 @@ def _(mo):
 
 
 @app.cell
-def polars_with_columns(demo_df, pl):
+def polars_with_columns(demo_df):
     df_extended = demo_df.with_columns(
         (pl.col("score") / pl.col("hours")).round(1).alias("efficiency"),
         pl.col("score").rank().alias("rank"),
@@ -413,7 +392,7 @@ def polars_with_columns(demo_df, pl):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ---
 
@@ -425,7 +404,7 @@ def _(mo):
 
 
 @app.cell
-def plotting_plotly(PYMC_BLUE, go, np, px, rng):
+def plotting_plotly(rng):
     scatter_x = np.linspace(0, 4 * np.pi, 200)
     scatter_y = np.sin(scatter_x) + rng.normal(0, 0.2, size=len(scatter_x))
 
@@ -451,9 +430,7 @@ def plotting_plotly(PYMC_BLUE, go, np, px, rng):
 
 
 @app.cell
-def plotting_matplotlib(PYMC_BLUE, PYMC_GREEN, np, rng, stats):
-    import matplotlib.pyplot as plt
-
+def plotting_matplotlib(rng):
     hist_samples = rng.normal(loc=5, scale=2, size=1000)
 
     hist_fig, hist_ax = plt.subplots(figsize=(7, 3.5))
@@ -483,7 +460,7 @@ def plotting_matplotlib(PYMC_BLUE, PYMC_GREEN, np, rng, stats):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ---
 
@@ -501,7 +478,7 @@ def _(mo):
 
 
 @app.cell
-def discrete_distributions(go, np, stats):
+def discrete_distributions():
     discrete_x = np.arange(0, 21)
 
     discrete_fig = go.Figure()
@@ -538,7 +515,7 @@ def discrete_distributions(go, np, stats):
 
 
 @app.cell
-def continuous_distributions(go, np, stats):
+def continuous_distributions():
     continuous_x = np.linspace(-4, 8, 500)
 
     continuous_fig = go.Figure()
@@ -581,7 +558,7 @@ def continuous_distributions(go, np, stats):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     With enough samples, empirical statistics converge to their theoretical values. Below we draw 10,000 samples from three distributions and compare sample moments to their theoretical counterparts:
     """)
@@ -589,7 +566,7 @@ def _(mo):
 
 
 @app.cell
-def sample_vs_theoretical(np, pl, stats):
+def sample_vs_theoretical():
     sample_rng = np.random.default_rng(seed=7)
     n = 10_000
     distributions = {
@@ -620,7 +597,7 @@ def sample_vs_theoretical(np, pl, stats):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ---
 
@@ -636,7 +613,7 @@ def _(mo):
 
 
 @app.cell
-def law_of_large_numbers(PYMC_BLUE, go, np, rng):
+def law_of_large_numbers(rng):
     lln_n_rolls = 5000
     lln_rolls = rng.integers(1, 7, size=lln_n_rolls)
     lln_cumulative_mean = np.cumsum(lln_rolls) / np.arange(1, lln_n_rolls + 1)
@@ -668,7 +645,7 @@ def law_of_large_numbers(PYMC_BLUE, go, np, rng):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### The Central Limit Theorem
 
@@ -678,7 +655,7 @@ def _(mo):
 
 
 @app.cell
-def central_limit_theorem(np, px, rng, stats):
+def central_limit_theorem(rng):
     clt_n_per_mean = 30
     clt_n_means = 2000
 
@@ -709,7 +686,7 @@ def central_limit_theorem(np, px, rng, stats):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Monte Carlo Estimation
 
@@ -725,7 +702,7 @@ def _(mo):
 
 
 @app.cell
-def _(mo):
+def _():
     n_darts_slider = mo.ui.slider(
         100,
         50000,
@@ -738,7 +715,7 @@ def _(mo):
 
 
 @app.cell
-def monte_carlo_pi(PYMC_BLUE, go, n_darts_slider, np):
+def monte_carlo_pi(n_darts_slider):
     mc_rng = np.random.default_rng(seed=123)
     mc_n = n_darts_slider.value
     mc_x = mc_rng.uniform(0, 1, size=mc_n)
@@ -788,7 +765,7 @@ def monte_carlo_pi(PYMC_BLUE, go, n_darts_slider, np):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ---
 
@@ -806,7 +783,7 @@ def _(mo):
 
 
 @app.cell
-def exercise_1(np):
+def exercise_1():
     ex1_rng = np.random.default_rng(seed=0)
     flips = ...
     proportion_heads = ...
@@ -814,14 +791,14 @@ def exercise_1(np):
 
 
 @app.cell
-def _(mo):
+def _():
     show_solution_1 = mo.ui.run_button(label="Show Solution")
     show_solution_1
     return (show_solution_1,)
 
 
 @app.cell
-def solution_1(mo, np, show_solution_1):
+def solution_1(show_solution_1):
     mo.stop(not show_solution_1.value)
 
     sol1_rng = np.random.default_rng(seed=0)
@@ -831,7 +808,7 @@ def solution_1(mo, np, show_solution_1):
 
 
 @app.cell(hide_code=True)
-def solution_1_render(mo, show_solution_1, sol1_proportion):
+def solution_1_render(show_solution_1, sol1_proportion):
     mo.stop(not show_solution_1.value)
     mo.md(
         f"Proportion of heads: **{sol1_proportion:.4f}**. "
@@ -841,7 +818,7 @@ def solution_1_render(mo, show_solution_1, sol1_proportion):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Exercise 2: Estimate a Probability via Monte Carlo
 
@@ -857,7 +834,7 @@ def _(mo):
 
 
 @app.cell
-def exercise_2(np):
+def exercise_2():
     ex2_rng = np.random.default_rng(seed=1)
     diameters = ...
     rejected = ...
@@ -866,14 +843,14 @@ def exercise_2(np):
 
 
 @app.cell
-def _(mo):
+def _():
     show_solution_2 = mo.ui.run_button(label="Show Solution")
     show_solution_2
     return (show_solution_2,)
 
 
 @app.cell
-def solution_2(mo, np, show_solution_2, stats):
+def solution_2(show_solution_2):
     mo.stop(not show_solution_2.value)
 
     sol2_rng = np.random.default_rng(seed=1)
@@ -885,7 +862,7 @@ def solution_2(mo, np, show_solution_2, stats):
 
 
 @app.cell(hide_code=True)
-def solution_2_render(mo, show_solution_2, sol2_exact_rate, sol2_mc_rate):
+def solution_2_render(show_solution_2, sol2_exact_rate, sol2_mc_rate):
     mo.stop(not show_solution_2.value)
     mo.md(f"""
     - Monte Carlo rejection rate: **{sol2_mc_rate:.5f}**
@@ -897,7 +874,7 @@ def solution_2_render(mo, show_solution_2, sol2_exact_rate, sol2_mc_rate):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Exercise 3: Explore a Distribution Interactively
 
@@ -914,7 +891,7 @@ def _(mo):
 
 
 @app.cell
-def _(mo):
+def _():
     alpha_slider = mo.ui.slider(0.1, 20, value=2, step=0.1, label="alpha")
     beta_slider = mo.ui.slider(0.1, 20, value=5, step=0.1, label="beta")
     mo.hstack([alpha_slider, beta_slider], gap=2)
@@ -922,15 +899,7 @@ def _(mo):
 
 
 @app.cell
-def beta_explorer(
-    PYMC_BLUE,
-    PYMC_GREEN,
-    alpha_slider,
-    beta_slider,
-    go,
-    np,
-    stats,
-):
+def beta_explorer(alpha_slider, beta_slider):
     beta_alpha = alpha_slider.value
     beta_beta = beta_slider.value
 
@@ -964,7 +933,7 @@ def beta_explorer(
 
 
 @app.cell(hide_code=True)
-def beta_explorer_render(beta_alpha, beta_beta, beta_fig, beta_mean, mo):
+def beta_explorer_render(beta_alpha, beta_beta, beta_fig, beta_mean):
     beta_variance = (beta_alpha * beta_beta) / (
         (beta_alpha + beta_beta) ** 2 * (beta_alpha + beta_beta + 1)
     )
@@ -987,7 +956,7 @@ def beta_explorer_render(beta_alpha, beta_beta, beta_fig, beta_mean, mo):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ### Exercise 4: Bayesian Updating by Simulation
 
@@ -1007,21 +976,21 @@ def _(mo):
 
 
 @app.cell
-def exercise_4(np):
+def exercise_4():
     ex4_rng = np.random.default_rng(seed=42)
     prior_thetas = ...
     return
 
 
 @app.cell
-def _(mo):
+def _():
     show_solution_4 = mo.ui.run_button(label="Show Solution")
     show_solution_4
     return (show_solution_4,)
 
 
 @app.cell
-def solution_4(mo, np, show_solution_4):
+def solution_4(show_solution_4):
     mo.stop(not show_solution_4.value)
 
     sol4_rng = np.random.default_rng(seed=42)
@@ -1032,7 +1001,7 @@ def solution_4(mo, np, show_solution_4):
 
 
 @app.cell(hide_code=True)
-def solution_4_render(go, mo, np, show_solution_4, sol4_accepted, stats):
+def solution_4_render(show_solution_4, sol4_accepted):
     mo.stop(not show_solution_4.value)
 
     sol4_x = np.linspace(0, 1, 300)
@@ -1079,7 +1048,7 @@ def solution_4_render(go, mo, np, show_solution_4, sol4_accepted, stats):
 
 
 @app.cell(hide_code=True)
-def _(mo):
+def _():
     mo.md(r"""
     ---
 
@@ -1099,7 +1068,7 @@ def _(mo):
     ---
 
     <div style="text-align: center; color: #888; font-size: 0.85rem; padding-top: 1rem;">
-    Bayesian Inference with PyMC. A <a href="https://www.pymc-labs.com" style="color: #154A72;">PyMC Labs</a> Workshop.
+    Introduction to PyMC and Bayesian Modeling
     </div>
     """)
     return

@@ -1,1 +1,4 @@
 .worktrees/
+source_notebooks/
+.verify/
+__pycache__/
