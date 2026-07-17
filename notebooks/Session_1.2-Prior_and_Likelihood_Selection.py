@@ -1637,7 +1637,7 @@ def _():
 
 @app.cell
 def _():
-    # Reuse the penguin-mass maxent distribution as a PyMC prior
+    # A small maxent-fitted prior, purely to demonstrate .to_pymc()
     elicited_dist = pz.Normal()
     pz.maxent(elicited_dist, lower=2500, upper=5500, mass=0.94, plot=False)
     with pm.Model():
