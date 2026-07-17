@@ -911,7 +911,13 @@ def _():
 
     $$y_i = \alpha_{j[i]} + \beta_{j[i]} x_{i} + \epsilon_i$$
 
-    Construct a model called `varying_intercept_slope` that implements this alternative model.
+    Construct a varying-intercept, varying-slope model in the scaffold cell below
+    (give it your own name — e.g. `my_varying_model`). The notebook continues
+    with a reference implementation named `varying_intercept_slope`, so don't
+    reuse that exact name or marimo will complain about a duplicate definition.
+
+    Plot the model DAG to check your structure — the scaffold already returns
+    `model.to_graphviz()`, marimo's rendering of the model graph.
     """)
     return
 
@@ -981,14 +987,6 @@ def _(coords, county, floor_measure, log_radon):
         }
     )
     return (varying_intercept_slope,)
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    Plot the model DAG just to check your model is correct.
-    """)
-    return
 
 
 @app.cell
@@ -1883,7 +1881,14 @@ def _():
 
 
 @app.cell
-def _(contextual_effect, contextual_effect_trace, pooled_model, pooled_trace, unpooled_model, unpooled_trace):
+def _(
+    contextual_effect,
+    contextual_effect_trace,
+    pooled_model,
+    pooled_trace,
+    unpooled_model,
+    unpooled_trace,
+):
     # Compute log-likelihood for each model (required for LOO)
     with pooled_model:
         pm.compute_log_likelihood(pooled_trace)
