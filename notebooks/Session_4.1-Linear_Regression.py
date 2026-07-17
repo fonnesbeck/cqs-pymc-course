@@ -9,6 +9,7 @@ with app.setup:
     import inspect
     import numpy as np
     import pymc as pm
+    import preliz as pz
     import arviz as az
     import polars as pl
     import plotly.express as px
@@ -17,7 +18,6 @@ with app.setup:
     import matplotlib.pyplot as plt
     import warnings
     from pathlib import Path
-    import base64
 
     PYMC_BLUE = "#154A72"
     PYMC_GREEN = "#81C240"
@@ -531,7 +531,14 @@ def _():
 
 
 @app.cell
-def _(st_aug_coords, st_fish_train_aug, st_species_idx_aug, train_mean_log_height, train_mean_log_length, train_mean_log_width):
+def _(
+    st_aug_coords,
+    st_fish_train_aug,
+    st_species_idx_aug,
+    train_mean_log_height,
+    train_mean_log_length,
+    train_mean_log_width,
+):
     def st_build_studentt():
         with pm.Model(coords=st_aug_coords) as model:
             lw = pm.Data(
@@ -612,7 +619,15 @@ def _():
 
 
 @app.cell
-def _(fish_test, species_to_idx, train_mean_log_height, train_mean_log_length, train_mean_log_width, unpooled_idata, unpooled_model):
+def _(
+    fish_test,
+    species_to_idx,
+    train_mean_log_height,
+    train_mean_log_length,
+    train_mean_log_width,
+    unpooled_idata,
+    unpooled_model,
+):
     species_idx_test = np.array(
         [species_to_idx[species] for species in fish_test["Species"].to_list()],
         dtype="int64",
@@ -744,7 +759,7 @@ def _():
     mo.accordion(
         {
             "Hint": mo.md(r"""
-        See Session 1's PreliZ section for `pz.maxent(dist, lower=, upper=, mass=)` and `prior.to_pymc("name")`. Elicit each prior from a range rather than setting `mu`/`sigma` directly:
+        See Session 1.2's PreliZ section for `pz.maxent` and the `.to_pymc("name")` pattern for dropping an elicited prior into a model. Elicit each prior from a range rather than setting `mu`/`sigma` directly:
 
         - **Intercept** (average-dimension log-weight): ~5 g to ~1600 g is log-weight ~1.6 to ~7.4, so `pz.maxent(pz.Normal(), lower=1.6, upper=7.4, mass=0.9)` returns a Normal centred near 4.5. Convert with `.to_pymc("mu", dims="species")`.
         - **Slopes** (log-log allometric coefficients, typically ~1-3): `pz.maxent(pz.Normal(), lower=0.0, upper=3.0, mass=0.9)`.
@@ -776,7 +791,13 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(fish_train, pz, train_mean_log_height, train_mean_log_length, train_mean_log_width, unpooled_idata):
+def _(
+    fish_train,
+    train_mean_log_height,
+    train_mean_log_length,
+    train_mean_log_width,
+    unpooled_idata,
+):
     def solution_preliz_priors():
         # Elicit priors from domain knowledge with PreliZ maxent
         # (only ranges are stated; PreliZ computes the hyperparameters)
@@ -1100,7 +1121,7 @@ def _():
 
     ## Exercise: Re-tune the Tier Cost Matrix
 
-    Suppose a regulator letter just made under-declaration much harsher: each gram in an under-declared tier now costs **five times** what it did before. The over-declaration penalty is unchanged.
+    Suppose a regulator letter just made under-declaration much harsher: each under-declaration penalty is now **five times** larger than it was before. The over-declaration penalty is unchanged.
 
     **Your task:**
 
