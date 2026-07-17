@@ -416,7 +416,7 @@ def _():
 
     The sampler systematically under-explores the high-curvature region, which can bias your estimate if severe enough.
 
-    You'll see a more extreme version of this geometry in Session 5.2 when we build hierarchical models.
+    You'll see a more extreme version of this geometry in Session 4.2 when we build hierarchical models.
     """)
     return
 
@@ -896,7 +896,7 @@ def _():
 
     ## Exercise
 
-    The British coal mining disasters dataset records the number of coal mining disasters per year in the UK from 1851 to 1962. It's widely believed that safety regulations introduced in the late 19th century led to a reduction in the disaster rate at some unknown **change point**.
+    The British coal mining disasters dataset records the number of coal mining disasters per year in the UK from 1851 to 1961. It's widely believed that safety regulations introduced in the late 19th century led to a reduction in the disaster rate at some unknown **change point**.
 
     The model assumes disaster counts follow a Poisson distribution with a rate that switches at an unknown year:
 
@@ -1092,8 +1092,8 @@ def _():
     **Step 3:** Evaluate model fit with posterior predictive checks:
 
     ```python
-    pm.sample_posterior_predictive(exercise_trace_fixed, extend_inferencedata=True)
-    az.plot_ppc_dist(exercise_trace_fixed)
+    pm.sample_posterior_predictive(single_cp_trace, extend_inferencedata=True)
+    az.plot_ppc_dist(single_cp_trace)
     ```
     """)
     return
@@ -1102,10 +1102,11 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    **Step 4:** Build an improved model with **two change points** (allowing for a gradual transition in disaster rates), and compare against the single-change-point model using LOO:
+    **Step 4:** Build an improved model with **two change points** (allowing for an intermediate-rate period between two change points), and compare against the single-change-point model using LOO:
 
     ```python
-    pm.compute_log_likelihood(trace)
+    with build_single_cp_fixed():
+        pm.compute_log_likelihood(single_cp_trace)
     az.compare({"single-changepoint": ..., "two-changepoint": ...})
     ```
     """)
@@ -1182,7 +1183,10 @@ def _(disasters_array, years):
             mid_lambda_2 = pm.Exponential("mid_lambda", lam=0.3)
             late_lambda_2 = pm.Exponential("late_lambda", lam=0.5)
             cp1 = pm.Uniform("change_point_1", lower=1851, upper=1962)
-            cp2 = pm.Uniform("change_point_2", lower=1851, upper=1962)
+            # cp2's lower bound is cp1: without this ordering constraint the two change
+            # points are exchangeable and the posterior is bimodal by construction —
+            # exactly the identifiability failure this session is about.
+            cp2 = pm.Uniform("change_point_2", lower=cp1, upper=1962)
             lam_2 = pm.math.switch(
                 years < cp1,
                 early_lambda_2,
