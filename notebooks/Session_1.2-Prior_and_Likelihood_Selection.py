@@ -14,7 +14,6 @@ with app.setup:
     import arviz as az
     import matplotlib.pyplot as plt
     from matplotlib.ticker import MaxNLocator
-    import base64
     import inspect
     from pathlib import Path
     import preliz as pz
@@ -61,10 +60,6 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ---
-
-    # Part B: Prior and Likelihood Selection
-
     ---
 
     ## Distribution Families
@@ -1133,6 +1128,9 @@ def _():
         mo.md("""
         The UCI Bike Sharing Dataset contains daily counts of bike rentals. We'll compare Poisson and NegativeBinomial likelihoods.
 
+        We will model `cnt`, the total number of rentals each day; the remaining
+        columns (season, weather, etc.) are ignored in this exercise.
+
         1. Fit a Poisson model with an appropriate prior for `mu`
         2. Fit a NegativeBinomial model with appropriate priors for `mu` and `alpha`
         3. Compare which fits the data better using posterior predictive checks
@@ -1177,8 +1175,19 @@ def _(bike_df):
     return (bike_counts,)
 
 
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    The scaffold uses `pm.sample_posterior_predictive(idata, extend_inferencedata=True)`,
+    which simulates replicate datasets from the fitted model and stores them in a
+    new `posterior_predictive` group on the same object — the PyMC equivalent of
+    the manual scipy-based check you did in Session 1.1.
+    """)
+    return
+
+
 @app.cell
-def _(bike_counts, validate_exercise_2):
+def _(bike_counts, validate_exercise_1):
     def _fit_poisson_model():
         with pm.Model():
             mu = ...
@@ -1186,7 +1195,6 @@ def _(bike_counts, validate_exercise_2):
             idata = ...
             pm.sample_posterior_predictive(idata, extend_inferencedata=True)
         return idata
-
 
     def _fit_negbin_model():
         with pm.Model():
@@ -1197,15 +1205,16 @@ def _(bike_counts, validate_exercise_2):
             pm.sample_posterior_predictive(idata, extend_inferencedata=True)
         return idata
 
-
-    validate_exercise_2(_fit_poisson_model, _fit_negbin_model)
+    validate_exercise_1(_fit_poisson_model, _fit_negbin_model)
     return
 
 
 @app.cell(hide_code=True)
 def _(bike_counts):
-    def validate_exercise_2(fit_poisson_fn, fit_negbin_fn):
-        if "..." in inspect.getsource(fit_poisson_fn) or "..." in inspect.getsource(fit_negbin_fn):
+    def validate_exercise_1(fit_poisson_fn, fit_negbin_fn):
+        if "..." in inspect.getsource(fit_poisson_fn) or "..." in inspect.getsource(
+            fit_negbin_fn
+        ):
             return mo.callout(
                 mo.md(
                     "Replace the `...` placeholders in the exercise cell above, then re-run."
@@ -1265,14 +1274,14 @@ def _(bike_counts):
             ]
         )
 
-    return (validate_exercise_2,)
+    return (validate_exercise_1,)
 
 
 @app.cell(hide_code=True)
 def _(
     solution_fit_negbin_model,
     solution_fit_poisson_model,
-    validate_exercise_2,
+    validate_exercise_1,
 ):
     mo.accordion(
         {
@@ -1282,136 +1291,8 @@ def _(
                         f"```python\n{inspect.getsource(solution_fit_poisson_model)}\n\n{inspect.getsource(solution_fit_negbin_model)}\n```"
                     ),
                     mo.lazy(
-                        lambda: validate_exercise_2(
+                        lambda: validate_exercise_1(
                             solution_fit_poisson_model, solution_fit_negbin_model
-                        ),
-                        show_loading_indicator=True,
-                    ),
-                ]
-            ),
-        }
-    )
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    ## Exercise: Normal vs Lognormal Likelihood (Medical Test Data)
-    """)
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.callout(
-        mo.md("""
-        Medical blood test results are often right-skewed — the Normal distribution may not be appropriate.
-
-        1. Fit a Normal model with appropriate priors for `mu` and `sigma`
-        2. Fit a Lognormal model with appropriate priors for `mu` and `sigma`
-        3. The CDF comparison will run automatically — which fits better? Why?
-        """),
-        kind="info",
-    )
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    lab_df = pl.read_csv(data_path / "Test_Data_JLM.csv")
-    male_alat = lab_df.filter(pl.col("sex") == "m")["ALAT"].to_numpy().astype(float)
-    male_alat = male_alat[~np.isnan(male_alat)]
-    return (male_alat,)
-
-
-@app.cell
-def _(male_alat, validate_exercise_3):
-    def _fit_normal_model():
-        with pm.Model():
-            mu = ...
-            sigma = ...
-            pm.Normal("obs", mu, sigma, observed=male_alat)
-            idata = ...
-            pm.sample_posterior_predictive(idata, extend_inferencedata=True)
-        return idata
-
-
-    def _fit_lognormal_model():
-        with pm.Model():
-            mu = ...
-            sigma = ...
-            pm.LogNormal("obs", mu, sigma, observed=male_alat)
-            idata = ...
-            pm.sample_posterior_predictive(idata, extend_inferencedata=True)
-        return idata
-
-
-    validate_exercise_3(_fit_normal_model, _fit_lognormal_model)
-    return
-
-
-@app.cell(hide_code=True)
-def _(male_alat):
-    def validate_exercise_3(fit_normal_fn, fit_lognormal_fn):
-        if "..." in inspect.getsource(fit_normal_fn) or "..." in inspect.getsource(fit_lognormal_fn):
-            return mo.callout(
-                mo.md(
-                    "Replace the `...` placeholders in the exercise cell above, then re-run."
-                ),
-                kind="info",
-            )
-        ex3_idata_n = fit_normal_fn()
-        ex3_idata_ln = fit_lognormal_fn()
-
-        sorted_alat = np.sort(male_alat)
-        ecdf = np.arange(1, len(sorted_alat) + 1) / len(sorted_alat)
-
-        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-
-        for ppc_draw in ex3_idata_n.posterior_predictive["obs"].values.reshape(
-            -1, len(male_alat)
-        )[:100]:
-            axes[0].step(np.sort(ppc_draw), ecdf, color="C0", alpha=0.05)
-        axes[0].step(sorted_alat, ecdf, color="C1", linewidth=2, label="Data")
-        axes[0].set_title("Normal Model")
-        axes[0].legend()
-
-        for ppc_draw in ex3_idata_ln.posterior_predictive["obs"].values.reshape(
-            -1, len(male_alat)
-        )[:100]:
-            axes[1].step(np.sort(ppc_draw), ecdf, color="C0", alpha=0.05)
-        axes[1].step(sorted_alat, ecdf, color="C1", linewidth=2, label="Data")
-        axes[1].set_title("Lognormal Model")
-        axes[1].legend()
-
-        fig.tight_layout()
-        return mo.vstack(
-            [
-                mo.callout(mo.md("**Your solution was successful!**"), kind="success"),
-                fig,
-            ]
-        )
-
-    return (validate_exercise_3,)
-
-
-@app.cell(hide_code=True)
-def _(
-    solution_fit_lognormal_model,
-    solution_fit_normal_model,
-    validate_exercise_3,
-):
-    mo.accordion(
-        {
-            "Solution": mo.vstack(
-                [
-                    mo.md(
-                        f"```python\n{inspect.getsource(solution_fit_normal_model)}\n\n{inspect.getsource(solution_fit_lognormal_model)}\n```"
-                    ),
-                    mo.lazy(
-                        lambda: validate_exercise_3(
-                            solution_fit_normal_model, solution_fit_lognormal_model
                         ),
                         show_loading_indicator=True,
                     ),
@@ -1445,6 +1326,9 @@ def _():
     ### Example: Penguin Body Mass
 
     Let's model the body mass of Adelie penguins. We'll compare a **vague** prior with a **weakly informative** prior.
+
+    These are the Palmer Penguins data — body measurements (mass in grams) for
+    three penguin species collected at Palmer Station, Antarctica.
     """)
     return
 
@@ -1582,7 +1466,11 @@ def _():
         2. Define mu and sigma priors
         3. Use `pm.sample_prior_predictive()` to generate predictions
         4. Use `pm.sample()` to get the posterior
-        5. Compare the prior and posterior predictive distributions
+        5. Compare the prior predictive distribution to the observed body-mass data —
+           does your prior put mass in the plausible range before seeing the data?
+
+        Note: unlike the log-scale LogNormal demo above, this model is on the natural
+        scale — your priors are in grams (e.g., a mean body mass near 4000 g).
         """),
         kind="info",
     )
@@ -1590,7 +1478,7 @@ def _():
 
 
 @app.cell
-def _(adelie_mass, validate_exercise_1):
+def _(adelie_mass, validate_exercise_2):
     def _exercise_penguin_prior_vs_posterior():
         with pm.Model():
             mu = ...
@@ -1601,13 +1489,13 @@ def _(adelie_mass, validate_exercise_1):
 
         return prior_idata, posterior_idata
 
-    validate_exercise_1(_exercise_penguin_prior_vs_posterior)
+    validate_exercise_2(_exercise_penguin_prior_vs_posterior)
     return
 
 
 @app.cell(hide_code=True)
 def _(adelie_mass):
-    def validate_exercise_1(exercise_fn):
+    def validate_exercise_2(exercise_fn):
         if "..." in inspect.getsource(exercise_fn):
             return mo.callout(
                 mo.md(
@@ -1659,18 +1547,18 @@ def _(adelie_mass):
             ]
         )
 
-    return (validate_exercise_1,)
+    return (validate_exercise_2,)
 
 
 @app.cell(hide_code=True)
-def _(solution_exercise_1, validate_exercise_1):
+def _(solution_exercise_1, validate_exercise_2):
     mo.accordion(
         {
             "Solution": mo.vstack(
                 [
                     mo.md(f"```python\n{inspect.getsource(solution_exercise_1)}\n```"),
                     mo.lazy(
-                        lambda: validate_exercise_1(solution_exercise_1),
+                        lambda: validate_exercise_2(solution_exercise_1),
                         show_loading_indicator=True,
                     ),
                 ]
@@ -1741,6 +1629,26 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    A fitted PreliZ distribution can be dropped straight into a PyMC model with
+    `.to_pymc("name")` — you will use this in Session 4.1.
+    """)
+    return
+
+
+@app.cell
+def _():
+    # Reuse the penguin-mass maxent distribution as a PyMC prior
+    elicited_dist = pz.Normal()
+    pz.maxent(elicited_dist, lower=2500, upper=5500, mass=0.94, plot=False)
+    with pm.Model():
+        elicited_prior = elicited_dist.to_pymc("elicited_prior")
+    elicited_prior
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     ### `pz.mle()`: Fitting Distributions to Data
 
     If you have historical data from a similar process, you can fit a distribution to it and use that as your prior.
@@ -1778,119 +1686,6 @@ def _(adelie_mass, mle_dist):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## Exercise: Use PreliZ to Find Priors for the Penguins Model
-    """)
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.callout(
-        mo.md("""
-        Use `pz.maxent()` to find appropriate priors for a model of penguin body mass, then fit the model and examine the posterior.
-
-        **Domain knowledge:**
-        - Penguin body mass is between 2500g and 6500g (with 94% probability)
-        - The standard deviation of mass is probably between 100g and 800g (with 94% probability)
-
-        1. Use `pz.maxent(pz.Normal(), ?)` to get the prior for mu
-        2. Use `pz.maxent(pz.Gamma(), ?)` to get the prior for sigma
-        3. Build the model with these priors and sample from the prior predictive
-        """),
-        kind="info",
-    )
-    return
-
-
-@app.cell
-def _(adelie_mass, validate_exercise_4):
-    def _exercise_preliz_priors():
-        # Find priors with maxent
-        mu_prior = ...
-        sigma_prior = ...
-
-        # Build model and sample prior predictive
-        with pm.Model():
-            mu = ...
-            sigma = ...
-            pm.Normal("obs", mu, sigma, observed=adelie_mass)
-            prior_idata = ...
-
-        return mu_prior, sigma_prior, prior_idata
-
-    validate_exercise_4(_exercise_preliz_priors)
-    return
-
-
-@app.cell(hide_code=True)
-def _(adelie_mass):
-    def validate_exercise_4(exercise_fn):
-        if "..." in inspect.getsource(exercise_fn):
-            return mo.callout(
-                mo.md(
-                    "Replace the `...` placeholders in the exercise cell above, then re-run."
-                ),
-                kind="info",
-            )
-        ex4_mu_prior, ex4_sigma_prior, ex4_prior = exercise_fn()
-
-        fig, axes = plt.subplots(1, 3, figsize=(16, 4))
-
-        # Plot mu prior from PreliZ
-        ex4_mu_prior.plot_pdf(ax=axes[0])
-        axes[0].set_title(
-            f"mu prior: Normal({ex4_mu_prior.mu:.0f}, {ex4_mu_prior.sigma:.0f})"
-        )
-
-        # Plot sigma prior from PreliZ
-        ex4_sigma_prior.plot_pdf(ax=axes[1])
-        axes[1].set_title(
-            f"sigma prior: Gamma({ex4_sigma_prior.alpha:.2f}, {ex4_sigma_prior.beta:.4f})"
-        )
-
-        # Prior predictive vs observed data
-        _g, _p, _ = az.kde(ex4_prior.prior_predictive["obs"].values.flatten())
-        axes[2].plot(_g, _p, label="Prior predictive")
-        _g, _p, _ = az.kde(adelie_mass)
-        axes[2].plot(_g, _p, color="C1", label="Observed data")
-        axes[2].set_title("Prior Predictive vs Data")
-        axes[2].legend()
-
-        for ax in axes:
-            ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
-        fig.tight_layout()
-
-        return mo.vstack(
-            [
-                mo.callout(mo.md("**Your solution was successful!**"), kind="success"),
-                fig,
-            ]
-        )
-
-    return (validate_exercise_4,)
-
-
-@app.cell(hide_code=True)
-def _(solution_exercise_4, validate_exercise_4):
-    mo.accordion(
-        {
-            "Solution": mo.vstack(
-                [
-                    mo.md(f"```python\n{inspect.getsource(solution_exercise_4)}\n```"),
-                    mo.lazy(
-                        lambda: validate_exercise_4(solution_exercise_4),
-                        show_loading_indicator=True,
-                    ),
-                ]
-            ),
-        }
-    )
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
     ---
 
     ## Priors for Correlation Matrices: The LKJ Distribution
@@ -1918,7 +1713,6 @@ def _():
 
     ## Summary
 
-    **Part B — Prior and Likelihood Selection:**
     - Match your likelihood to the data-generating process (Normal, Lognormal, Poisson, NegBin, etc.)
     - Always do prior predictive checks
     - Use PreliZ (`pz.maxent`, `pz.mle`) for principled prior elicitation
@@ -1969,51 +1763,6 @@ def _(bike_counts):
         return idata
 
     return solution_fit_negbin_model, solution_fit_poisson_model
-
-
-@app.cell(hide_code=True)
-def _(male_alat):
-    def solution_fit_normal_model():
-        with pm.Model():
-            mu = pm.Normal("mu", 30, 20)
-            sigma = pm.HalfNormal("sigma", 20)
-            pm.Normal("obs", mu, sigma, observed=male_alat)
-            idata = pm.sample(500)
-            pm.sample_posterior_predictive(idata, extend_inferencedata=True)
-        return idata
-
-    def solution_fit_lognormal_model():
-        with pm.Model():
-            mu = pm.Normal("mu", 3, 1)
-            sigma = pm.HalfNormal("sigma", 1)
-            pm.LogNormal("obs", mu, sigma, observed=male_alat)
-            idata = pm.sample(500)
-            pm.sample_posterior_predictive(idata, extend_inferencedata=True)
-        return idata
-
-    return solution_fit_lognormal_model, solution_fit_normal_model
-
-
-@app.cell(hide_code=True)
-def _(adelie_mass):
-    def solution_exercise_4():
-        # Find priors with maxent
-        mu_prior = pz.Normal()
-        pz.maxent(mu_prior, lower=2500, upper=6500, mass=0.94)
-
-        sigma_prior = pz.Gamma()
-        pz.maxent(sigma_prior, lower=100, upper=800, mass=0.94)
-
-        # Build model and sample prior predictive
-        with pm.Model():
-            mu = pm.Normal("mu", mu=mu_prior.mu, sigma=mu_prior.sigma)
-            sigma = pm.Gamma("sigma", alpha=sigma_prior.alpha, beta=sigma_prior.beta)
-            pm.Normal("obs", mu, sigma, observed=adelie_mass)
-            prior_idata = pm.sample_prior_predictive()
-
-        return mu_prior, sigma_prior, prior_idata
-
-    return (solution_exercise_4,)
 
 
 if __name__ == "__main__":
