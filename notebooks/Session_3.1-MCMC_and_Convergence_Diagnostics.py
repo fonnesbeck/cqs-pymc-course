@@ -35,11 +35,13 @@ with app.setup:
             "lines.linewidth": 1.2,
         }
     )
+
     def fig_kwargs(cols=1, rows=1):
         """Compute reasonable figure_kwargs for arviz plots."""
         w = min(max(7, 3.2 * cols), 11)
         h = 2.4 * rows
         return {"figsize": (w, h)}
+
     data_path = Path(__file__).parent / "data"
     RANDOM_SEED = 20090425
     RNG = np.random.default_rng(RANDOM_SEED)
@@ -117,7 +119,8 @@ def _():
     1. Type `idata_a` and `idata_b` on their own lines. What groups does each one contain? Are they the same?
     2. How many `chain`s and `draw`s are in each `posterior`?
     3. What are the parameter names in each? Which parameters do they share?
-    4. Find where the observed penguin mass lives.
+    4. Find where the observed penguin mass lives — the same penguin measurements
+       you met in Session 1.2, now used in a regression of body mass on flipper length.
     5. Look at `idata_a.sample_stats` and `idata_b.sample_stats`. List three variables you see in each.
     """)
     return
@@ -167,7 +170,7 @@ def _():
     ### Stage 2 — Ask the summary
 
     1. Run `azs.summary(...)` on each idata. Compare `ess_bulk`, `ess_tail`, and `r_hat` side by side. Which parameters look problematic in `idata_b`?
-    2. There is one variable in `idata_b.sample_stats` named `diverging` that is a boolean flag per draw — something went wrong on those steps. Find it. How many `True`s does it have in `idata_b` vs `idata_a`? (`.sum()` on the DataArray works.)
+    2. `sample_stats` contains a boolean flag `diverging` — draws where the sampler broke down. Check both runs: how many divergences does each have? (`.sum()` on the DataArray works.) Careful: a clean divergence count does **not** mean a clean run — as you're about to see, the trouble here shows up elsewhere in the summary.
     """)
     return
 
@@ -222,7 +225,7 @@ def _():
     mo.md(r"""
     ### Stage 3 — Look at it
 
-    Call `azp.plot_trace_dist(...)` on each idata. A few things to know before you start:
+    Call `azp.plot_trace_dist(...)` on each idata. Minimal usage: `azp.plot_trace_dist(idata_a)` (add `var_names=[...]` to focus it). A few things to know before you start:
 
     - The two models have **different parameters**, so you can't use the same `var_names` for both — look at each `posterior` group to see what's there.
     - `idata_b` has *hundreds* of `alpha` entries (one per penguin). Restrict `var_names` to the top-level parameters or the plot will be unreadable.
@@ -525,7 +528,7 @@ def _():
     |--------|-------------------|
     | **mean** | Point estimate (posterior mean) |
     | **sd** | Posterior standard deviation — uncertainty in the parameter |
-    | **eti_5.5%** / **eti_94.5%** | 89% Equal-Tailed Interval — the interval with equal probability in each tail containing 89% of the posterior |
+    | **eti89_lb** / **eti89_ub** | Bounds of the 89% Equal-Tailed Interval — equal probability (5.5%) excluded from each tail |
     | **mcse_mean** | Monte Carlo Standard Error of the mean — how much the *estimate* of the mean would change with different random draws |
     | **mcse_sd** | MCSE for the standard deviation |
     | **ess_bulk** | Effective sample size for the bulk (center) of the posterior |
@@ -540,7 +543,7 @@ def _():
     mo.md(r"""
     ### Equal-Tailed Intervals
 
-    Two columns in the summary table deserve a closer look: `eti_5.5%` and `eti_94.5%`. The **Equal-Tailed Interval** (ETI) is computed by cutting off equal probability in each tail of the posterior distribution. For an 89% ETI, we exclude 5.5% from each tail.
+    Two columns in the summary table deserve a closer look: `eti89_lb` and `eti89_ub`. The **Equal-Tailed Interval** (ETI) is computed by cutting off equal probability in each tail of the posterior distribution. For an 89% ETI, we exclude 5.5% from each tail.
 
     The ETI is the default in ArviZ because it is straightforward to interpret and compute. An alternative is the **Highest Density Interval** (HDI), which finds the *narrowest* interval containing the specified probability mass. For **skewed posteriors**, the HDI may be preferable since it always contains the most probable values — but for symmetric posteriors (like the ones here), the two are nearly identical.
 
@@ -1253,7 +1256,15 @@ def _(demo_metropolis):
     _y_grid = np.linspace(-3.5, 3.5, 200)
     metro_true_pdf_y = _y_grid
     metro_true_pdf_x = norm.pdf(_y_grid, 0, 1)
-    return metro_anim_accepted, metro_anim_proposals, metro_anim_samples, metro_anim_seg_colors, metro_anim_segments, metro_true_pdf_x, metro_true_pdf_y
+    return (
+        metro_anim_accepted,
+        metro_anim_proposals,
+        metro_anim_samples,
+        metro_anim_seg_colors,
+        metro_anim_segments,
+        metro_true_pdf_x,
+        metro_true_pdf_y,
+    )
 
 
 @app.cell(hide_code=True)
@@ -1266,7 +1277,19 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(demo_X, demo_Y, demo_Z, metro_anim_accepted, metro_anim_proposals, metro_anim_samples, metro_anim_seg_colors, metro_anim_segments, metro_step_slider, metro_true_pdf_x, metro_true_pdf_y):
+def _(
+    demo_X,
+    demo_Y,
+    demo_Z,
+    metro_anim_accepted,
+    metro_anim_proposals,
+    metro_anim_samples,
+    metro_anim_seg_colors,
+    metro_anim_segments,
+    metro_step_slider,
+    metro_true_pdf_x,
+    metro_true_pdf_y,
+):
     def _draw_metropolis_animation(n_show):
         fig, (ax1, ax2, ax3) = plt.subplots(
             1, 3, figsize=(14, 4.5), gridspec_kw={"width_ratios": [1, 1.5, 0.4]}
@@ -1504,7 +1527,17 @@ def _(demo_hmc, demo_metropolis):
     cmp_metro_seg_colors = np.where(cmp_metro_a, "#2ca02c", "#d62728")
 
     cmp_hmc_seg_colors = np.where(cmp_hmc_a, "#2ca02c", "#d62728")
-    return cmp_hmc_a, cmp_hmc_s, cmp_hmc_seg_colors, cmp_hmc_t, cmp_metro_a, cmp_metro_p, cmp_metro_s, cmp_metro_seg_colors, cmp_metro_segments
+    return (
+        cmp_hmc_a,
+        cmp_hmc_s,
+        cmp_hmc_seg_colors,
+        cmp_hmc_t,
+        cmp_metro_a,
+        cmp_metro_p,
+        cmp_metro_s,
+        cmp_metro_seg_colors,
+        cmp_metro_segments,
+    )
 
 
 @app.cell(hide_code=True)
@@ -1517,7 +1550,21 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(cmp_hmc_a, cmp_hmc_s, cmp_hmc_seg_colors, cmp_hmc_t, cmp_metro_a, cmp_metro_p, cmp_metro_s, cmp_metro_seg_colors, cmp_metro_segments, cmp_step_slider, demo_X, demo_Y, demo_Z):
+def _(
+    cmp_hmc_a,
+    cmp_hmc_s,
+    cmp_hmc_seg_colors,
+    cmp_hmc_t,
+    cmp_metro_a,
+    cmp_metro_p,
+    cmp_metro_s,
+    cmp_metro_seg_colors,
+    cmp_metro_segments,
+    cmp_step_slider,
+    demo_X,
+    demo_Y,
+    demo_Z,
+):
     def _draw_mcmc_comparison(n_show):
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
