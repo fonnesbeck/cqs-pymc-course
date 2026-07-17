@@ -29,9 +29,11 @@ with app.setup:
     warnings.filterwarnings("ignore", category=RuntimeWarning)
     warnings.filterwarnings("ignore", category=UserWarning)
     warnings.filterwarnings("ignore", category=FutureWarning)
+
     def compile_component(component):
         """Draw unconditional trajectories from a structural component."""
         return pmss.compile_statespace(component.build(verbose=False))
+
     def eti_band(est):
         """Return (lower, upper) ETI bounds as ndarrays. Robust to whether
         `est` is a DataArray or a Dataset."""
@@ -527,10 +529,9 @@ def _():
     - `order=1, innovations_order=1` — single noisy level → random walk.
     - `order=2, innovations_order=1` — level noisy, slope constant →
       random walk with a fixed drift.
-    - `order=2, innovations_order=[0, 1]` — level deterministic given
-      slope, slope drifts → a smooth, integrated trend. This is what we
-      used for position+velocity earlier and what we'll use for the layoff
-      case study.
+    - `order=2, innovations_order=[0, 1]` — level deterministic, slope
+      wanders → a smooth trend. (The layoff case study instead uses
+      `innovations_order=1`: noisy level, fixed drift.)
     """)
     return
 
@@ -660,6 +661,33 @@ def _(weekly):
         return fig
 
     _plot_weekly(weekly)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    #### FrequencySeasonality — the Fourier alternative
+
+    `TimeSeasonality` carries one state per period (11 states for monthly data) —
+    interpretable, but bulky. `FrequencySeasonality` instead models the seasonal
+    pattern in the frequency domain with `2n` states: `n` pairs of Fourier
+    coefficients (a sine and cosine amplitude per harmonic). With `n=1` the
+    pattern is a pure sine wave; at `n = season_length // 2` it can represent any
+    periodic shape. Two things you buy with it: a compact state space for long
+    seasonal periods, and support for non-integer season lengths (e.g. 365.25).
+    The price is interpretability — the states are Fourier coefficients, so there
+    is no isolable "January effect". The layoff case study below uses
+    `FrequencySeasonality(season_length=12, n=1)`: a smooth annual cycle
+    parameterized by just 2 coefficients.
+    """)
+    return
+
+
+@app.cell
+def _():
+    freq_seasonal = st.FrequencySeasonality(season_length=12, n=1, name="annual")
+    freq_seasonal.param_info
     return
 
 
@@ -1031,11 +1059,13 @@ def _():
     mo.md(r"""
     ## Build the structural model
 
-    Three components:
+    Four components:
 
-    - `LevelTrend(order=2, innovations_order=1)` — latent level with
-      drifting slope. Only the level gets innovations, so the trend is
-      smooth rather than jagged.
+    - `LevelTrend(order=2, innovations_order=1)` — a latent level with a
+      fixed drift (`order=2, innovations_order=1`): the level
+      accumulates noise like a random walk while the slope stays constant —
+      the "random walk with drift" configuration from the tour.
+    - `FrequencySeasonality(12, n=1)` — a smooth annual cycle (see the tour).
     - `Regression(state_names=["layoff_active", "layoff_decay"])` — the
       two layoff regressors as exogenous drivers. The regression
       coefficients are what we actually want to interpret.
@@ -1081,6 +1111,10 @@ def _():
     `pm.Data("data_layoff", ...)` so `pm.set_data` can swap the
     regressors later. Then call `ss.build_statespace_graph(df["log_revenue"])`
     and `pm.sample()`.
+
+    Center the `initial_level` prior on the scale of the observed data — the
+    log-revenue series sits around 14.5, so `mu=[14.5, 0.0]` says "start near the
+    data, with no prior slope."
     """)
     return
 
@@ -1483,7 +1517,8 @@ def _():
 
     The hard part — extending the regressor columns into the future
     — is provided as `make_scenario_regressors` below. You write the
-    two `ss.forecast` calls and the comparison plots.
+    two `ss.forecast` calls — the pre-built plots below consume your
+    forecasts.
 
     **What you'll produce.**
 
@@ -1619,12 +1654,14 @@ def _(baseline_regs, df, idata, make_scenario_regressors, ss):
             start=df.index[-1],
             periods=n_forecast,
             scenario={"data_layoff": baseline_regs},
+            random_seed=SEED,
         )
         fc_event = ss.forecast(
             idata,
             start=df.index[-1],
             periods=n_forecast,
             scenario={"data_layoff": event_regs},
+            random_seed=SEED,
         )
         return n_forecast, second_event_at, fc_baseline, fc_event
 
