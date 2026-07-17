@@ -12,7 +12,6 @@ with app.setup:
     import plotly.express as px
     import plotly.graph_objects as go
     import plotly.io as pio
-    import polars as pl
     import pymc as pm
     import pytensor
     import pytensor.tensor as pt
@@ -45,7 +44,7 @@ with app.setup:
 
 @app.cell(hide_code=True)
 def header():
-    mo.md(f"""
+    mo.md("""
 
     # Session 2.1: PyTensor and the PyMC API
 
@@ -415,7 +414,9 @@ def _():
 
 @app.cell
 def _(new_parent_of_w, parent_of_w, w):
-    new_w = pytensor.graph.replace.clone_replace(output=w, replace={parent_of_w: new_parent_of_w})
+    new_w = pytensor.graph.replace.clone_replace(
+        output=w, replace={parent_of_w: new_parent_of_w}
+    )
     new_w.name = "log(exp(x + y))"
     new_w.dprint()
     return (new_w,)
@@ -1001,6 +1002,91 @@ def _():
     mo.md(r"""
     To emphasize, the Python function passed to `CustomDist` should compute the *log*-density or *log*-probability of the variable. That is why the return value in the example above is `-log(upper-lower+1)` rather than `1/(upper-lower+1)`.
     """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ### Exercise: A Triangular Distribution
+
+    Build a **triangular distribution** with `pm.CustomDist`. The triangular
+    distribution on $[l, u]$ with mode $m$ has density
+
+    $$f(x) = \begin{cases} \dfrac{2(x-l)}{(u-l)(m-l)} & l \le x < m \\[6pt] \dfrac{2(u-x)}{(u-l)(u-m)} & m \le x \le u \\[6pt] 0 & \text{otherwise} \end{cases}$$
+
+    1. Write `triangular_logp(value, lower, mode, upper)` returning the **log**-density, using `pm.math.switch` as in the uniform example above.
+    2. Create a `CustomDist` named `"tri"` with `lower=0`, `mode=2`, `upper=5`.
+    3. Check your work with `pm.logp`: the log-density at the mode should be $\log(2/(u-l)) = \log(0.4)$, and any value outside $[0, 5]$ should give `-inf`.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.accordion(
+        {
+            "Hint": mo.md(
+                "Nest one `pm.math.switch` inside another: the outer switch "
+                "handles out-of-support values (return `-np.inf`), the inner "
+                "one picks the rising or falling branch. Remember to return "
+                "the *log* of the density."
+            ),
+        }
+    )
+    return
+
+
+@app.cell
+def _():
+    def _exercise_triangular():
+        # YOUR CODE HERE — define triangular_logp(value, lower, mode, upper),
+        # then create the CustomDist inside a model context:
+        #
+        # with pm.Model():
+        #     tri = pm.CustomDist("tri", 0, 2, 5, logp=triangular_logp)
+        tri = ...
+        if tri is ...:
+            return mo.callout(
+                mo.md("Replace `...` with your code above, then re-run this cell."),
+                kind="info",
+            )
+        return pm.logp(tri, 2).eval(), pm.logp(tri, -1).eval()
+
+    _exercise_triangular()
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    def solution_triangular():
+        def triangular_logp(value, lower, mode, upper):
+            return pm.math.switch(
+                (value < lower) | (value > upper),
+                -np.inf,
+                pm.math.switch(
+                    value < mode,
+                    pm.math.log(2 * (value - lower))
+                    - pm.math.log((upper - lower) * (mode - lower)),
+                    pm.math.log(2 * (upper - value))
+                    - pm.math.log((upper - lower) * (upper - mode)),
+                ),
+            )
+
+        with pm.Model():
+            tri = pm.CustomDist("tri", 0, 2, 5, logp=triangular_logp)
+        return pm.logp(tri, 2).eval(), pm.logp(tri, -1).eval()
+
+    mo.accordion(
+        {
+            "Solution": mo.vstack(
+                [
+                    mo.md(f"```python\n{inspect.getsource(solution_triangular)}\n```"),
+                    mo.md(f"Result: `{solution_triangular()}`"),
+                ]
+            ),
+        }
+    )
     return
 
 
