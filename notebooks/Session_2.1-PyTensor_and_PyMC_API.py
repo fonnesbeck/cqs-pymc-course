@@ -7,6 +7,7 @@ app = marimo.App(width="medium")
 with app.setup:
     import marimo as mo
     import base64
+    import inspect
     from pathlib import Path
     import numpy as np
     import plotly.express as px
