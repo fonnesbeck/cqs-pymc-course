@@ -926,11 +926,11 @@ def _():
     )
     n1 = len(drug)
     n0 = len(placebo)
-    dosis_data = pl.concat([drug, placebo])
+    trial_data = pl.concat([drug, placebo])
 
     def plot_iq_histogram():
         fig = px.histogram(
-            dosis_data,
+            trial_data,
             x="iq",
             color="group",
             barmode="overlay",
@@ -949,9 +949,9 @@ def _():
         )
         return fig
 
-    iq = dosis_data.select("iq").to_numpy().squeeze()
+    iq = trial_data.select("iq").to_numpy().squeeze()
     group_id = (
-        dosis_data["group"].cast(pl.Categorical).to_physical().to_numpy().squeeze()
+        trial_data["group"].cast(pl.Categorical).to_physical().to_numpy().squeeze()
     )
     mo.show_code(plot_iq_histogram(), position="above")
     return group_id, iq

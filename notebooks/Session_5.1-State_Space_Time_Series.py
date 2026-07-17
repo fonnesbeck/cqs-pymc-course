@@ -1062,7 +1062,7 @@ def _():
     Four components:
 
     - `LevelTrend(order=2, innovations_order=1)` — a latent level with a
-      fixed drift (`order=2, innovations_order=1`): the level
+      fixed drift: the level
       accumulates noise like a random walk while the slope stays constant —
       the "random walk with drift" configuration from the tour.
     - `FrequencySeasonality(12, n=1)` — a smooth annual cycle (see the tour).

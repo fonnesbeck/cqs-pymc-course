@@ -1092,7 +1092,8 @@ def _():
     **Step 3:** Evaluate model fit with posterior predictive checks:
 
     ```python
-    pm.sample_posterior_predictive(single_cp_trace, extend_inferencedata=True)
+    with build_single_cp_fixed():
+        pm.sample_posterior_predictive(single_cp_trace, extend_inferencedata=True)
     az.plot_ppc_dist(single_cp_trace)
     ```
     """)
