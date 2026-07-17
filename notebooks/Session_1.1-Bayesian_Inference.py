@@ -1137,6 +1137,19 @@ def _(baseball_model):
     return (idata_baseball,)
 
 
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Before looking at shrinkage, here is the informative prior implied by the
+    fitted hierarchical model. First, the posterior densities of the
+    hyperparameters `alpha` and `beta`, which land close to 7.5 and 23; then
+    raw draws from that `Beta(7.5, 23)` distribution itself — the
+    population-level batting-average curve every player's estimate gets
+    shrunk toward below.
+    """)
+    return
+
+
 @app.cell
 def _(idata_baseball):
     az.plot_dist(idata_baseball, var_names=["alpha", "beta"])
@@ -1249,9 +1262,9 @@ def _():
 def _():
     mo.callout(
         mo.md("""
-        **Your task:** Build two models — one with `Beta(1, 1)` priors and one with `Beta(2, 20)` priors. Compare the posterior distributions and the probability that B is better than A.
+        **Your task:** Build two models — one with `Beta(1, 1)` priors and one with `Beta(2, 20)` priors. Compare `P(B > A)` under the two priors.
 
-        Pass `random_seed=RANDOM_SEED` to `pm.sample` for reproducibility.
+        Pass `random_seed=RANDOM_SEED` to `pm.sample` for reproducibility. Write your models inside the `_exercise_prior_sensitivity` function in the scaffold cell below — it must set both `p_b_better_uniform` and `p_b_better_informed` before the markdown summary renders.
         """),
         kind="info",
     )
@@ -1512,7 +1525,13 @@ def _():
 
 
 @app.cell
-def _(bandit_n_A_next, bandit_n_B_next, bandit_run_campaign, bandit_state_A1, bandit_state_B1):
+def _(
+    bandit_n_A_next,
+    bandit_n_B_next,
+    bandit_run_campaign,
+    bandit_state_A1,
+    bandit_state_B1,
+):
     bandit_state_A2 = bandit_run_campaign(bandit_state_A1, bandit_n_A_next, seed=21)
     bandit_state_B2 = bandit_run_campaign(bandit_state_B1, bandit_n_B_next, seed=22)
     bandit_state_A2, bandit_state_B2
@@ -1522,7 +1541,7 @@ def _(bandit_n_A_next, bandit_n_B_next, bandit_run_campaign, bandit_state_A1, ba
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    And we re-fit the model on the accumulated data — exactly what the original exercise asks you to do by manually re-running the cells above.
+    And we re-fit the model on the accumulated data — this automates what you could do by manually re-running the cells above with updated totals: refit, recompute, and compare in one step.
     """)
     return
 
@@ -1656,7 +1675,15 @@ def _(bandit_n_rounds_ui, bandit_rate_a, bandit_rate_b, bandit_seed_ui):
     _samp_a = _rng_q.beta(_a_a, _b_a, size=(bandit_n, _n_samp))
     _samp_b = _rng_q.beta(_a_b, _b_b, size=(bandit_n, _n_samp))
     bandit_p_b_best_hist = (_samp_b > _samp_a).mean(axis=1)
-    return bandit_alpha_hist, bandit_beta_hist, bandit_chosen, bandit_n, bandit_outcomes, bandit_p_b_best_hist, bandit_true_rates
+    return (
+        bandit_alpha_hist,
+        bandit_beta_hist,
+        bandit_chosen,
+        bandit_n,
+        bandit_outcomes,
+        bandit_p_b_best_hist,
+        bandit_true_rates,
+    )
 
 
 @app.cell(hide_code=True)
@@ -1675,7 +1702,16 @@ def _(bandit_n):
 
 
 @app.cell(hide_code=True)
-def _(bandit_alpha_hist, bandit_beta_hist, bandit_chosen, bandit_n, bandit_outcomes, bandit_p_b_best_hist, bandit_step, bandit_true_rates):
+def _(
+    bandit_alpha_hist,
+    bandit_beta_hist,
+    bandit_chosen,
+    bandit_n,
+    bandit_outcomes,
+    bandit_p_b_best_hist,
+    bandit_step,
+    bandit_true_rates,
+):
     _step = bandit_step.value
     _a_a, _a_b = bandit_alpha_hist[_step]
     _b_a, _b_b = bandit_beta_hist[_step]
