@@ -7,7 +7,6 @@ app = marimo.App(width="medium")
 with app.setup:
     import marimo as mo
     import inspect
-    import base64
     import warnings
     from pathlib import Path
     import numpy as np
@@ -31,6 +30,7 @@ with app.setup:
     warnings.filterwarnings("ignore", category=RuntimeWarning)
     warnings.filterwarnings("ignore", category=UserWarning)
     data_path = Path(__file__).parent / "data"
+
     def to_np(expr):
         """Compile a pytensor tensor expression to numpy."""
         return pytensor.function([], expr)()
@@ -842,7 +842,20 @@ def _():
     sum_right_kernel = mo.ui.dropdown(
         gp_kernel_options, value="Linear", label="Right kernel"
     )
-    return cosine_amplitude_slider, cosine_lengthscale_slider, expquad_amplitude_slider, expquad_lengthscale_slider, linear_amplitude_slider, linear_offset_slider, matern12_amplitude_slider, matern12_lengthscale_slider, product_left_kernel, product_right_kernel, sum_left_kernel, sum_right_kernel
+    return (
+        cosine_amplitude_slider,
+        cosine_lengthscale_slider,
+        expquad_amplitude_slider,
+        expquad_lengthscale_slider,
+        linear_amplitude_slider,
+        linear_offset_slider,
+        matern12_amplitude_slider,
+        matern12_lengthscale_slider,
+        product_left_kernel,
+        product_right_kernel,
+        sum_left_kernel,
+        sum_right_kernel,
+    )
 
 
 @app.cell
@@ -887,7 +900,13 @@ def _(expquad_amplitude_slider, expquad_lengthscale_slider):
 
 
 @app.cell(hide_code=True)
-def _(X_grid, expquad_amplitude_slider, expquad_lengthscale_slider, kernel_covariance, plot_cov):
+def _(
+    X_grid,
+    expquad_amplitude_slider,
+    expquad_lengthscale_slider,
+    kernel_covariance,
+    plot_cov,
+):
     _cov, _stationary = kernel_covariance(
         "ExpQuad",
         expquad_amplitude_slider.value,
@@ -919,7 +938,13 @@ def _(matern12_amplitude_slider, matern12_lengthscale_slider):
 
 
 @app.cell(hide_code=True)
-def _(X_grid, kernel_covariance, matern12_amplitude_slider, matern12_lengthscale_slider, plot_cov):
+def _(
+    X_grid,
+    kernel_covariance,
+    matern12_amplitude_slider,
+    matern12_lengthscale_slider,
+    plot_cov,
+):
     _cov, _stationary = kernel_covariance(
         "Matern 1/2",
         matern12_amplitude_slider.value,
@@ -951,7 +976,13 @@ def _(cosine_amplitude_slider, cosine_lengthscale_slider):
 
 
 @app.cell(hide_code=True)
-def _(X_grid, cosine_amplitude_slider, cosine_lengthscale_slider, kernel_covariance, plot_cov):
+def _(
+    X_grid,
+    cosine_amplitude_slider,
+    cosine_lengthscale_slider,
+    kernel_covariance,
+    plot_cov,
+):
     _cov, _stationary = kernel_covariance(
         "Cosine",
         cosine_amplitude_slider.value,
@@ -987,7 +1018,9 @@ def _(linear_amplitude_slider, linear_offset_slider):
 
 
 @app.cell(hide_code=True)
-def _(X_grid, kernel_covariance, linear_amplitude_slider, linear_offset_slider, plot_cov):
+def _(
+    X_grid, kernel_covariance, linear_amplitude_slider, linear_offset_slider, plot_cov
+):
     _cov, _stationary = kernel_covariance(
         "Linear",
         linear_amplitude_slider.value,
@@ -1017,7 +1050,14 @@ def _(product_left_kernel, product_right_kernel):
 
 
 @app.cell(hide_code=True)
-def _(X_grid, default_kernel_params, kernel_covariance, plot_cov, product_left_kernel, product_right_kernel):
+def _(
+    X_grid,
+    default_kernel_params,
+    kernel_covariance,
+    plot_cov,
+    product_left_kernel,
+    product_right_kernel,
+):
     _left_cov, _left_stationary = kernel_covariance(
         product_left_kernel.value, *default_kernel_params(product_left_kernel.value)
     )
@@ -1047,7 +1087,14 @@ def _(sum_left_kernel, sum_right_kernel):
 
 
 @app.cell(hide_code=True)
-def _(X_grid, default_kernel_params, kernel_covariance, plot_cov, sum_left_kernel, sum_right_kernel):
+def _(
+    X_grid,
+    default_kernel_params,
+    kernel_covariance,
+    plot_cov,
+    sum_left_kernel,
+    sum_right_kernel,
+):
     _left_cov, _left_stationary = kernel_covariance(
         sum_left_kernel.value, *default_kernel_params(sum_left_kernel.value)
     )
@@ -1563,7 +1610,15 @@ def _(multi_X_new, multi_gp, multi_spin_rate_model, multi_trace):
 
 
 @app.cell(hide_code=True)
-def _(analysis_subset, multi_X_new, multi_days_pred, multi_gp_samples, multi_pitcher_ind, n_outputs, top_pitchers):
+def _(
+    analysis_subset,
+    multi_X_new,
+    multi_days_pred,
+    multi_gp_samples,
+    multi_pitcher_ind,
+    n_outputs,
+    top_pitchers,
+):
     multi_f_pred = az.extract(
         multi_gp_samples, group="posterior_predictive", var_names="preds"
     ).values.T  # (sample, point)
@@ -1759,7 +1814,7 @@ def _(robust_X, robust_f_true, robust_trace, robust_y):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ### Exercise: UK coal-mining disasters with a latent GP
+    ## Exercise: Latent Poisson GP for the coal-mining disasters
 
     The exact `gp.Marginal` examples above assume Gaussian observation noise. Counts need a different likelihood: annual disaster totals are non-negative integers, so a Gaussian likelihood can predict impossible negative counts.
 
@@ -1798,18 +1853,10 @@ def _():
 
 @app.cell(hide_code=True)
 def _():
-    mo.md(r"""
-    ## Exercise: Latent Poisson GP for count data
-    """)
-    return
-
-
-@app.cell(hide_code=True)
-def _():
     mo.callout(
         mo.md(r"""
     1. Build a `pm.gp.Latent` model for `disasters_array` using `disaster_years[:, None]` as the input.
-    2. Use `pm.find_constrained_prior` to choose a `Gamma` prior for the Matérn-5/2 lengthscale with 94% mass in `[2, 10]` years.
+    2. Use `pm.find_constrained_prior` to choose a `Gamma` prior for the Matérn-5/2 lengthscale with 94% mass in `[2, 10]` years. (`pm.find_constrained_prior` is PyMC's analogue of the `pz.maxent` elicitation you used in Session 1.2 — it solves for the distribution parameters that put a target probability mass between bounds.)
     3. Put a weakly-informative prior on the GP amplitude, exponentiate the latent GP to get a positive `rate`, and use a `Poisson` likelihood.
     4. Sample the model and plot the posterior mean disaster rate with a 94% HDI over the observed counts.
     5. Optional: run a posterior predictive check. Does a Poisson likelihood reproduce the observed count dispersion?
@@ -1819,34 +1866,43 @@ def _():
     return
 
 
+@app.cell(hide_code=True)
+def _():
+    mo.accordion(
+        {
+            "Hint": mo.md(r"""
+    The full `find_constrained_prior` call for the lengthscale:
+
+    ```python
+    ell_params = pm.find_constrained_prior(
+        pm.Gamma,
+        lower=2,
+        upper=10,
+        init_guess={"alpha": 2, "beta": 0.5},
+        mass=0.94,
+    )
+    ```
+    """)
+        }
+    )
+    return
+
+
 @app.cell
 def _():
     def _exercise_disaster_gp():
         # YOUR CODE HERE.
         #
-        # Suggested outline:
-        #
-        # def build_disaster_latent_gp():
-        #     ell_params = pm.find_constrained_prior(
-        #         pm.Gamma,
-        #         lower=2,
-        #         upper=10,
-        #         init_guess={"alpha": 2, "beta": 0.5},
-        #         mass=0.94,
-        #     )
-        #     with pm.Model() as disaster_model:
-        #         ell = pm.Gamma("ell", **ell_params)
-        #         eta = pm.HalfNormal("eta", sigma=2)
-        #         cov = eta**2 * pm.gp.cov.Matern52(1, ls=ell)
-        #         gp = pm.gp.Latent(cov_func=cov)
-        #         f = gp.prior("f", X=disaster_years[:, None])
-        #         rate = pm.Deterministic("rate", pm.math.exp(f))
-        #         pm.Poisson("y", mu=rate, observed=disasters_array)
-        #     return disaster_model
-        #
-        # disaster_model = build_disaster_latent_gp()
-        # with disaster_model:
-        #     disaster_trace = pm.sample(random_seed=RANDOM_SEED)
+        # Suggested outline (fill in every ...):
+        # ell_params = pm.find_constrained_prior(...)  # see hint for the full call
+        # with pm.Model() as disaster_model:
+        #     ell = ...                                # lengthscale prior from ell_params
+        #     eta = ...                                # HalfNormal amplitude
+        #     cov = eta**2 * pm.gp.cov.Matern52(1, ls=...)
+        #     gp = pm.gp.Latent(cov_func=cov)
+        #     f = gp.prior("f", X=...)                 # years as a column vector
+        #     pm.Poisson(...)                          # exp link: mu = pm.math.exp(f)
+        #     disaster_trace = pm.sample(...)
         disaster_trace = ...
         if disaster_trace is ...:
             return mo.callout(
