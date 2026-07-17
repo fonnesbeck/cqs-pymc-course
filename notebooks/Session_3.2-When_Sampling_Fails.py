@@ -1141,21 +1141,11 @@ def _(disasters_array, years):
             pm.Poisson("disasters", mu=lam, observed=disasters_array)
         return model
 
-    if "..." in inspect.getsource(build_single_cp_fixed) or "..." in inspect.getsource(
-        build_two_cp
-    ):
-        _out = mo.callout(
-            mo.md("Replace the `...` placeholders above, then re-run this cell."),
-            kind="info",
-        )
-    else:
-        with build_single_cp_fixed():
-            single_cp_trace = pm.sample(1000, random_seed=RANDOM_SEED)
-        with build_two_cp():
-            two_cp_trace = pm.sample(1000, random_seed=RANDOM_SEED)
-        _out = (single_cp_trace, two_cp_trace)
-
-    _out
+    with build_single_cp_fixed():
+        single_cp_trace = pm.sample(1000, random_seed=RANDOM_SEED)
+    with build_two_cp():
+        two_cp_trace = pm.sample(1000, random_seed=RANDOM_SEED)
+    single_cp_trace, two_cp_trace
     return
 
 

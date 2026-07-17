@@ -61,9 +61,9 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## 0. Warm-up: two `idata` objects in the wild
+    ## 0. Warm-up: two `trace` objects in the wild
 
-    Before we build anything, here are two `idata` objects handed to you by a colleague. They came from two different models fit to the penguin data. Your job, working in pairs: figure out **which one you would trust**, and explain why — using only the objects themselves.
+    Before we build anything, here are two `trace` objects handed to you by a colleague. They came from two different models fit to the penguin data. Your job, working in pairs: figure out **which one you would trust**, and explain why — using only the objects themselves.
 
     You have not yet been told what to look for. That is the point. Explore.
     """)
@@ -72,10 +72,10 @@ def _():
 
 @app.cell(hide_code=True)
 def _():
-    idata_a = az.from_netcdf(data_path / "s3a_idata_a.nc")
-    idata_b = az.from_netcdf(data_path / "s3a_idata_b.nc")
+    trace_a = az.from_netcdf(data_path / "s3a_idata_a.nc")
+    trace_b = az.from_netcdf(data_path / "s3a_idata_b.nc")
 
-    # The two idatas were pre-sampled with the code below and saved to disk
+    # The two traces were pre-sampled with the code below and saved to disk
     # so students can start the exercise immediately. Uncomment to rebuild.
     #
     # species_idx = (
@@ -89,8 +89,8 @@ def _():
     #     sigma = pm.HalfNormal("sigma", sigma=2)
     #     mu = alpha[species_idx] + beta * flipper_length_std
     #     pm.Normal("mass", mu=mu, sigma=sigma, observed=body_mass_kg)
-    #     idata_a = pm.sample(random_seed=RANDOM_SEED)
-    # idata_a.to_netcdf(data_path / "s3a_idata_a.nc")
+    #     trace_a = pm.sample(random_seed=RANDOM_SEED)
+    # trace_a.to_netcdf(data_path / "s3a_idata_a.nc")
     #
     # with pm.Model() as model_b:
     #     mu_alpha = pm.Normal("mu_alpha", mu=4, sigma=2)
@@ -102,9 +102,9 @@ def _():
     #     sigma = pm.HalfNormal("sigma", sigma=0.5)
     #     mu = alpha + beta * flipper_length_std
     #     pm.Normal("mass", mu=mu, sigma=sigma, observed=body_mass_kg)
-    #     idata_b = pm.sample(random_seed=RANDOM_SEED, target_accept=0.8)
-    # idata_b.to_netcdf(data_path / "s3a_idata_b.nc")
-    return idata_a, idata_b
+    #     trace_b = pm.sample(random_seed=RANDOM_SEED, target_accept=0.8)
+    # trace_b.to_netcdf(data_path / "s3a_idata_b.nc")
+    return trace_a, trace_b
 
 
 @app.cell(hide_code=True)
@@ -114,35 +114,35 @@ def _():
 
     Get your bearings. For each prompt, write a one-liner in the empty cell below and look at the output:
 
-    1. Type `idata_a` and `idata_b` on their own lines. What groups does each one contain? Are they the same?
+    1. Type `trace_a` and `trace_b` on their own lines. What groups does each one contain? Are they the same?
     2. How many `chain`s and `draw`s are in each `posterior`?
     3. What are the parameter names in each? Which parameters do they share?
     4. Find where the observed penguin mass lives — the same penguin measurements
        you met in Session 1.2, now used in a regression of body mass on flipper length.
-    5. Look at `idata_a.sample_stats` and `idata_b.sample_stats`. List three variables you see in each.
+    5. Look at `trace_a.sample_stats` and `trace_b.sample_stats`. List three variables you see in each.
     """)
     return
 
 
 @app.cell
-def _(idata_a, idata_b):
+def _(trace_a, trace_b):
     # your code here
-    type(idata_a), type(idata_b)
+    type(trace_a), type(trace_b)
     return
 
 
 @app.cell(hide_code=True)
-def _(idata_a, idata_b):
+def _(trace_a, trace_b):
     def solution_warmup_stage1():
-        groups_a, groups_b = list(idata_a.children), list(idata_b.children)
-        post_a, post_b = idata_a["posterior"], idata_b["posterior"]
+        groups_a, groups_b = list(trace_a.children), list(trace_b.children)
+        post_a, post_b = trace_a["posterior"], trace_b["posterior"]
         shared = sorted(set(post_a.data_vars) & set(post_b.data_vars))
         return mo.md(
             f"""
-- **Groups**: `idata_a` has `{groups_a}`, `idata_b` has `{groups_b}` — the same four.
-- **Chains × draws**: `idata_a`: {post_a.sizes["chain"]} × {post_a.sizes["draw"]}; `idata_b`: {post_b.sizes["chain"]} × {post_b.sizes["draw"]}.
-- **Parameters**: `idata_a` has `{sorted(post_a.data_vars)}`; `idata_b` has `{sorted(post_b.data_vars)}`; shared: `{shared}`.
-- **Observed data**: `idata_a["observed_data"]["mass"]` (same location in `idata_b`).
+- **Groups**: `trace_a` has `{groups_a}`, `trace_b` has `{groups_b}` — the same four.
+- **Chains × draws**: `trace_a`: {post_a.sizes["chain"]} × {post_a.sizes["draw"]}; `trace_b`: {post_b.sizes["chain"]} × {post_b.sizes["draw"]}.
+- **Parameters**: `trace_a` has `{sorted(post_a.data_vars)}`; `trace_b` has `{sorted(post_b.data_vars)}`; shared: `{shared}`.
+- **Observed data**: `trace_a["observed_data"]["mass"]` (same location in `trace_b`).
 - **`sample_stats`** holds per-draw sampler information such as `diverging`, `energy`, and `depth`.
 """
         )
@@ -167,7 +167,7 @@ def _():
     mo.md(r"""
     ### Stage 2 — Ask the summary
 
-    1. Run `az.summary(...)` on each idata. Compare `ess_bulk`, `ess_tail`, and `r_hat` side by side. Which parameters look problematic in `idata_b`?
+    1. Run `az.summary(...)` on each trace. Compare `ess_bulk`, `ess_tail`, and `r_hat` side by side. Which parameters look problematic in `trace_b`?
     2. `sample_stats` contains a boolean flag `diverging` — draws where the sampler broke down. Check both runs: how many divergences does each have? (`.sum()` on the DataArray works.) Careful: a clean divergence count does **not** mean a clean run — as you're about to see, the trouble here shows up elsewhere in the summary.
     """)
     return
@@ -180,24 +180,24 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(idata_a, idata_b):
+def _(trace_a, trace_b):
     def solution_warmup_stage2():
-        summary_a = az.summary(idata_a)
+        summary_a = az.summary(trace_a)
         summary_b = az.summary(
-            idata_b, var_names=["mu_alpha", "tau_alpha", "beta", "sigma"]
+            trace_b, var_names=["mu_alpha", "tau_alpha", "beta", "sigma"]
         )
-        div_a = int(idata_a["sample_stats"]["diverging"].sum())
-        div_b = int(idata_b["sample_stats"]["diverging"].sum())
+        div_a = int(trace_a["sample_stats"]["diverging"].sum())
+        div_b = int(trace_b["sample_stats"]["diverging"].sum())
         return mo.vstack(
             [
-                mo.md("**`idata_a` summary:**"),
+                mo.md("**`trace_a` summary:**"),
                 summary_a,
-                mo.md("**`idata_b` summary (top-level parameters):**"),
+                mo.md("**`trace_b` summary (top-level parameters):**"),
                 summary_b,
                 mo.md(
-                    f"Divergence flags: **{div_a}** in `idata_a`, **{div_b}** in `idata_b`. "
+                    f"Divergence flags: **{div_a}** in `trace_a`, **{div_b}** in `trace_b`. "
                     "Here the trouble shows up in the summary instead: `tau_alpha` and `sigma` "
-                    "in `idata_b` have `ess_bulk` around 10 and `r_hat` around 1.3 — "
+                    "in `trace_b` have `ess_bulk` around 10 and `r_hat` around 1.3 — "
                     "the chains never mixed."
                 ),
             ]
@@ -223,53 +223,53 @@ def _():
     mo.md(r"""
     ### Stage 3 — Look at it
 
-    Call `az.plot_trace_dist(...)` on each idata. Minimal usage: `az.plot_trace_dist(idata_a)` (add `var_names=[...]` to focus it). A few things to know before you start:
+    Call `az.plot_trace_dist(...)` on each trace. Minimal usage: `az.plot_trace_dist(trace_a)` (add `var_names=[...]` to focus it). A few things to know before you start:
 
     - The two models have **different parameters**, so you can't use the same `var_names` for both — look at each `posterior` group to see what's there.
-    - `idata_b` has *hundreds* of `alpha` entries (one per penguin). Restrict `var_names` to the top-level parameters or the plot will be unreadable.
+    - `trace_b` has *hundreds* of `alpha` entries (one per penguin). Restrict `var_names` to the top-level parameters or the plot will be unreadable.
 
     Then:
 
     1. What visual difference do you see between the two traces? Look at how each chain moves over iterations and whether the chains agree.
-    2. Based only on what you have seen so far, write one sentence: *which `idata` would you trust, and what specifically convinced you?* Keep that sentence — over the next hour we will name every piece of evidence you used.
+    2. Based only on what you have seen so far, write one sentence: *which `trace` would you trust, and what specifically convinced you?* Keep that sentence — over the next hour we will name every piece of evidence you used.
     """)
     return
 
 
 @app.cell
 def _():
-    # your code here — start with idata_a
+    # your code here — start with trace_a
     return
 
 
 @app.cell
 def _():
-    # ...then idata_b. It has hundreds of `alpha` entries, so restrict to the
+    # ...then trace_b. It has hundreds of `alpha` entries, so restrict to the
     # top-level parameters with var_names=["mu_alpha", "tau_alpha", "beta", "sigma"]
     return
 
 
 @app.cell(hide_code=True)
-def _(idata_a, idata_b):
+def _(trace_a, trace_b):
     def solution_warmup_stage3():
-        plot_a = az.plot_trace_dist(idata_a)
+        plot_a = az.plot_trace_dist(trace_a)
         plot_b = az.plot_trace_dist(
-            idata_b, var_names=["mu_alpha", "tau_alpha", "beta", "sigma"]
+            trace_b, var_names=["mu_alpha", "tau_alpha", "beta", "sigma"]
         )
         return mo.vstack(
             [
                 mo.md(
-                    "**`idata_a`** — every chain wanders freely over the same region "
+                    "**`trace_a`** — every chain wanders freely over the same region "
                     "and the per-chain densities overlap (the 'fuzzy caterpillar'):"
                 ),
                 plot_a,
                 mo.md(
-                    "**`idata_b`** — the `tau_alpha` and `sigma` chains disagree and "
+                    "**`trace_b`** — the `tau_alpha` and `sigma` chains disagree and "
                     "get stuck for long stretches; each chain explores a different region:"
                 ),
                 plot_b,
                 mo.md(
-                    "**Verdict:** trust `idata_a`. The evidence: `ess_bulk` in the "
+                    "**Verdict:** trust `trace_a`. The evidence: `ess_bulk` in the "
                     "hundreds-to-thousands with `r_hat` ≈ 1 for every parameter, and "
                     "trace plots where all four chains agree."
                 ),
@@ -294,7 +294,7 @@ def _(idata_a, idata_b):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The rest of this session names the things you just noticed: what `posterior` and `sample_stats` actually hold, what R-hat and ESS measure, what a divergence is, and how trace, rank, and energy plots turn all of this into pictures. When something feels familiar, it is because you already saw it in `idata_b`.
+    The rest of this session names the things you just noticed: what `posterior` and `sample_stats` actually hold, what R-hat and ESS measure, what a divergence is, and how trace, rank, and energy plots turn all of this into pictures. When something feels familiar, it is because you already saw it in `trace_b`.
     """)
     return
 
@@ -439,8 +439,8 @@ def _():
 @app.cell
 def _(baseline_model):
     with baseline_model:
-        nuts_idata = pm.sample(random_seed=RANDOM_SEED)
-    return (nuts_idata,)
+        nuts_trace = pm.sample(random_seed=RANDOM_SEED)
+    return (nuts_trace,)
 
 
 @app.cell(hide_code=True)
@@ -454,8 +454,8 @@ def _():
 
 
 @app.cell
-def _(nuts_idata):
-    nuts_idata
+def _(nuts_trace):
+    nuts_trace
     return
 
 
@@ -468,8 +468,8 @@ def _():
 
 
 @app.cell
-def _(nuts_idata):
-    nuts_idata.posterior
+def _(nuts_trace):
+    nuts_trace.posterior
     return
 
 
@@ -482,8 +482,8 @@ def _():
 
 
 @app.cell
-def _(nuts_idata):
-    nuts_idata.sample_stats
+def _(nuts_trace):
+    nuts_trace.sample_stats
     return
 
 
@@ -496,8 +496,8 @@ def _():
 
 
 @app.cell
-def _(nuts_idata):
-    nuts_idata.observed_data
+def _(nuts_trace):
+    nuts_trace.observed_data
     return
 
 
@@ -512,8 +512,8 @@ def _():
 
 
 @app.cell
-def _(nuts_idata):
-    az.summary(nuts_idata)
+def _(nuts_trace):
+    az.summary(nuts_trace)
     return
 
 
@@ -553,9 +553,9 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(nuts_idata):
+def _(nuts_trace):
     az.plot_dist(
-        nuts_idata,
+        nuts_trace,
         var_names=["alpha", "beta", "sigma"],
         figure_kwargs=fig_kwargs(cols=3),
     )
@@ -571,8 +571,8 @@ def _():
 
 
 @app.cell
-def _(nuts_idata):
-    az.eti(nuts_idata, prob=0.89)
+def _(nuts_trace):
+    az.eti(nuts_trace, prob=0.89)
     return
 
 
@@ -1688,11 +1688,11 @@ def _():
 @app.cell
 def _(baseline_model):
     with baseline_model:
-        metropolis_idata = pm.sample(
+        metropolis_trace = pm.sample(
             step=pm.Metropolis(),
             random_seed=RANDOM_SEED,
         )
-    return (metropolis_idata,)
+    return (metropolis_trace,)
 
 
 @app.cell(hide_code=True)
@@ -1712,9 +1712,9 @@ def _():
 
 
 @app.cell
-def _(metropolis_idata, nuts_idata):
+def _(metropolis_trace, nuts_trace):
     az.plot_autocorr(
-        {"NUTS": nuts_idata, "Metropolis": metropolis_idata},
+        {"NUTS": nuts_trace, "Metropolis": metropolis_trace},
         var_names=["alpha", "beta", "sigma"],
         col_wrap=2,
         figure_kwargs=fig_kwargs(cols=2, rows=3),
@@ -1731,9 +1731,9 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(metropolis_idata, nuts_idata):
-    _nuts_summary = az.summary(nuts_idata, var_names=["alpha", "beta", "sigma"])
-    _metro_summary = az.summary(metropolis_idata, var_names=["alpha", "beta", "sigma"])
+def _(metropolis_trace, nuts_trace):
+    _nuts_summary = az.summary(nuts_trace, var_names=["alpha", "beta", "sigma"])
+    _metro_summary = az.summary(metropolis_trace, var_names=["alpha", "beta", "sigma"])
 
     mo.md(f"""
     **NUTS ESS:**
@@ -1776,9 +1776,9 @@ def _():
 
 
 @app.cell
-def _(metropolis_idata, nuts_idata):
+def _(metropolis_trace, nuts_trace):
     az.plot_trace_dist(
-        {"NUTS": nuts_idata, "Metropolis": metropolis_idata},
+        {"NUTS": nuts_trace, "Metropolis": metropolis_trace},
         var_names=["alpha", "beta", "sigma"],
         combined=True,
         figure_kwargs=fig_kwargs(cols=3, rows=2),
@@ -1799,9 +1799,9 @@ def _():
 
 
 @app.cell
-def _(metropolis_idata, nuts_idata):
+def _(metropolis_trace, nuts_trace):
     az.plot_rank(
-        {"NUTS": nuts_idata, "Metropolis": metropolis_idata},
+        {"NUTS": nuts_trace, "Metropolis": metropolis_trace},
         var_names=["alpha", "beta", "sigma"],
         figure_kwargs=fig_kwargs(cols=3, rows=2),
     )
@@ -1833,14 +1833,14 @@ def _():
 
 
 @app.cell
-def _(nuts_idata):
-    az.rhat(nuts_idata, var_names=["alpha", "beta", "sigma"])
+def _(nuts_trace):
+    az.rhat(nuts_trace, var_names=["alpha", "beta", "sigma"])
     return
 
 
 @app.cell
-def _(metropolis_idata):
-    az.rhat(metropolis_idata, var_names=["alpha", "beta", "sigma"])
+def _(metropolis_trace):
+    az.rhat(metropolis_trace, var_names=["alpha", "beta", "sigma"])
     return
 
 
@@ -1865,14 +1865,14 @@ def _():
 
 
 @app.cell
-def _(nuts_idata):
-    az.mcse(nuts_idata, var_names=["alpha", "beta", "sigma"])
+def _(nuts_trace):
+    az.mcse(nuts_trace, var_names=["alpha", "beta", "sigma"])
     return
 
 
 @app.cell
-def _(metropolis_idata):
-    az.mcse(metropolis_idata, var_names=["alpha", "beta", "sigma"])
+def _(metropolis_trace):
+    az.mcse(metropolis_trace, var_names=["alpha", "beta", "sigma"])
     return
 
 
@@ -1885,9 +1885,9 @@ def _():
 
 
 @app.cell
-def _(metropolis_idata, nuts_idata):
+def _(metropolis_trace, nuts_trace):
     az.plot_mcse(
-        {"NUTS": nuts_idata, "Metropolis": metropolis_idata},
+        {"NUTS": nuts_trace, "Metropolis": metropolis_trace},
         var_names=["alpha", "beta", "sigma"],
         figure_kwargs=fig_kwargs(cols=3),
     )
@@ -1907,13 +1907,13 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(nuts_idata):
-    _thinned = az.thin(nuts_idata, factor="auto")
-    _original_ess = az.ess(nuts_idata, var_names=["beta"])["beta"].item()
+def _(nuts_trace):
+    _thinned = az.thin(nuts_trace, factor="auto")
+    _original_ess = az.ess(nuts_trace, var_names=["beta"])["beta"].item()
     _thinned_ess = az.ess(_thinned["beta"]).item()
 
     mo.md(f"""
-    Original draws: {nuts_idata.posterior.sizes["draw"]}
+    Original draws: {nuts_trace.posterior.sizes["draw"]}
     Thinned draws:  {_thinned.sizes["draw"]}
 
     Original beta ESS: {_original_ess:.0f}
@@ -1937,15 +1937,15 @@ def _():
 
 
 @app.cell
-def _(nuts_idata):
+def _(nuts_trace):
     _pc = az.plot_energy(
-        nuts_idata, visuals={"legend": False}, figure_kwargs={"figsize": (10, 3.5)}
+        nuts_trace, visuals={"legend": False}, figure_kwargs={"figsize": (10, 3.5)}
     )
 
     _fig = plt.gcf()
     _bfmi_ax, _energy_ax = _fig.axes[0], _fig.axes[1]
 
-    _n_chains = nuts_idata.posterior.sizes["chain"]
+    _n_chains = nuts_trace.posterior.sizes["chain"]
     _bfmi_ax.set_yticks(range(_n_chains))
     _bfmi_ax.set_ylim(-0.5, _n_chains - 0.5)
     for _coll in _bfmi_ax.collections:
@@ -1963,8 +1963,8 @@ def _(nuts_idata):
 
 
 @app.cell
-def _(nuts_idata):
-    az.bfmi(nuts_idata)
+def _(nuts_trace):
+    az.bfmi(nuts_trace)
     return
 
 
@@ -1989,9 +1989,9 @@ def _():
 
 
 @app.cell
-def _(metropolis_idata, nuts_idata):
+def _(metropolis_trace, nuts_trace):
     az.plot_ess(
-        {"NUTS": nuts_idata, "Metropolis": metropolis_idata},
+        {"NUTS": nuts_trace, "Metropolis": metropolis_trace},
         var_names=["alpha", "beta", "sigma"],
         kind="quantile",
         figure_kwargs=fig_kwargs(cols=3),
@@ -2000,9 +2000,9 @@ def _(metropolis_idata, nuts_idata):
 
 
 @app.cell
-def _(metropolis_idata, nuts_idata):
+def _(metropolis_trace, nuts_trace):
     az.plot_ess_evolution(
-        {"NUTS": nuts_idata, "Metropolis": metropolis_idata},
+        {"NUTS": nuts_trace, "Metropolis": metropolis_trace},
         var_names=["alpha", "beta", "sigma"],
         figure_kwargs=fig_kwargs(cols=3),
     )

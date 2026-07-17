@@ -1178,7 +1178,7 @@ def _(bike_df):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The scaffold uses `pm.sample_posterior_predictive(idata, extend_inferencedata=True)`,
+    The scaffold uses `pm.sample_posterior_predictive(trace, extend_inferencedata=True)`,
     which simulates replicate datasets from the fitted model and stores them in a
     new `posterior_predictive` group on the same object — the PyMC equivalent of
     the manual scipy-based check you did in Session 1.1.
@@ -1187,52 +1187,40 @@ def _():
 
 
 @app.cell
-def _(bike_counts, validate_exercise_1):
+def _(bike_counts, show_count_model_results):
     def _fit_poisson_model():
         with pm.Model():
             mu = ...
             pm.Poisson("obs", mu=mu, observed=bike_counts)
-            idata = ...
-            pm.sample_posterior_predictive(idata, extend_inferencedata=True)
-        return idata
+            trace = ...
+            pm.sample_posterior_predictive(trace, extend_inferencedata=True)
+        return trace
 
     def _fit_negbin_model():
         with pm.Model():
             mu = ...
             alpha = ...
             pm.NegativeBinomial("obs", mu=mu, alpha=alpha, observed=bike_counts)
-            idata = ...
-            pm.sample_posterior_predictive(idata, extend_inferencedata=True)
-        return idata
+            trace = ...
+            pm.sample_posterior_predictive(trace, extend_inferencedata=True)
+        return trace
 
-    validate_exercise_1(_fit_poisson_model, _fit_negbin_model)
+    show_count_model_results(_fit_poisson_model(), _fit_negbin_model())
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(bike_counts):
-    def validate_exercise_1(fit_poisson_fn, fit_negbin_fn):
-        if "..." in inspect.getsource(fit_poisson_fn) or "..." in inspect.getsource(
-            fit_negbin_fn
-        ):
-            return mo.callout(
-                mo.md(
-                    "Replace the `...` placeholders in the exercise cell above, then re-run."
-                ),
-                kind="info",
-            )
-        ex2_idata_p = fit_poisson_fn()
-        ex2_idata_nb = fit_negbin_fn()
-
-        summary_p = az.summary(ex2_idata_p, var_names=["mu"])
-        summary_nb = az.summary(ex2_idata_nb, var_names=["mu", "alpha"])
+    def show_count_model_results(poisson_trace, negbin_trace):
+        summary_p = az.summary(poisson_trace, var_names=["mu"])
+        summary_nb = az.summary(negbin_trace, var_names=["mu", "alpha"])
 
         fig, axes = plt.subplots(1, 2, figsize=(14, 4), sharex=True)
 
         axes[0].hist(
             bike_counts, bins=50, density=True, alpha=0.5, color="C1", label="Data"
         )
-        ppc_p = ex2_idata_p.posterior_predictive["obs"].values.flatten()
+        ppc_p = poisson_trace.posterior_predictive["obs"].values.flatten()
         axes[0].hist(
             ppc_p,
             bins=np.linspace(0, bike_counts.max() * 1.2, 80),
@@ -1248,7 +1236,7 @@ def _(bike_counts):
         axes[1].hist(
             bike_counts, bins=50, density=True, alpha=0.5, color="C1", label="Data"
         )
-        ppc_nb = ex2_idata_nb.posterior_predictive["obs"].values.flatten()
+        ppc_nb = negbin_trace.posterior_predictive["obs"].values.flatten()
         axes[1].hist(
             ppc_nb,
             bins=np.linspace(0, bike_counts.max() * 1.2, 80),
@@ -1265,7 +1253,6 @@ def _(bike_counts):
 
         return mo.vstack(
             [
-                mo.callout(mo.md("**Your solution was successful!**"), kind="success"),
                 mo.md("**Poisson model summary:**"),
                 summary_p,
                 mo.md("**Negative Binomial model summary:**"),
@@ -1274,14 +1261,14 @@ def _(bike_counts):
             ]
         )
 
-    return (validate_exercise_1,)
+    return (show_count_model_results,)
 
 
 @app.cell(hide_code=True)
 def _(
+    show_count_model_results,
     solution_fit_negbin_model,
     solution_fit_poisson_model,
-    validate_exercise_1,
 ):
     mo.accordion(
         {
@@ -1291,8 +1278,8 @@ def _(
                         f"```python\n{inspect.getsource(solution_fit_poisson_model)}\n\n{inspect.getsource(solution_fit_negbin_model)}\n```"
                     ),
                     mo.lazy(
-                        lambda: validate_exercise_1(
-                            solution_fit_poisson_model, solution_fit_negbin_model
+                        lambda: show_count_model_results(
+                            solution_fit_poisson_model(), solution_fit_negbin_model()
                         ),
                         show_loading_indicator=True,
                     ),
@@ -1478,53 +1465,45 @@ def _():
 
 
 @app.cell
-def _(adelie_mass, validate_exercise_2):
+def _(adelie_mass, show_penguin_prior_check):
     def _exercise_penguin_prior_vs_posterior():
         with pm.Model():
             mu = ...
             sigma = ...
             obs = pm.Normal("obs", mu, sigma, observed=adelie_mass)
-            prior_idata = ...
-            posterior_idata = ...
+            prior_trace = ...
+            posterior_trace = ...
 
-        return prior_idata, posterior_idata
+        return prior_trace, posterior_trace
 
-    validate_exercise_2(_exercise_penguin_prior_vs_posterior)
+    _prior_trace, _posterior_trace = _exercise_penguin_prior_vs_posterior()
+    show_penguin_prior_check(_prior_trace, _posterior_trace)
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(adelie_mass):
-    def validate_exercise_2(exercise_fn):
-        if "..." in inspect.getsource(exercise_fn):
-            return mo.callout(
-                mo.md(
-                    "Replace the `...` placeholders in the exercise cell above, then re-run."
-                ),
-                kind="info",
-            )
-        ex1_prior, ex1_posterior = exercise_fn()
-
+    def show_penguin_prior_check(prior_trace, posterior_trace):
         fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
         # mu: prior vs posterior
-        _g, _p, _ = az.kde(ex1_prior.prior["mu"].values.flatten())
+        _g, _p, _ = az.kde(prior_trace.prior["mu"].values.flatten())
         axes[0].plot(_g, _p, label="Prior")
-        _g, _p, _ = az.kde(ex1_posterior.posterior["mu"].values.flatten())
+        _g, _p, _ = az.kde(posterior_trace.posterior["mu"].values.flatten())
         axes[0].plot(_g, _p, color="C1", label="Posterior")
         axes[0].set_title("mu")
         axes[0].legend()
 
         # sigma: prior vs posterior
-        _g, _p, _ = az.kde(ex1_prior.prior["sigma"].values.flatten())
+        _g, _p, _ = az.kde(prior_trace.prior["sigma"].values.flatten())
         axes[1].plot(_g, _p, label="Prior")
-        _g, _p, _ = az.kde(ex1_posterior.posterior["sigma"].values.flatten())
+        _g, _p, _ = az.kde(posterior_trace.posterior["sigma"].values.flatten())
         axes[1].plot(_g, _p, color="C1", label="Posterior")
         axes[1].set_title("sigma")
         axes[1].legend()
 
         # Prior predictive vs observed data
-        _g, _p, _ = az.kde(ex1_prior.prior_predictive["obs"].values.flatten())
+        _g, _p, _ = az.kde(prior_trace.prior_predictive["obs"].values.flatten())
         axes[2].plot(_g, _p, label="Prior predictive")
         _g, _p, _ = az.kde(adelie_mass)
         axes[2].plot(_g, _p, color="C1", label="Observed data")
@@ -1535,30 +1514,20 @@ def _(adelie_mass):
             ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
         fig.tight_layout()
 
-        return mo.vstack(
-            [
-                mo.callout(
-                    mo.md(
-                        "**Your solution was successful!** Here is what the prior and posterior look like:"
-                    ),
-                    kind="success",
-                ),
-                fig,
-            ]
-        )
+        return fig
 
-    return (validate_exercise_2,)
+    return (show_penguin_prior_check,)
 
 
 @app.cell(hide_code=True)
-def _(solution_exercise_1, validate_exercise_2):
+def _(show_penguin_prior_check, solution_exercise_1):
     mo.accordion(
         {
             "Solution": mo.vstack(
                 [
                     mo.md(f"```python\n{inspect.getsource(solution_exercise_1)}\n```"),
                     mo.lazy(
-                        lambda: validate_exercise_2(solution_exercise_1),
+                        lambda: show_penguin_prior_check(*solution_exercise_1()),
                         show_loading_indicator=True,
                     ),
                 ]
@@ -1735,10 +1704,10 @@ def _(adelie_mass):
             mu = pm.Normal("mu", mu=4000, sigma=500)
             sigma = pm.HalfNormal("sigma", sigma=500)
             pm.Normal("obs", mu, sigma, observed=adelie_mass)
-            prior_idata = pm.sample_prior_predictive()
-            posterior_idata = pm.sample()
+            prior_trace = pm.sample_prior_predictive()
+            posterior_trace = pm.sample()
 
-        return prior_idata, posterior_idata
+        return prior_trace, posterior_trace
 
     return (solution_exercise_1,)
 
@@ -1749,18 +1718,18 @@ def _(bike_counts):
         with pm.Model():
             mu = pm.HalfNormal("mu", sigma=5000)
             pm.Poisson("obs", mu=mu, observed=bike_counts)
-            idata = pm.sample(500)
-            pm.sample_posterior_predictive(idata, extend_inferencedata=True)
-        return idata
+            trace = pm.sample(500)
+            pm.sample_posterior_predictive(trace, extend_inferencedata=True)
+        return trace
 
     def solution_fit_negbin_model():
         with pm.Model():
             mu = pm.HalfNormal("mu", sigma=5000)
             alpha = pm.HalfNormal("alpha", sigma=10)
             pm.NegativeBinomial("obs", mu=mu, alpha=alpha, observed=bike_counts)
-            idata = pm.sample(500)
-            pm.sample_posterior_predictive(idata, extend_inferencedata=True)
-        return idata
+            trace = pm.sample(500)
+            pm.sample_posterior_predictive(trace, extend_inferencedata=True)
+        return trace
 
     return solution_fit_negbin_model, solution_fit_poisson_model
 

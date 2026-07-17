@@ -933,11 +933,6 @@ def _():
         #
         # model = varying_intercept_slope_model()
         model = ...
-        if model is ...:
-            return mo.callout(
-                mo.md("Replace `...` with your model, then re-run this cell."),
-                kind="info",
-            )
         return model.to_graphviz()
 
     _exercise_varying_intercept_slope()

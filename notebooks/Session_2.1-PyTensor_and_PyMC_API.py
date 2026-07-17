@@ -1047,11 +1047,6 @@ def _():
         # with pm.Model():
         #     tri = pm.CustomDist("tri", 0, 2, 5, logp=triangular_logp)
         tri = ...
-        if tri is ...:
-            return mo.callout(
-                mo.md("Replace `...` with your code above, then re-run this cell."),
-                kind="info",
-            )
         return pm.logp(tri, 2).eval(), pm.logp(tri, -1).eval()
 
     _exercise_triangular()

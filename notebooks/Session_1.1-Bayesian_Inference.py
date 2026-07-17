@@ -559,16 +559,16 @@ def _():
 @app.cell
 def _(beta_binom_model):
     with beta_binom_model:
-        idata_ab = pm.sample(random_seed=RANDOM_SEED)
-    idata_ab
-    return (idata_ab,)
+        ab_trace = pm.sample(random_seed=RANDOM_SEED)
+    ab_trace
+    return (ab_trace,)
 
 
 @app.cell(hide_code=True)
-def _(idata_ab):
+def _(ab_trace):
     def plot_posterior_conversion_rate():
         fig, ax = plt.subplots(figsize=(7, 2.5))
-        samples = idata_ab.posterior["conversion_rate"].values.flatten()
+        samples = ab_trace.posterior["conversion_rate"].values.flatten()
         _grid, _pdf, _ = az.kde(samples)
         ax.plot(_grid, _pdf)
         ax.set_xlabel("Conversion rate")
@@ -623,15 +623,15 @@ def _(ab_data_A, ab_data_B):
         pm.Binomial("obs_A", p=cr_A, n=ab_data_A["n"], observed=ab_data_A["k"])
         pm.Binomial("obs_B", p=cr_B, n=ab_data_B["n"], observed=ab_data_B["k"])
 
-        idata_ab_test = pm.sample(random_seed=RANDOM_SEED)
+        ab_test_trace = pm.sample(random_seed=RANDOM_SEED)
     pm.model_to_graphviz(ab_model)
-    return (idata_ab_test,)
+    return (ab_test_trace,)
 
 
 @app.cell(hide_code=True)
-def _(idata_ab_test):
+def _(ab_test_trace):
     def plot_ab_comparison():
-        posterior = az.extract(idata_ab_test)
+        posterior = az.extract(ab_test_trace)
         samples_A = posterior["conversion_rate_A"].values
         samples_B = posterior["conversion_rate_B"].values
 
@@ -818,16 +818,16 @@ def _(radon_prior):
 @app.cell
 def _(radon_model):
     with radon_model:
-        radon_idata = pm.sample(random_seed=RANDOM_SEED)
-    radon_idata
-    return (radon_idata,)
+        radon_trace = pm.sample(random_seed=RANDOM_SEED)
+    radon_trace
+    return (radon_trace,)
 
 
 @app.cell(hide_code=True)
-def _(radon_idata):
+def _(radon_trace):
     def plot_radon_posterior():
         fig, ax = plt.subplots(figsize=(8, 2.5))
-        _mu = radon_idata.posterior["mu"].values.flatten()
+        _mu = radon_trace.posterior["mu"].values.flatten()
         _grid, _pdf, _ = az.kde(_mu)
         ax.plot(_grid, _pdf)
         ax.axvline(np.log(4), color="C1", linestyle="--", label="log(4 pCi/L)")
@@ -838,7 +838,7 @@ def _(radon_idata):
 
     radon_posterior_fig = plot_radon_posterior()
 
-    mu_samples = radon_idata.posterior["mu"].values.flatten()
+    mu_samples = radon_trace.posterior["mu"].values.flatten()
     prob_above = float((mu_samples > np.log(4)).mean())
 
     mo.vstack(
@@ -858,14 +858,14 @@ def _(radon_idata):
 
 
 @app.cell(hide_code=True)
-def _(radon_idata):
+def _(radon_trace):
     def plot_posterior_predictive_check():
-        posterior = az.extract(radon_idata)
+        posterior = az.extract(radon_trace)
         mus = posterior["mu"].values
         sigmas = posterior["sigma"].values
         y_sim = stats.norm(loc=mus, scale=sigmas).rvs()
 
-        observed = radon_idata.observed_data["y"].values
+        observed = radon_trace.observed_data["y"].values
 
         x_grid = np.linspace(-3, 5, 300)
         kde_obs = stats.gaussian_kde(observed)(x_grid)
@@ -954,10 +954,10 @@ def _():
         with pm.Model():
             p_weak = pm.Beta("p", 2, 5)
             pm.Binomial("obs", p=p_weak, n=3, observed=3)
-            idata_weak = pm.sample(random_seed=RANDOM_SEED)
+            weak_trace = pm.sample(random_seed=RANDOM_SEED)
 
         fig, ax = plt.subplots(figsize=(7, 2.5))
-        samples = idata_weak.posterior["p"].values.flatten()
+        samples = weak_trace.posterior["p"].values.flatten()
         _grid, _pdf, _ = az.kde(samples)
         ax.plot(_grid, _pdf)
         ax.set_xlabel("Batting average")
@@ -1016,10 +1016,10 @@ def _():
         with pm.Model():
             p_info = pm.Beta("p", a, b)
             pm.Binomial("obs", p=p_info, n=3, observed=3)
-            idata_info = pm.sample(random_seed=RANDOM_SEED)
+            info_trace = pm.sample(random_seed=RANDOM_SEED)
 
         fig, ax = plt.subplots(figsize=(7, 2.5))
-        samples = idata_info.posterior["p"].values.flatten()
+        samples = info_trace.posterior["p"].values.flatten()
         _grid, _pdf, _ = az.kde(samples)
         ax.plot(_grid, _pdf)
         ax.set_xlabel("Batting average")
@@ -1132,9 +1132,9 @@ def _(batting_df):
 @app.cell
 def _(baseball_model):
     with baseball_model:
-        idata_baseball = pm.sample(random_seed=RANDOM_SEED)
-    idata_baseball
-    return (idata_baseball,)
+        baseline_trace = pm.sample(random_seed=RANDOM_SEED)
+    baseline_trace
+    return (baseline_trace,)
 
 
 @app.cell(hide_code=True)
@@ -1151,8 +1151,8 @@ def _():
 
 
 @app.cell
-def _(idata_baseball):
-    az.plot_dist(idata_baseball, var_names=["alpha", "beta"])
+def _(baseline_trace):
+    az.plot_dist(baseline_trace, var_names=["alpha", "beta"])
     return
 
 
@@ -1163,11 +1163,11 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(batting_df, idata_baseball):
+def _(batting_df, baseline_trace):
     def plot_shrinkage():
         observed_ba = batting_df["BA"].to_numpy()
         at_bats = batting_df["AB"].to_numpy()
-        posterior_ba = idata_baseball.posterior["player_ba"].values
+        posterior_ba = baseline_trace.posterior["player_ba"].values
         posterior_mean_ba = np.mean(posterior_ba, axis=(0, 1))
 
         # Bounds: clip extreme observed outliers via percentiles so a 1/1
@@ -1278,11 +1278,6 @@ def _():
         # sample each, and compute P(B > A) under both.
         p_b_better_uniform = ...
         p_b_better_informed = ...
-        if p_b_better_uniform is ... or p_b_better_informed is ...:
-            return mo.callout(
-                mo.md("Replace the `...` placeholders above, then re-run this cell."),
-                kind="info",
-            )
         return mo.md(
             f"P(B > A) — uniform prior: **{p_b_better_uniform:.1%}**, "
             f"informed prior: **{p_b_better_informed:.1%}**"
@@ -1305,14 +1300,14 @@ def _():
                 cr_b = pm.Beta("cr_B", a, b)
                 pm.Binomial("obs_A", p=cr_a, n=150, observed=12)
                 pm.Binomial("obs_B", p=cr_b, n=50, observed=8)
-                idata = pm.sample(random_seed=RANDOM_SEED)
-            post = az.extract(idata)
+                trace = pm.sample(random_seed=RANDOM_SEED)
+            post = az.extract(trace)
             p_b_better = float((post["cr_B"].values > post["cr_A"].values).mean())
-            results[label] = (idata, p_b_better)
+            results[label] = (trace, p_b_better)
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 3))
-        for idx, (label, (idata, p_win)) in enumerate(results.items()):
-            post = az.extract(idata)
+        for idx, (label, (trace, p_win)) in enumerate(results.items()):
+            post = az.extract(trace)
             grid_a, pdf_a, _ = az.kde(post["cr_A"].values)
             axes[idx].plot(grid_a, pdf_a, label="A")
             grid_b, pdf_b, _ = az.kde(post["cr_B"].values)
@@ -1440,15 +1435,15 @@ def _(bandit_state_A1, bandit_state_B1):
         pm.Binomial(
             "obs_B", p=cr_B_v1, n=bandit_state_B1["n"], observed=bandit_state_B1["k"]
         )
-        bandit_idata_v1 = pm.sample(random_seed=RANDOM_SEED)
-    return (bandit_idata_v1,)
+        bandit_trace_v1 = pm.sample(random_seed=RANDOM_SEED)
+    return (bandit_trace_v1,)
 
 
 @app.cell(hide_code=True)
-def _(bandit_idata_v1):
-    def plot_bandit_posteriors(idata, title):
-        samples_A = idata.posterior["conversion_rate_A"].values.flatten()
-        samples_B = idata.posterior["conversion_rate_B"].values.flatten()
+def _(bandit_trace_v1):
+    def plot_bandit_posteriors(trace, title):
+        samples_A = trace.posterior["conversion_rate_A"].values.flatten()
+        samples_B = trace.posterior["conversion_rate_B"].values.flatten()
         p_sup_B = float((samples_B > samples_A).mean())
 
         # Smooth densities via Gaussian KDE
@@ -1487,7 +1482,7 @@ def _(bandit_idata_v1):
         return fig, p_sup_B
 
     bandit_post_fig_v1, bandit_p_sup_B_v1 = plot_bandit_posteriors(
-        bandit_idata_v1, "Posteriors after first batch (100 emails)"
+        bandit_trace_v1, "Posteriors after first batch (100 emails)"
     )
     mo.vstack(
         [
@@ -1557,14 +1552,14 @@ def _(bandit_state_A2, bandit_state_B2):
         pm.Binomial(
             "obs_B", p=cr_B_v2, n=bandit_state_B2["n"], observed=bandit_state_B2["k"]
         )
-        bandit_idata_v2 = pm.sample(random_seed=RANDOM_SEED)
-    return (bandit_idata_v2,)
+        bandit_trace_v2 = pm.sample(random_seed=RANDOM_SEED)
+    return (bandit_trace_v2,)
 
 
 @app.cell(hide_code=True)
-def _(bandit_idata_v2, plot_bandit_posteriors):
+def _(bandit_trace_v2, plot_bandit_posteriors):
     bandit_post_fig_v2, bandit_p_sup_B_v2 = plot_bandit_posteriors(
-        bandit_idata_v2, "Posteriors after second batch (200 emails total)"
+        bandit_trace_v2, "Posteriors after second batch (200 emails total)"
     )
     mo.vstack(
         [

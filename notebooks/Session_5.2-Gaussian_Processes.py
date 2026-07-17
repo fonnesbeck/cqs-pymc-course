@@ -1904,13 +1904,6 @@ def _():
         #     pm.Poisson(...)                          # exp link: mu = pm.math.exp(f)
         #     disaster_trace = pm.sample(...)
         disaster_trace = ...
-        if disaster_trace is ...:
-            return mo.callout(
-                mo.md(
-                    "Replace `...` with your model and sampling code, then re-run this cell."
-                ),
-                kind="info",
-            )
         return az.summary(disaster_trace, var_names=["ell", "eta"])
 
     _exercise_disaster_gp()

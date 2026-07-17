@@ -400,14 +400,14 @@ def _(pv_obs, pv_ss):
 @app.cell
 def _(pv_model):
     with pv_model:
-        idata_pv = pm.sample(tune=500, draws=250)
-    return (idata_pv,)
+        pv_trace = pm.sample(tune=500, draws=250)
+    return (pv_trace,)
 
 
 @app.cell
-def _(idata_pv):
+def _(pv_trace):
     az.plot_trace_dist(
-        idata_pv,
+        pv_trace,
         var_names=["sigma_pv", "sigma_obs"],
         backend="matplotlib",
     )
@@ -415,19 +415,19 @@ def _(idata_pv):
 
 
 @app.cell
-def _(idata_pv, pv_ss):
+def _(pv_trace, pv_ss):
     cond_pv = pv_ss.sample_conditional_posterior(
-        idata_pv,
+        pv_trace,
         compile_kwargs={"mode": "NUMBA"},
     )
-    comp_pv = pv_ss.extract_components_from_idata(cond_pv)
+    comp_pv = pv_ss.extract_components_from_trace(cond_pv)
     comp_pv
     return (comp_pv,)
 
 
 @app.cell(hide_code=True)
-def _(comp_pv, idata_pv, pv_obs, pv_truth):
-    def _plot_recovery(truth, obs, comp, idata):
+def _(comp_pv, pv_trace, pv_obs, pv_truth):
+    def _plot_recovery(truth, obs, comp, trace):
 
         fig, axes = plt.subplots(2, 1, sharex=True, figsize=(10, 5))
         panels = [
@@ -478,7 +478,7 @@ def _(comp_pv, idata_pv, pv_obs, pv_truth):
         fig.tight_layout()
         return fig
 
-    _plot_recovery(pv_truth, pv_obs, comp_pv, idata_pv)
+    _plot_recovery(pv_truth, pv_obs, comp_pv, pv_trace)
     return
 
 
@@ -920,7 +920,7 @@ def _():
     The resulting `ss_mod` object exposes `coords` (for your
     `pm.Model`) and `param_dims` (for sizing priors), and the methods
     `build_statespace_graph`, `sample_conditional_posterior`,
-    `forecast`, and `extract_components_from_idata`. That's the whole
+    `forecast`, and `extract_components_from_trace`. That's the whole
     API. Everything in the case study onward is one specific instance of this
     recipe with `Regression(state_names=["active", "decay"])`.
     """)
@@ -1134,17 +1134,10 @@ def _(df, ss):
         #      - sigma_noise     — observation noise std
         #      - P0_diag (Gamma) + P0 = pt.diag(P0_diag) — initial state covariance
         #   4. calls `ss.build_statespace_graph(df["log_revenue"])`
-        #   5. samples and returns (model, idata)
+        #   5. samples and returns (model, trace)
         fit = ...
-        if fit is ...:
-            return mo.callout(
-                mo.md(
-                    "Replace `...` with your `fit` implementation, then re-run this cell."
-                ),
-                kind="info",
-            )
-        _, my_idata = fit(ss, df)
-        return my_idata
+        _, my_trace = fit(ss, df)
+        return my_trace
 
     _exercise_fit()
     return
@@ -1195,13 +1188,13 @@ def _(df, ss):
             pm.Deterministic("P0", pt.diag(P0_diag), dims=ss.param_dims["P0"])
 
             ss.build_statespace_graph(df["log_revenue"])
-            idata = pm.sample(
+            trace = pm.sample(
                 draws=250,
                 tune=500,
             )
-        return model, idata
+        return model, trace
 
-    _, idata = solution_fit(ss, df)
+    _, trace = solution_fit(ss, df)
 
     mo.accordion(
         {
@@ -1209,19 +1202,19 @@ def _(df, ss):
                 [
                     mo.md(f"```python\n{inspect.getsource(solution_fit)}\n```"),
                     mo.md(
-                        "_The fitted result (`idata`) powers everything below, so the rest of the notebook works whether or not you complete the exercise._"
+                        "_The fitted result (`trace`) powers everything below, so the rest of the notebook works whether or not you complete the exercise._"
                     ),
                 ]
             ),
         }
     )
-    return (idata,)
+    return (trace,)
 
 
 @app.cell
-def _(idata):
+def _(trace):
     az.plot_trace_dist(
-        idata,
+        trace,
         var_names=[
             "beta_layoff",
             "params_seasonal",
@@ -1233,9 +1226,9 @@ def _(idata):
 
 
 @app.cell
-def _(idata):
+def _(trace):
     az.summary(
-        idata,
+        trace,
         var_names=["beta_layoff", "params_seasonal", "sigma_level", "sigma_noise"],
     )
     return
@@ -1274,7 +1267,7 @@ def _():
     observation.
 
     `sample_conditional_posterior` produces all three;
-    `extract_components_from_idata` then decomposes the smoothed
+    `extract_components_from_trace` then decomposes the smoothed
     posterior into per-component trajectories.
     """)
     return
@@ -1382,8 +1375,8 @@ def _(tunnel_flavor):
 
 
 @app.cell
-def _(idata, ss):
-    cond = ss.sample_conditional_posterior(idata, compile_kwargs={"mode": "NUMBA"})
+def _(trace, ss):
+    cond = ss.sample_conditional_posterior(trace, compile_kwargs={"mode": "NUMBA"})
     return (cond,)
 
 
@@ -1441,7 +1434,7 @@ def _():
     mo.md(r"""
     ## Decomposition
 
-    `extract_components_from_idata` splits the smoothed posterior into the
+    `extract_components_from_trace` splits the smoothed posterior into the
     per-component contributions (in observed-space for the `Regression`,
     latent-space for the `LevelTrend`). Summed back together they
     reconstruct the observed series; separately, they tell us where the
@@ -1452,7 +1445,7 @@ def _():
 
 @app.cell
 def _(cond, ss):
-    comp = ss.extract_components_from_idata(cond)
+    comp = ss.extract_components_from_trace(cond)
     return (comp,)
 
 
@@ -1498,7 +1491,7 @@ def _():
     **The setup.** Your CFO asks: *if another big client lays off in
     six months, what's the additional revenue exposure over the next
     two years?* The single-layoff model and its posterior
-    (`ss`, `idata`) are what we have to answer with.
+    (`ss`, `trace`) are what we have to answer with.
 
     **The framework's tool for this is `ss.forecast(...)`.** It
     extrapolates the latent state forward; for any model with
@@ -1529,7 +1522,7 @@ def _():
 
     **Tips.**
 
-    - The forecast API: `ss.forecast(idata, start=..., periods=...,
+    - The forecast API: `ss.forecast(trace, start=..., periods=...,
       scenario={"data_layoff": ndarray}, random_seed=SEED)`. Use the
       *same* `random_seed` for both scenarios so the per-month
       difference is a clean draw-by-draw delta (not noise).
@@ -1618,21 +1611,16 @@ def _():
         #       24, len(df), second_event_at=6
         #   )
         #   my_fc_baseline = ss.forecast(
-        #       idata,
+        #       trace,
         #       start=df.index[-1],
         #       periods=24,
         #       scenario={"data_layoff": baseline_regs},
         #   )
         #   my_fc_event = ss.forecast(
-        #       idata, ..., scenario={"data_layoff": event_regs},
+        #       trace, ..., scenario={"data_layoff": event_regs},
         #   )
         my_fc_baseline = ...
         my_fc_event = ...
-        if my_fc_baseline is ... or my_fc_event is ...:
-            return mo.callout(
-                mo.md("Replace the `...` placeholders above, then re-run this cell."),
-                kind="info",
-            )
         return my_fc_event
 
     _exercise_forecast()
@@ -1640,7 +1628,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(baseline_regs, df, idata, make_scenario_regressors, ss):
+def _(baseline_regs, df, trace, make_scenario_regressors, ss):
     def solution_forecast():
         n_forecast = 24
         second_event_at = 6
@@ -1650,14 +1638,14 @@ def _(baseline_regs, df, idata, make_scenario_regressors, ss):
         )
 
         fc_baseline = ss.forecast(
-            idata,
+            trace,
             start=df.index[-1],
             periods=n_forecast,
             scenario={"data_layoff": baseline_regs},
             random_seed=SEED,
         )
         fc_event = ss.forecast(
-            idata,
+            trace,
             start=df.index[-1],
             periods=n_forecast,
             scenario={"data_layoff": event_regs},
@@ -1989,14 +1977,14 @@ def _(bvar, single_dev):
         pm.Deterministic("P0", pt.diag(P0_diag), dims=bvar.param_dims["P0"])
 
         bvar.build_statespace_graph(single_dev)
-        idata_bvar = pm.sample(tune=500, draws=250)
-    return (idata_bvar,)
+        bvar_trace = pm.sample(tune=500, draws=250)
+    return (bvar_trace,)
 
 
 @app.cell
-def _(idata_bvar):
+def _(bvar_trace):
     az.plot_trace_dist(
-        idata_bvar,
+        bvar_trace,
         var_names=["phi_h", "phi_r", "gamma", "sigma_h", "sigma_r"],
         backend="matplotlib",
     )
@@ -2004,9 +1992,9 @@ def _(idata_bvar):
 
 
 @app.cell
-def _(idata_bvar):
+def _(bvar_trace):
     az.summary(
-        idata_bvar,
+        bvar_trace,
         var_names=["phi_h", "phi_r", "gamma", "sigma_h", "sigma_r"],
     )
     return
@@ -2035,9 +2023,9 @@ def _():
 
 
 @app.cell
-def _(bvar, idata_bvar):
+def _(bvar, bvar_trace):
     cond_bvar = bvar.sample_conditional_posterior(
-        idata_bvar,
+        bvar_trace,
         compile_kwargs={"mode": "NUMBA"},
     )
     return (cond_bvar,)
@@ -2116,14 +2104,14 @@ def _():
 
 
 @app.cell
-def _(bvar, idata_bvar):
+def _(bvar, bvar_trace):
     n_irf = 24
     shock_size = -0.30
     shock_trajectory = np.zeros((n_irf, 2))
     shock_trajectory[0, 0] = shock_size
 
     irf_bvar = bvar.impulse_response_function(
-        idata_bvar,
+        bvar_trace,
         shock_trajectory=shock_trajectory,
     )
     return irf_bvar, n_irf

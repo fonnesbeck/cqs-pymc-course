@@ -256,23 +256,23 @@ def _(fish_train):
                 observed=fish_train["log_weight"].to_numpy(),
             )
 
-            idata = pm.sample(random_seed=RANDOM_SEED)
-            pm.compute_log_likelihood(idata)
+            trace = pm.sample(random_seed=RANDOM_SEED)
+            pm.compute_log_likelihood(trace)
             pm.sample_posterior_predictive(
-                idata,
+                trace,
                 extend_inferencedata=True,
                 random_seed=RANDOM_SEED,
             )
-        return model, idata
+        return model, trace
 
-    baseline_model, baseline_idata = build_baseline()
+    baseline_model, baseline_trace = build_baseline()
     baseline_model
-    return (baseline_idata,)
+    return (baseline_trace,)
 
 
 @app.cell(hide_code=True)
-def _(baseline_idata):
-    _output = az.plot_ppc_dist(baseline_idata)
+def _(baseline_trace):
+    _output = az.plot_ppc_dist(baseline_trace)
     _output
     return
 
@@ -357,32 +357,32 @@ def _(fish_train, train_mean_log_height, train_mean_log_length, train_mean_log_w
                 "log_obs", mu=expected, sigma=sigma, observed=lweight, dims="obs_idx"
             )
 
-            idata = pm.sample(
+            trace = pm.sample(
                 random_seed=RANDOM_SEED,
             )
-            pm.compute_log_likelihood(idata)
+            pm.compute_log_likelihood(trace)
             pm.sample_posterior_predictive(
-                idata,
+                trace,
                 extend_inferencedata=True,
                 random_seed=RANDOM_SEED,
             )
-        return model, idata
+        return model, trace
 
-    unpooled_model, unpooled_idata = build_unpooled()
+    unpooled_model, unpooled_trace = build_unpooled()
     unpooled_model
-    return species_to_idx, unpooled_idata, unpooled_model
+    return species_to_idx, unpooled_trace, unpooled_model
 
 
 @app.cell(hide_code=True)
-def _(unpooled_idata):
-    _output = az.plot_trace_dist(unpooled_idata, var_names=["mu", "beta", "sigma"])
+def _(unpooled_trace):
+    _output = az.plot_trace_dist(unpooled_trace, var_names=["mu", "beta", "sigma"])
     _output
     return
 
 
 @app.cell(hide_code=True)
-def _(unpooled_idata):
-    _output = az.plot_ppc_dist(unpooled_idata)
+def _(unpooled_trace):
+    _output = az.plot_ppc_dist(unpooled_trace)
     _output
     return
 
@@ -400,9 +400,9 @@ def _():
 
 
 @app.cell
-def _(baseline_idata, unpooled_idata):
+def _(baseline_trace, unpooled_trace):
     model_comparison = az.compare(
-        {"baseline": baseline_idata, "unpooled": unpooled_idata},
+        {"baseline": baseline_trace, "unpooled": unpooled_trace},
     )
     model_comparison
     return
@@ -494,21 +494,21 @@ def _(fish_train, train_mean_log_height, train_mean_log_length, train_mean_log_w
                 "log_obs", mu=expected, sigma=sigma, observed=lweight, dims="obs_idx"
             )
 
-            idata = pm.sample(random_seed=RANDOM_SEED)
-            pm.compute_log_likelihood(idata)
+            trace = pm.sample(random_seed=RANDOM_SEED)
+            pm.compute_log_likelihood(trace)
             pm.sample_posterior_predictive(
-                idata, extend_inferencedata=True, random_seed=RANDOM_SEED
+                trace, extend_inferencedata=True, random_seed=RANDOM_SEED
             )
-        return model, idata
+        return model, trace
 
-    st_normal_model, st_normal_idata = st_build_normal()
+    st_normal_model, st_normal_trace = st_build_normal()
     st_normal_model
-    return st_aug_coords, st_fish_train_aug, st_normal_idata, st_species_idx_aug
+    return st_aug_coords, st_fish_train_aug, st_normal_trace, st_species_idx_aug
 
 
 @app.cell(hide_code=True)
-def _(st_normal_idata):
-    _output = az.plot_ppc_dist(st_normal_idata)
+def _(st_normal_trace):
+    _output = az.plot_ppc_dist(st_normal_trace)
     _output
     return
 
@@ -575,31 +575,31 @@ def _(
                 dims="obs_idx",
             )
 
-            idata = pm.sample(random_seed=RANDOM_SEED)
-            pm.compute_log_likelihood(idata)
+            trace = pm.sample(random_seed=RANDOM_SEED)
+            pm.compute_log_likelihood(trace)
             pm.sample_posterior_predictive(
-                idata, extend_inferencedata=True, random_seed=RANDOM_SEED
+                trace, extend_inferencedata=True, random_seed=RANDOM_SEED
             )
-        return model, idata
+        return model, trace
 
-    st_studentt_model, st_studentt_idata = st_build_studentt()
+    st_studentt_model, st_studentt_trace = st_build_studentt()
     st_studentt_model
-    return (st_studentt_idata,)
+    return (st_studentt_trace,)
 
 
 @app.cell(hide_code=True)
-def _(st_studentt_idata):
-    _output = az.plot_ppc_dist(st_studentt_idata)
+def _(st_studentt_trace):
+    _output = az.plot_ppc_dist(st_studentt_trace)
     _output
     return
 
 
 @app.cell
-def _(st_normal_idata, st_studentt_idata):
+def _(st_normal_trace, st_studentt_trace):
     st_comparison = az.compare(
         {
-            "Normal (augmented)": st_normal_idata,
-            "Student-T (augmented)": st_studentt_idata,
+            "Normal (augmented)": st_normal_trace,
+            "Student-T (augmented)": st_studentt_trace,
         }
     )
     st_comparison
@@ -625,7 +625,7 @@ def _(
     train_mean_log_height,
     train_mean_log_length,
     train_mean_log_width,
-    unpooled_idata,
+    unpooled_trace,
     unpooled_model,
 ):
     species_idx_test = np.array(
@@ -646,7 +646,7 @@ def _(
             },
         )
         oos_predictions = pm.sample_posterior_predictive(
-            unpooled_idata,
+            unpooled_trace,
             predictions=True,
             extend_inferencedata=True,
             random_seed=RANDOM_SEED,
@@ -656,9 +656,9 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(unpooled_idata):
+def _(unpooled_trace):
     _output = az.plot_dist(
-        unpooled_idata.predictions.dataset.map(np.exp),
+        unpooled_trace.predictions.dataset.map(np.exp),
     )
     _output
     return
@@ -677,9 +677,9 @@ def _():
 
 
 @app.cell
-def _(unpooled_idata):
+def _(unpooled_trace):
     oos_pred_weights = np.exp(
-        az.extract(unpooled_idata, group="predictions").to_numpy().squeeze()
+        az.extract(unpooled_trace, group="predictions").to_numpy().squeeze()
     )
     return (oos_pred_weights,)
 
@@ -777,13 +777,8 @@ def _():
     def _exercise_preliz_priors():
         # YOUR CODE HERE — elicit priors with pz.maxent, rebuild the
         # species-stratified model using prior.to_pymc(...), sample, and
-        # compare against unpooled_idata with LOO.
+        # compare against unpooled_trace with LOO.
         comparison = ...
-        if comparison is ...:
-            return mo.callout(
-                mo.md("Replace `...` with your LOO comparison, then re-run this cell."),
-                kind="info",
-            )
         return comparison
 
     _exercise_preliz_priors()
@@ -796,7 +791,7 @@ def _(
     train_mean_log_height,
     train_mean_log_length,
     train_mean_log_width,
-    unpooled_idata,
+    unpooled_trace,
 ):
     def solution_preliz_priors():
         # Elicit priors from domain knowledge with PreliZ maxent
@@ -852,11 +847,11 @@ def _(
                 "log_obs", mu=expected, sigma=sigma, observed=lweight, dims="obs_idx"
             )
 
-            improved_idata = pm.sample(random_seed=RANDOM_SEED)
-            pm.compute_log_likelihood(improved_idata)
+            improved_trace = pm.sample(random_seed=RANDOM_SEED)
+            pm.compute_log_likelihood(improved_trace)
 
         return az.compare(
-            {"original_unpooled": unpooled_idata, "improved_priors": improved_idata}
+            {"original_unpooled": unpooled_trace, "improved_priors": improved_trace}
         )
 
     mo.accordion(
@@ -1151,11 +1146,6 @@ def _():
         # the optimal declared tiers, and count how many fish switch (and which way).
         n_changed = ...
         n_upward = ...
-        if n_changed is ... or n_upward is ...:
-            return mo.callout(
-                mo.md("Replace the `...` placeholders above, then re-run this cell."),
-                kind="info",
-            )
         return mo.md(
             f"**{n_changed}** fish change declared tier; **{n_upward}** move upward."
         )

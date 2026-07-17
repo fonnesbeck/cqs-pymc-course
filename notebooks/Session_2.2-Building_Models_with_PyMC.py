@@ -389,11 +389,6 @@ def _():
         # YOUR CODE HERE — build the dose-response model using a
         # positive-constrained prior for the slope instead of a Potential
         model = ...
-        if model is ...:
-            return mo.callout(
-                mo.md("Replace `...` with your model above, then re-run this cell."),
-                kind="info",
-            )
         return model.to_graphviz()
 
     _exercise_positive_slope_model()
@@ -963,11 +958,6 @@ def _():
         # YOUR CODE HERE — build a Bayesian model to compare IQ scores between
         # the drug and placebo groups.
         model = ...
-        if model is ...:
-            return mo.callout(
-                mo.md("Replace `...` with your model above, then re-run this cell."),
-                kind="info",
-            )
         return model.to_graphviz()
 
     _exercise_drug_model()
