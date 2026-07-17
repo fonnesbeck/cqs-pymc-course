@@ -7,8 +7,6 @@ app = marimo.App(width="medium")
 with app.setup:
     import marimo as mo
     import inspect
-    import base64
-    from pathlib import Path
     import numpy as np
     import plotly.express as px
     import plotly.graph_objects as go
@@ -204,6 +202,11 @@ def _():
 
     1. The variable is given a name (passed as the first argument)
     2. The variable is appended to the model's list of random variables, which ensures that its values are tallied.
+
+    Where does that expression come from? At the LD50, half the subjects die:
+    $p = 0.5$, so $\text{logit}(p) = \log(0.5/0.5) = 0$. Setting the linear
+    predictor to zero, $\beta_0 + \beta_1 x = 0$, and solving gives
+    $x = -\beta_0/\beta_1$.
 
     Since we are interested in estimating LD50, let's create a named deterministic variable for it:
     """)
@@ -402,7 +405,7 @@ def _(deaths_1, dose_1, n_1):
     def solution_positive_slope_model():
         with pm.Model() as model:
             beta0 = pm.Normal("beta0", 0, sigma=1)
-            beta1 = pm.Lognormal("beta1", 0, sigma=1)
+            beta1 = pm.LogNormal("beta1", 0, sigma=1)
             p = pm.math.invlogit(beta0 + beta1 * dose_1)
             pm.Deterministic("ld50", -beta0 / beta1)
             pm.Binomial("y", n=n_1, p=p, observed=deaths_1)
@@ -793,9 +796,13 @@ def _():
 
     Now that we have a flavor for how PyMC models are specified, let's try building a more complex model.
 
-    We will use a fictitious example from Kruschke (2012) concerning the evaluation of a clinical dosis for drug evaluation. The dosis aims to evaluate the efficacy of a "smart drug" that is supposed to increase intelligence by comparing IQ scores of individuals in a treatment arm (those receiving the drug) to those in a control arm (those recieving a placebo). There are 47 individuals and 42 individuals in the treatment and control arms, respectively.
+    We will use a fictitious example from Kruschke (2013) concerning the evaluation of a clinical trial for drug efficacy. The trial aims to evaluate whether a "smart drug" increases intelligence by comparing IQ scores of individuals in a treatment arm (those receiving the drug) to those in a control arm (those receiving a placebo). There are 47 individuals and 42 individuals in the treatment and control arms, respectively.
 
     Build a model to evaluate the evidence for the drug's effectiveness.
+
+    The data are available in two variables prepared below: `iq`, an array of all
+    89 IQ scores, and `group_id`, an integer indicator for each score
+    (0 = drug, 1 = placebo).
     """)
     return
 
@@ -969,7 +976,19 @@ def _():
 
 @app.cell(hide_code=True)
 def _(group_id, iq):
-    def solution_drug_model():
+    def solution_trial_model():
+        with pm.Model() as model:
+            mu_drug = pm.Normal("mu_drug", 100, sigma=10)
+            mu_placebo = pm.Normal("mu_placebo", 100, sigma=10)
+            sigma = pm.HalfNormal("sigma", 10)
+            pm.Normal("iq_drug", mu=mu_drug, sigma=sigma, observed=iq[group_id == 0])
+            pm.Normal(
+                "iq_placebo", mu=mu_placebo, sigma=sigma, observed=iq[group_id == 1]
+            )
+            pm.Deterministic("effect_size", mu_drug - mu_placebo)
+        return model
+
+    def extension_best_model():
         with pm.Model(coords=dict(group=["drug", "placebo"])) as model:
             mu = pm.Normal("mu", 100, sigma=10, dims="group")
             sigma = pm.Uniform("sigma", lower=0, upper=20, dims="group")
@@ -984,9 +1003,32 @@ def _(group_id, iq):
         {
             "Solution": mo.vstack(
                 [
-                    mo.md(f"```python\n{inspect.getsource(solution_drug_model)}\n```"),
+                    mo.md(f"```python\n{inspect.getsource(solution_trial_model)}\n```"),
                     mo.lazy(
-                        lambda: solution_drug_model().to_graphviz(),
+                        lambda: solution_trial_model().to_graphviz(),
+                        show_loading_indicator=True,
+                    ),
+                ]
+            ),
+            "Extension: a robust BEST model": mo.vstack(
+                [
+                    mo.md(
+                        "Kruschke's *Bayesian Estimation Supersedes the t-test* "
+                        "(BEST) model makes two upgrades you will meet properly in "
+                        "later sessions. First, instead of separate `mu_drug` / "
+                        "`mu_placebo` variables it declares one vector `mu` with "
+                        '`dims="group"` and picks each observation\'s mean by '
+                        "**indexing with the group array**: `mu[group_id]` — the "
+                        "core trick behind the hierarchical models of Session 4.2. "
+                        "Second, it swaps the Normal likelihood for a **StudentT** "
+                        "whose degrees of freedom `nu` are learned from the data "
+                        "(`pm.Exponential(1/30) + 1` shifts the prior so `nu > 1`), "
+                        "making the comparison robust to outliers like the two "
+                        "IQ scores above 120."
+                    ),
+                    mo.md(f"```python\n{inspect.getsource(extension_best_model)}\n```"),
+                    mo.lazy(
+                        lambda: extension_best_model().to_graphviz(),
                         show_loading_indicator=True,
                     ),
                 ]
