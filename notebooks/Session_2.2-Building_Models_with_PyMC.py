@@ -206,7 +206,7 @@ def _():
     Where does that expression come from? At the LD50, half the subjects die:
     $p = 0.5$, so $\text{logit}(p) = \log(0.5/0.5) = 0$. Setting the linear
     predictor to zero, $\beta_0 + \beta_1 x = 0$, and solving gives
-    $x = -\beta_0/\beta_1$.
+    $x = -\beta_0/\beta_1$. In the model below the two coefficients live in one vector, so this becomes `-beta_2[0] / beta_2[1]`.
 
     Since we are interested in estimating LD50, let's create a named deterministic variable for it:
     """)
