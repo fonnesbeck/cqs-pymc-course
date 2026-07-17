@@ -8,21 +8,21 @@ with app.setup:
     import marimo as mo
     import numpy as np
     import pymc as pm
-    import arviz_stats as azs  # noqa: F401
-    import arviz_plots as azp
+    import arviz as az
     import matplotlib.pyplot as plt
     import polars as pl
     import warnings
     from pathlib import Path
-    import base64
     import inspect
 
-    azp.style.use("arviz-variat")
+    az.style.use("arviz-variat")
+
     def fig_kwargs(cols=1, rows=1):
         """Compute reasonable figure_kwargs for arviz plots."""
         w = min(max(10, 4.5 * cols), 14)
         h = 3.5 * rows
         return {"figsize": (w, h)}
+
     data_path = Path(__file__).parent / "data"
     RANDOM_SEED = 20090425
     RNG = np.random.default_rng(RANDOM_SEED)
@@ -163,7 +163,7 @@ def _():
 
 @app.cell
 def _(overparam_trace):
-    azs.summary(overparam_trace)
+    az.summary(overparam_trace)
     return
 
 
@@ -181,7 +181,7 @@ def _():
 
 @app.cell
 def _(overparam_trace):
-    azp.plot_trace_dist(
+    az.plot_trace_dist(
         overparam_trace,
         var_names=["intercept", "beta_adelie", "beta_chinstrap", "beta_gentoo"],
         figure_kwargs=fig_kwargs(cols=4, rows=2),
@@ -207,7 +207,7 @@ def _():
 
 @app.cell
 def _(overparam_trace):
-    azp.plot_rank(
+    az.plot_rank(
         overparam_trace,
         var_names=["intercept", "beta_adelie", "beta_chinstrap"],
         figure_kwargs=fig_kwargs(cols=3),
@@ -225,7 +225,7 @@ def _():
 
 @app.cell
 def _(overparam_trace):
-    azp.plot_pair(
+    az.plot_pair(
         overparam_trace,
         var_names=["intercept", "beta_adelie", "beta_chinstrap"],
         figure_kwargs=fig_kwargs(cols=3, rows=3),
@@ -277,7 +277,7 @@ def _(body_mass_kg, chinstrap, gentoo):
 
 @app.cell
 def _(reference_trace):
-    azs.summary(reference_trace)
+    az.summary(reference_trace)
     return
 
 
@@ -318,7 +318,7 @@ def _(adelie, body_mass_kg, chinstrap, gentoo):
 
 @app.cell
 def _(regularized_trace):
-    azs.summary(
+    az.summary(
         regularized_trace,
         var_names=[
             "intercept",
@@ -382,7 +382,7 @@ def _(robust_trace):
 
 @app.cell
 def _(robust_trace):
-    azs.summary(robust_trace)
+    az.summary(robust_trace)
     return
 
 
@@ -398,7 +398,7 @@ def _():
 
 @app.cell
 def _(robust_trace):
-    azp.plot_pair(
+    az.plot_pair(
         robust_trace,
         var_names=["nu", "sigma"],
         visuals={"divergence": {"color": "red"}},
@@ -456,7 +456,7 @@ def _(body_mass_kg, flipper_length_std):
 def _(robust_trace_fixed):
     _divergences_fixed = robust_trace_fixed.sample_stats["diverging"].values.sum()
     mo.md(f"Divergences with `target_accept=0.95`: **{_divergences_fixed}**")
-    azs.summary(robust_trace_fixed, var_names=["nu"])
+    az.summary(robust_trace_fixed, var_names=["nu"])
     return
 
 
@@ -507,7 +507,7 @@ def _(body_mass_kg):
 
 @app.cell
 def _(mixed_trace):
-    azs.summary(
+    az.summary(
         mixed_trace, var_names=["mu_groups", "sigma", "group"], filter_vars="like"
     )
     return
@@ -631,7 +631,7 @@ def _(body_mass_kg):
 
 @app.cell
 def _(pooled_trace):
-    azp.plot_ppc_dist(pooled_trace, num_samples=100, figure_kwargs=fig_kwargs())
+    az.plot_ppc_dist(pooled_trace, num_samples=100, figure_kwargs=fig_kwargs())
     return
 
 
@@ -660,7 +660,7 @@ def _(species_model, species_trace):
 
 @app.cell
 def _(species_trace):
-    azp.plot_ppc_dist(species_trace, num_samples=100, figure_kwargs=fig_kwargs())
+    az.plot_ppc_dist(species_trace, num_samples=100, figure_kwargs=fig_kwargs())
     return
 
 
@@ -677,7 +677,7 @@ def _():
     mo.md(r"""
     #### Bayesian p-values
 
-    `azp.plot_ppc_tstat()` provides a more formal check by computing a **test statistic** (by default, the median) across the posterior predictive samples and comparing it to the same statistic computed on the observed data.
+    `az.plot_ppc_tstat()` provides a more formal check by computing a **test statistic** (by default, the median) across the posterior predictive samples and comparing it to the same statistic computed on the observed data.
 
     The plot shows the distribution of the test statistic computed from each posterior predictive draw, with the observed value marked. If the observed statistic falls well within the posterior predictive distribution, the model captures that aspect of the data. If it falls in the tails, the model is systematically missing something.
 
@@ -688,8 +688,8 @@ def _():
 
 @app.cell(hide_code=True)
 def _(pooled_trace, species_trace):
-    p_pooled = azp.plot_ppc_tstat(pooled_trace, figure_kwargs=fig_kwargs())
-    p_species = azp.plot_ppc_tstat(species_trace, figure_kwargs=fig_kwargs())
+    p_pooled = az.plot_ppc_tstat(pooled_trace, figure_kwargs=fig_kwargs())
+    p_species = az.plot_ppc_tstat(species_trace, figure_kwargs=fig_kwargs())
 
     _figs = [plt.figure(n) for n in plt.get_fignums()[-2:]]
     _xlims = [ax.get_xlim() for fig in _figs for ax in fig.axes]
@@ -734,7 +734,7 @@ def _(pooled_model, pooled_trace):
 
 @app.cell
 def _(species_trace):
-    species_loo = azs.loo(species_trace)
+    species_loo = az.loo(species_trace)
     species_loo
     return
 
@@ -768,7 +768,7 @@ def _():
 
 @app.cell
 def _(species_trace):
-    azp.plot_loo_pit(species_trace, var_names=["mass"], figure_kwargs=fig_kwargs())
+    az.plot_loo_pit(species_trace, var_names=["mass"], figure_kwargs=fig_kwargs())
     return
 
 
@@ -782,7 +782,7 @@ def _():
 
 @app.cell(hide_code=True)
 def _(pooled_trace):
-    azp.plot_loo_pit(pooled_trace, var_names=["mass"], figure_kwargs=fig_kwargs())
+    az.plot_loo_pit(pooled_trace, var_names=["mass"], figure_kwargs=fig_kwargs())
     return
 
 
@@ -801,14 +801,14 @@ def _():
 
     ### Model Comparison
 
-    `azs.compare()` ranks models by their expected log pointwise predictive density (ELPD). The model with the highest ELPD (least negative) is ranked first. The `weight` column gives **stacking weights** — an estimate of how much each model should contribute to an optimal predictive mixture.
+    `az.compare()` ranks models by their expected log pointwise predictive density (ELPD). The model with the highest ELPD (least negative) is ranked first. The `weight` column gives **stacking weights** — an estimate of how much each model should contribute to an optimal predictive mixture.
     """)
     return
 
 
 @app.cell
 def _(pooled_trace, species_trace):
-    model_comparison = azs.compare(
+    model_comparison = az.compare(
         {
             "species + flipper": species_trace,
             "pooled (no predictors)": pooled_trace,
@@ -820,7 +820,7 @@ def _(pooled_trace, species_trace):
 
 @app.cell
 def _(model_comparison):
-    azp.plot_compare(model_comparison, figure_kwargs=fig_kwargs())
+    az.plot_compare(model_comparison, figure_kwargs=fig_kwargs())
     return
 
 
@@ -837,7 +837,7 @@ def _():
     ```python
     with model:
         prior = pm.sample_prior_predictive()
-    azp.plot_ppc_dist(prior, group="prior_predictive")  # Plausible data?
+    az.plot_ppc_dist(prior, group="prior_predictive")  # Plausible data?
     ```
 
     ### Step 1: Sample
@@ -849,24 +849,24 @@ def _():
 
     ### Step 2: Check Convergence
     ```python
-    azs.summary(trace)          # R-hat < 1.01? ESS > 400?
-    azp.plot_trace_dist(trace)  # Mixing well?
-    azp.plot_rank(trace)        # Flat Δ-ECDF lines?
-    azp.plot_energy(trace)      # Good BFMI?
+    az.summary(trace)          # R-hat < 1.01? ESS > 400?
+    az.plot_trace_dist(trace)  # Mixing well?
+    az.plot_rank(trace)        # Flat Δ-ECDF lines?
+    az.plot_energy(trace)      # Good BFMI?
     ```
 
     **If problems:**
 
     | Symptom | Diagnostic | Likely cause | Fix |
     |---------|-----------|-------------|-----|
-    | High R-hat, low ESS | `azp.plot_pair()` | Non-identifiability | Reparameterize, add constraints |
-    | Divergences | `azp.plot_pair()` | Funnel geometry | Non-centered parameterization, increase `target_accept` |
-    | Low BFMI (< 0.3) | `azp.plot_energy()` | Poor prior scaling | Rescale priors, reparameterize |
+    | High R-hat, low ESS | `az.plot_pair()` | Non-identifiability | Reparameterize, add constraints |
+    | Divergences | `az.plot_pair()` | Funnel geometry | Non-centered parameterization, increase `target_accept` |
+    | Low BFMI (< 0.3) | `az.plot_energy()` | Poor prior scaling | Rescale priors, reparameterize |
 
     ### Step 3: Check Monte Carlo Error
     ```python
-    azs.mcse(trace)             # MCSE small relative to posterior SD?
-    azp.plot_mcse(trace)        # Stable across quantiles?
+    az.mcse(trace)             # MCSE small relative to posterior SD?
+    az.plot_mcse(trace)        # Stable across quantiles?
     ```
     **Rule of thumb:** MCSE / posterior SD should be < 0.1. MCSE tells you how many decimal places you can trust — if MCSE ≈ 0.002, reporting to two decimal places is justified. If MCSE is too high: increase draws (or fix sampling first).
 
@@ -874,16 +874,16 @@ def _():
     ```python
     pm.sample_posterior_predictive(trace, extend_inferencedata=True)
 
-    azp.plot_ppc_dist(trace)    # Predictions match data?
-    azs.loo(trace)              # Reasonable elpd, no high Pareto k?
-    azp.plot_khat(loo_result)   # Identify problematic observations
-    azp.plot_loo_pit(trace, var_names=["y"])     # Calibration check
+    az.plot_ppc_dist(trace)    # Predictions match data?
+    az.loo(trace)              # Reasonable elpd, no high Pareto k?
+    az.plot_khat(loo_result)   # Identify problematic observations
+    az.plot_loo_pit(trace, var_names=["y"])     # Calibration check
     ```
 
     ### Step 5: Compare Models (if applicable)
     ```python
-    azs.compare({"model_a": trace_a, "model_b": trace_b})
-    azp.plot_compare(comparison)
+    az.compare({"model_a": trace_a, "model_b": trace_b})
+    az.plot_compare(comparison)
     ```
     """)
     return
@@ -1069,7 +1069,7 @@ def _():
     mo.md(r"""
     ### Your workflow:
 
-    **Step 1:** Run convergence diagnostics on `exercise_trace` — `azs.summary()` (R-hat, ESS), `azp.plot_trace_dist()` (mixing), `azp.plot_energy()` (BFMI), and check `sample_stats` for divergences.
+    **Step 1:** Run convergence diagnostics on `exercise_trace` — `az.summary()` (R-hat, ESS), `az.plot_trace_dist()` (mixing), `az.plot_energy()` (BFMI), and check `sample_stats` for divergences.
 
     What problems do you see? (Hint: there are at least two distinct issues.)
     """)
@@ -1093,7 +1093,7 @@ def _():
 
     ```python
     pm.sample_posterior_predictive(exercise_trace_fixed, extend_inferencedata=True)
-    azp.plot_ppc_dist(exercise_trace_fixed)
+    az.plot_ppc_dist(exercise_trace_fixed)
     ```
     """)
     return
@@ -1106,7 +1106,7 @@ def _():
 
     ```python
     pm.compute_log_likelihood(trace)
-    azs.compare({"single-changepoint": ..., "two-changepoint": ...})
+    az.compare({"single-changepoint": ..., "two-changepoint": ...})
     ```
     """)
     return
@@ -1174,7 +1174,7 @@ def _(disasters_array, years):
             pm.sample_posterior_predictive(
                 exercise_trace_fixed, extend_inferencedata=True, random_seed=RANDOM_SEED
             )
-        ppc_plot = azp.plot_ppc_dist(exercise_trace_fixed)
+        ppc_plot = az.plot_ppc_dist(exercise_trace_fixed)
 
         # Step 4: two change-point model and LOO comparison.
         with pm.Model() as two_cp_model:
@@ -1196,7 +1196,7 @@ def _(disasters_array, years):
         with two_cp_model:
             pm.compute_log_likelihood(two_cp_trace)
 
-        comparison = azs.compare(
+        comparison = az.compare(
             {
                 "single-changepoint": exercise_trace_fixed,
                 "two-changepoint": two_cp_trace,

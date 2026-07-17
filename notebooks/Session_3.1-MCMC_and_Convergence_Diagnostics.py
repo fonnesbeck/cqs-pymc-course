@@ -8,8 +8,6 @@ with app.setup:
     import marimo as mo
     import inspect
     import pymc as pm
-    import arviz_stats as azs  # noqa: F401
-    import arviz_plots as azp
     import numpy as np
     import matplotlib.pyplot as plt
     from matplotlib.collections import LineCollection
@@ -21,7 +19,7 @@ with app.setup:
     import base64
     import arviz as az
 
-    azp.style.use("arviz-variat")
+    az.style.use("arviz-variat")
     plt.rcParams.update(
         {
             "figure.figsize": (8, 3),
@@ -169,7 +167,7 @@ def _():
     mo.md(r"""
     ### Stage 2 — Ask the summary
 
-    1. Run `azs.summary(...)` on each idata. Compare `ess_bulk`, `ess_tail`, and `r_hat` side by side. Which parameters look problematic in `idata_b`?
+    1. Run `az.summary(...)` on each idata. Compare `ess_bulk`, `ess_tail`, and `r_hat` side by side. Which parameters look problematic in `idata_b`?
     2. `sample_stats` contains a boolean flag `diverging` — draws where the sampler broke down. Check both runs: how many divergences does each have? (`.sum()` on the DataArray works.) Careful: a clean divergence count does **not** mean a clean run — as you're about to see, the trouble here shows up elsewhere in the summary.
     """)
     return
@@ -184,8 +182,8 @@ def _():
 @app.cell(hide_code=True)
 def _(idata_a, idata_b):
     def solution_warmup_stage2():
-        summary_a = azs.summary(idata_a)
-        summary_b = azs.summary(
+        summary_a = az.summary(idata_a)
+        summary_b = az.summary(
             idata_b, var_names=["mu_alpha", "tau_alpha", "beta", "sigma"]
         )
         div_a = int(idata_a["sample_stats"]["diverging"].sum())
@@ -225,7 +223,7 @@ def _():
     mo.md(r"""
     ### Stage 3 — Look at it
 
-    Call `azp.plot_trace_dist(...)` on each idata. Minimal usage: `azp.plot_trace_dist(idata_a)` (add `var_names=[...]` to focus it). A few things to know before you start:
+    Call `az.plot_trace_dist(...)` on each idata. Minimal usage: `az.plot_trace_dist(idata_a)` (add `var_names=[...]` to focus it). A few things to know before you start:
 
     - The two models have **different parameters**, so you can't use the same `var_names` for both — look at each `posterior` group to see what's there.
     - `idata_b` has *hundreds* of `alpha` entries (one per penguin). Restrict `var_names` to the top-level parameters or the plot will be unreadable.
@@ -254,8 +252,8 @@ def _():
 @app.cell(hide_code=True)
 def _(idata_a, idata_b):
     def solution_warmup_stage3():
-        plot_a = azp.plot_trace_dist(idata_a)
-        plot_b = azp.plot_trace_dist(
+        plot_a = az.plot_trace_dist(idata_a)
+        plot_b = az.plot_trace_dist(
             idata_b, var_names=["mu_alpha", "tau_alpha", "beta", "sigma"]
         )
         return mo.vstack(
@@ -419,7 +417,7 @@ def _(baseline_model):
     with baseline_model:
         prior_pred = pm.sample_prior_predictive(random_seed=RANDOM_SEED)
 
-    azp.plot_ppc_dist(
+    az.plot_ppc_dist(
         prior_pred,
         group="prior_predictive",
         num_samples=100,
@@ -508,14 +506,14 @@ def _():
     mo.md(r"""
     ### Summarizing the Posterior Samples
 
-    The `azs.summary()` function gives you the most important information in one table. Let's walk through each column.
+    The `az.summary()` function gives you the most important information in one table. Let's walk through each column.
     """)
     return
 
 
 @app.cell
 def _(nuts_idata):
-    azs.summary(nuts_idata)
+    az.summary(nuts_idata)
     return
 
 
@@ -549,14 +547,14 @@ def _():
 
     The 89% default probability follows a convention that avoids the false precision of "95%" while providing a useful credible interval. It also has the practical benefit of lower variability in summary statistics compared to wider intervals.
 
-    `azp.plot_dist()` shows the posterior density, making it easy to see the shape of the distribution at a glance.
+    `az.plot_dist()` shows the posterior density, making it easy to see the shape of the distribution at a glance.
     """)
     return
 
 
 @app.cell(hide_code=True)
 def _(nuts_idata):
-    azp.plot_dist(
+    az.plot_dist(
         nuts_idata,
         var_names=["alpha", "beta", "sigma"],
         figure_kwargs=fig_kwargs(cols=3),
@@ -574,7 +572,7 @@ def _():
 
 @app.cell
 def _(nuts_idata):
-    azs.eti(nuts_idata, prob=0.89)
+    az.eti(nuts_idata, prob=0.89)
     return
 
 
@@ -1157,7 +1155,7 @@ def _():
     <span style="color:#d62728">red</span> lines are rejected ones.
 
     Watch how the **trace** (center) and **marginal distribution** (right)
-    build up sample by sample. By the end, the bottom panels look just like what `azp.plot_trace_dist()` produces.
+    build up sample by sample. By the end, the bottom panels look just like what `az.plot_trace_dist()` produces.
     """)
     return
 
@@ -1715,7 +1713,7 @@ def _():
 
 @app.cell
 def _(metropolis_idata, nuts_idata):
-    azp.plot_autocorr(
+    az.plot_autocorr(
         {"NUTS": nuts_idata, "Metropolis": metropolis_idata},
         var_names=["alpha", "beta", "sigma"],
         col_wrap=2,
@@ -1734,8 +1732,8 @@ def _():
 
 @app.cell(hide_code=True)
 def _(metropolis_idata, nuts_idata):
-    _nuts_summary = azs.summary(nuts_idata, var_names=["alpha", "beta", "sigma"])
-    _metro_summary = azs.summary(metropolis_idata, var_names=["alpha", "beta", "sigma"])
+    _nuts_summary = az.summary(nuts_idata, var_names=["alpha", "beta", "sigma"])
+    _metro_summary = az.summary(metropolis_idata, var_names=["alpha", "beta", "sigma"])
 
     mo.md(f"""
     **NUTS ESS:**
@@ -1779,7 +1777,7 @@ def _():
 
 @app.cell
 def _(metropolis_idata, nuts_idata):
-    azp.plot_trace_dist(
+    az.plot_trace_dist(
         {"NUTS": nuts_idata, "Metropolis": metropolis_idata},
         var_names=["alpha", "beta", "sigma"],
         combined=True,
@@ -1802,7 +1800,7 @@ def _():
 
 @app.cell
 def _(metropolis_idata, nuts_idata):
-    azp.plot_rank(
+    az.plot_rank(
         {"NUTS": nuts_idata, "Metropolis": metropolis_idata},
         var_names=["alpha", "beta", "sigma"],
         figure_kwargs=fig_kwargs(cols=3, rows=2),
@@ -1836,13 +1834,13 @@ def _():
 
 @app.cell
 def _(nuts_idata):
-    azs.rhat(nuts_idata, var_names=["alpha", "beta", "sigma"])
+    az.rhat(nuts_idata, var_names=["alpha", "beta", "sigma"])
     return
 
 
 @app.cell
 def _(metropolis_idata):
-    azs.rhat(metropolis_idata, var_names=["alpha", "beta", "sigma"])
+    az.rhat(metropolis_idata, var_names=["alpha", "beta", "sigma"])
     return
 
 
@@ -1868,13 +1866,13 @@ def _():
 
 @app.cell
 def _(nuts_idata):
-    azs.mcse(nuts_idata, var_names=["alpha", "beta", "sigma"])
+    az.mcse(nuts_idata, var_names=["alpha", "beta", "sigma"])
     return
 
 
 @app.cell
 def _(metropolis_idata):
-    azs.mcse(metropolis_idata, var_names=["alpha", "beta", "sigma"])
+    az.mcse(metropolis_idata, var_names=["alpha", "beta", "sigma"])
     return
 
 
@@ -1888,7 +1886,7 @@ def _():
 
 @app.cell
 def _(metropolis_idata, nuts_idata):
-    azp.plot_mcse(
+    az.plot_mcse(
         {"NUTS": nuts_idata, "Metropolis": metropolis_idata},
         var_names=["alpha", "beta", "sigma"],
         figure_kwargs=fig_kwargs(cols=3),
@@ -1903,16 +1901,16 @@ def _():
 
     You may read older advice to "thin" your chains — keeping every $n$th draw to reduce autocorrelation. Modern practice generally favors **collecting more samples** over thinning, since thinning discards information. NUTS already produces low-autocorrelation draws.
 
-    The one case where thinning makes sense is **storage**: if you have very many draws and only need rough summaries. ArviZ provides `azs.thin()` for this:
+    The one case where thinning makes sense is **storage**: if you have very many draws and only need rough summaries. ArviZ provides `az.thin()` for this:
     """)
     return
 
 
 @app.cell(hide_code=True)
 def _(nuts_idata):
-    _thinned = azs.thin(nuts_idata, factor="auto")
-    _original_ess = azs.ess(nuts_idata, var_names=["beta"])["beta"].item()
-    _thinned_ess = azs.ess(_thinned["beta"]).item()
+    _thinned = az.thin(nuts_idata, factor="auto")
+    _original_ess = az.ess(nuts_idata, var_names=["beta"])["beta"].item()
+    _thinned_ess = az.ess(_thinned["beta"]).item()
 
     mo.md(f"""
     Original draws: {nuts_idata.posterior.sizes["draw"]}
@@ -1933,14 +1931,14 @@ def _():
 
     *Is the sampler exploring the full posterior, or stuck in one region?*
 
-    This is an HMC-specific diagnostic. `azp.plot_energy()` overlays two distributions — the marginal energy across all samples and the energy transition between successive samples. If the sampler explores efficiently, these should overlap well. BFMI (Bayesian Fraction of Missing Information) quantifies the overlap. **Values below 0.3 are concerning** — they indicate the sampler can't move freely between energy levels.
+    This is an HMC-specific diagnostic. `az.plot_energy()` overlays two distributions — the marginal energy across all samples and the energy transition between successive samples. If the sampler explores efficiently, these should overlap well. BFMI (Bayesian Fraction of Missing Information) quantifies the overlap. **Values below 0.3 are concerning** — they indicate the sampler can't move freely between energy levels.
     """)
     return
 
 
 @app.cell
 def _(nuts_idata):
-    _pc = azp.plot_energy(
+    _pc = az.plot_energy(
         nuts_idata, visuals={"legend": False}, figure_kwargs={"figsize": (10, 3.5)}
     )
 
@@ -1966,7 +1964,7 @@ def _(nuts_idata):
 
 @app.cell
 def _(nuts_idata):
-    azs.bfmi(nuts_idata)
+    az.bfmi(nuts_idata)
     return
 
 
@@ -1992,7 +1990,7 @@ def _():
 
 @app.cell
 def _(metropolis_idata, nuts_idata):
-    azp.plot_ess(
+    az.plot_ess(
         {"NUTS": nuts_idata, "Metropolis": metropolis_idata},
         var_names=["alpha", "beta", "sigma"],
         kind="quantile",
@@ -2003,7 +2001,7 @@ def _(metropolis_idata, nuts_idata):
 
 @app.cell
 def _(metropolis_idata, nuts_idata):
-    azp.plot_ess_evolution(
+    az.plot_ess_evolution(
         {"NUTS": nuts_idata, "Metropolis": metropolis_idata},
         var_names=["alpha", "beta", "sigma"],
         figure_kwargs=fig_kwargs(cols=3),
