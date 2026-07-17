@@ -11,8 +11,6 @@ with app.setup:
     import plotly.graph_objects as go
     import plotly.io as pio
     from scipy import stats
-    import base64
-    from pathlib import Path
     import importlib
     import pymc as pm
     import arviz as az
@@ -44,7 +42,7 @@ with app.setup:
 
 @app.cell(hide_code=True)
 def header():
-    mo.md(f"""
+    mo.md("""
 
     # Workshop Setup & Pre-work
 
@@ -833,12 +831,27 @@ def _():
     return
 
 
+@app.cell(hide_code=True)
+def _():
+    mo.accordion(
+        {
+            "Hint": mo.md(r"""
+    The exact rejection probability is the tail mass outside the spec limits:
+    `stats.norm.cdf(9.5, 10, 0.3) + (1 - stats.norm.cdf(10.5, 10, 0.3))`.
+    """)
+        }
+    )
+    return
+
+
 @app.cell
 def exercise_2():
     ex2_rng = np.random.default_rng(seed=1)
     diameters = ...
     rejected = ...
     mc_rejection_rate = ...
+    # Step 3: the exact answer, using the normal CDF from scipy.stats
+    exact_rejection_rate = ...
     return
 
 
@@ -971,6 +984,8 @@ def _():
     3. Keep only the $\theta$ values where the simulation produced exactly 14 heads (**rejection sampling**)
     4. Plot a histogram of the accepted $\theta$ values: this approximates the posterior.
     5. Compare to the exact posterior: $\text{Beta}(2 + 14, 2 + 6) = \text{Beta}(16, 8)$
+
+    *Hint:* `ex4_rng.binomial(n=20, p=prior_thetas)` accepts an *array* of probabilities and returns one simulated count per element — no Python loop needed.
     """)
     return
 
