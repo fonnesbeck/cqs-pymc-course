@@ -47,7 +47,7 @@ def header():
     mo.md("""
     # Session 2.1: PyTensor and the PyMC API
 
-    In this session, we'll explore the fundamental components of PyMC: PyTensor and PyMC's variable classes. We'll learn how PyTensor defines and optimizes computational graphs, and how PyMC uses these capabilities to build probabilistic models.
+    In this session we look under PyMC's hood. PyMC is built on **PyTensor**, a library for defining and compiling computational graphs. We'll learn just enough PyTensor to read the graphs PyMC builds — then use that lens to understand what a PyMC model actually *is*, and tour the parts of the PyMC API you'll use in every model: distributions, `logp` and `draw`, `pm.math`, and the model-debugging toolkit.
     """)
     return
 
@@ -69,11 +69,9 @@ def _():
 
     {pytensor_html}
 
-    PyTensor is the computational backend for PyMC. It defines **symbolic variables** and operations on them, which are compiled into efficient functions that can run on CPUs or GPUs. Let's begin by exploring the basic elements of PyTensor.
+    PyTensor is the computational backend of PyMC: every model you build with PyMC is, underneath, a PyTensor **computational graph**. You will rarely write PyTensor directly — the goal of this section is to learn just enough to *read* what PyMC builds for you. That literacy pays off throughout the course: it explains what model variables really are, what "compiling" a model means, and how to decode PyTensor's error messages when something goes wrong.
 
-    In PyTensor, you define a **computational graph** explicitly. You start with input variables that are essentially placeholders and from these, build intermediate variables by applying operators. These intermediate variables can then be treated as final outputs or as inputs for further computation.
-
-    While PyTensor is designed to feel similar to NumPy to ease the learning curve, it's important to remember they are distinct. PyTensor operations build a graph of computations (which are executed **lazily**) rather than immediately returning values like NumPy.
+    In PyTensor, you define a computational graph explicitly. You start with input variables that are essentially placeholders, and from these build intermediate variables by applying operators. While PyTensor is designed to feel similar to NumPy, there is a key difference: PyTensor operations build a graph of computations to be executed **lazily**, rather than immediately returning values.
     """)
     return
 
