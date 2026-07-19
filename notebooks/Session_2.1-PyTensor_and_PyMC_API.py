@@ -6,6 +6,7 @@ app = marimo.App(width="medium")
 with app.setup:
     import marimo as mo
     import base64
+    import contextlib
     import inspect
     from pathlib import Path
     import numpy as np
@@ -697,6 +698,48 @@ def _():
     grid = np.linspace(-3, 3, 7)
     pm.math.invlogit(grid).eval(), pm.math.switch(grid > 0, 1.0, 0.0).eval()
     return (grid,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ### Debugging Models
+
+    A model that *builds* without error can still be broken *numerically*. The most common failure: the model's log-probability is `-inf` at the sampler's starting point, so sampling fails immediately. PyMC ships a small toolkit for catching this before you sample:
+
+    - `model.initial_point()` — the starting values for every variable
+    - `model.point_logps()` — each variable's log-probability at that point
+    - `model.debug()` — an automated diagnosis that pinpoints the offending variable and value
+
+    Here is a model with a planted bug — a Poisson count variable whose initial value is negative, outside the distribution's support. It constructs without complaint:
+    """)
+    return
+
+
+@app.cell
+def _():
+    with pm.Model() as broken_model:
+        count = pm.Poisson("count", mu=2.0, initval=-1)
+
+    broken_model.initial_point(), broken_model.point_logps()
+    return (broken_model,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    `point_logps()` shows *which* variable has a non-finite log-probability. `model.debug()` goes further, evaluating each variable's parameters and reporting exactly which value is to blame:
+    """)
+    return
+
+
+@app.cell
+def _(broken_model):
+    _buf = io.StringIO()
+    with contextlib.redirect_stdout(_buf):
+        broken_model.debug()
+    mo.md(f"```\n{_buf.getvalue()}```")
+    return
 
 
 @app.cell(hide_code=True)
