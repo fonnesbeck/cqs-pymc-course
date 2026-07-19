@@ -2,3 +2,21 @@
 source_notebooks/
 .verify/
 __pycache__/
+
+# Local AI tooling and generated planning artifacts
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.claude/
+.cursor/
+.gemini/
+.omp/
+.superpowers/
+.github/copilot-instructions.md
+docs/project-skills/
+docs/superpowers/
+plans/
+local:/
+
+# Marimo editor session state
+notebooks/__marimo__/
