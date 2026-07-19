@@ -45,16 +45,6 @@ with app.setup:
 
 @app.cell(hide_code=True)
 def header():
-    mo.md("""
-    # Session 2.1: PyTensor and the PyMC API
-
-    In this session we look under PyMC's hood. PyMC is built on **PyTensor**, a library for defining and compiling computational graphs. We'll learn just enough PyTensor to read the graphs PyMC builds — then use that lens to understand what a PyMC model actually *is*, and tour the parts of the PyMC API you'll use in every model: distributions, `logp` and `draw`, `pm.math`, and the model-debugging toolkit.
-    """)
-    return
-
-
-@app.cell(hide_code=True)
-def _():
     def render_pytensor_logo():
         img_path = Path(__file__).parent / "images" / "PyTensor_RGB.png"
         img_html = ""
@@ -66,6 +56,10 @@ def _():
     pytensor_html = render_pytensor_logo()
 
     mo.md(f"""
+    # Session 2.1: PyTensor and the PyMC API
+
+    In this session we look under PyMC's hood. PyMC is built on **PyTensor**, a library for defining and compiling computational graphs. We'll learn just enough PyTensor to read the graphs PyMC builds — then use that lens to understand what a PyMC model actually *is*, and tour the parts of the PyMC API you'll use in every model: distributions, `logp` and `draw`, `pm.math`, and the model-debugging toolkit.
+
     ## PyTensor Basics
 
     {pytensor_html}
@@ -79,18 +73,15 @@ def _():
 
 @app.cell(hide_code=True)
 def _():
-    mo.md(r"""
+    mo.vstack(
+        [
+            mo.md(r"""
     ### Tensors and Basic Operations
 
     To begin, let's define some PyTensor tensors and show how to perform some basic operations.
-    """)
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.callout(
-        mo.md(r"""
+    """),
+            mo.callout(
+                mo.md(r"""
     **What is a Tensor?**
 
     A tensor is a multi-dimensional array that serves as the fundamental data structure.
@@ -102,7 +93,9 @@ def _():
     * A 2-D tensor is a grid of numbers (a matrix).
     * A 3-D tensor is a cube of numbers, and so on for any number of dimensions.
     """),
-        kind="info",
+                kind="info",
+            ),
+        ]
     )
     return
 
