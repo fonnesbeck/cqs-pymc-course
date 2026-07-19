@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.9"
+__generated_with = "0.23.14"
 app = marimo.App(width="medium")
 
 with app.setup:
@@ -50,7 +50,7 @@ def _():
     This session guides you through choosing appropriate priors and likelihoods for your models.
 
     **Topics:**
-    Distribution families, choosing likelihoods for different data types, prior predictive simulation, and interactive prior exploration with PreliZ
+    Distribution families (univariate and multivariate), choosing likelihoods for different data types, censored and truncated data, prior predictive simulation, and interactive prior exploration with PreliZ
 
     ---
     """)
@@ -331,7 +331,7 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
     outlier_toggle = mo.ui.switch(label="Include outlier", value=False)
     cluster_n_slider = mo.ui.slider(10, 200, value=30, step=5, label="n (cluster size)")
@@ -436,7 +436,7 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
     hn_sigma_slider = mo.ui.slider(0.5, 5, value=1, step=0.1, label="sigma")
     hn_sigma_slider
@@ -501,7 +501,7 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
     ln_mu_slider = mo.ui.slider(-1, 3, value=0, step=0.1, label="mu")
     ln_sigma_slider = mo.ui.slider(0.1, 2.5, value=0.5, step=0.1, label="sigma")
@@ -560,7 +560,7 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
     gamma_alpha_slider = mo.ui.slider(0.5, 20, value=2, step=0.1, label="alpha (shape)")
     gamma_beta_slider = mo.ui.slider(0.1, 5, value=1, step=0.1, label="beta (rate)")
@@ -621,7 +621,7 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
     unif_a_slider = mo.ui.slider(-3, 1, value=0, step=0.5, label="a (lower)")
     unif_b_slider = mo.ui.slider(-1, 3, value=1, step=0.5, label="b (upper)")
@@ -685,7 +685,7 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
     beta_alpha_slider = mo.ui.slider(0.1, 20, value=2, step=0.1, label="alpha")
     beta_beta_slider = mo.ui.slider(0.1, 20, value=5, step=0.1, label="beta")
@@ -755,7 +755,7 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
     bern_p_slider = mo.ui.slider(0.01, 0.99, value=0.3, step=0.01, label="p")
     bern_p_slider
@@ -808,7 +808,7 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
     binom_n_slider = mo.ui.slider(1, 50, value=10, step=1, label="n (trials)")
     binom_p_slider = mo.ui.slider(0.01, 0.99, value=0.3, step=0.01, label="p")
@@ -863,7 +863,7 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
     pois_lambda_slider = mo.ui.slider(1, 50, value=10, step=1, label="lambda")
     pois_lambda_slider
@@ -917,7 +917,7 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
     nb_mu_slider = mo.ui.slider(1, 50, value=10, step=1, label="mu")
     nb_alpha_slider = mo.ui.slider(0.5, 100, value=5, step=0.5, label="alpha")
@@ -989,7 +989,7 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
     od_alpha_slider = mo.ui.slider(
         0.5, 50, value=3, step=0.5, label="alpha (lower = more overdispersed)"
@@ -1117,7 +1117,98 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## Exercise: Choosing a Likelihood for Count Data (Bike Sharing)
+    ### Censored and Truncated Data
+
+    Sometimes the mismatch between data and likelihood isn't the distribution family — it's the **observation process**:
+
+    - **Truncated**: values outside the bounds are *never observed at all*, and you don't know how many you missed. Only insurance claims above the deductible are filed; only admitted students appear in the dataset. The density is renormalized over the observable range.
+    - **Censored**: an observation happened, but you only learn that it hit a bound. A sensor reads "≥ 100" at its detection limit; a patient is still alive when the study ends. Probability mass piles up *at* the bounds.
+
+    PyMC handles both by wrapping any base distribution:
+
+    ```python
+    pm.Censored("y", pm.Normal.dist(mu, sigma), lower=None, upper=limit, observed=y)
+    pm.Truncated("y", pm.Normal.dist(mu, sigma), lower=0, observed=y)
+    ```
+
+    (`pm.TruncatedNormal` is a named shortcut for the common case — you'll see it in Session 5.1.) Fitting the *wrong* wrapper — or ignoring the observation process entirely — biases every parameter estimate, so recognizing censoring vs truncation is as important as picking the right family.
+    """)
+    return
+
+
+@app.cell
+def _():
+    censored_draws = pm.draw(
+        pm.Censored.dist(pm.Normal.dist(0, 1), lower=None, upper=1.0),
+        draws=5000,
+        random_seed=42,
+    )
+    truncated_draws = pm.draw(
+        pm.Truncated.dist(pm.Normal.dist(0, 1), lower=None, upper=1.0),
+        draws=5000,
+        random_seed=42,
+    )
+    return censored_draws, truncated_draws
+
+
+@app.cell(hide_code=True)
+def _(censored_draws, truncated_draws):
+    def plot_censored_truncated():
+        from plotly.subplots import make_subplots
+
+        upper = 1.0
+        x = np.linspace(-4, 4, 300)
+        base_pdf = stats.norm.pdf(x)
+
+        fig = make_subplots(
+            rows=1, cols=2, subplot_titles=["Censored at 1", "Truncated at 1"]
+        )
+        for col, draws in [(1, censored_draws), (2, truncated_draws)]:
+            fig.add_trace(
+                go.Histogram(
+                    x=draws,
+                    xbins=dict(start=-4, end=4, size=0.1),
+                    histnorm="probability density",
+                    marker_color=PYMC_BLUE,
+                    opacity=0.6,
+                    showlegend=False,
+                ),
+                row=1,
+                col=col,
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=x,
+                    y=base_pdf,
+                    mode="lines",
+                    line=dict(color=PYMC_GREEN, width=2, dash="dash"),
+                    name="Normal(0, 1)",
+                    showlegend=(col == 1),
+                ),
+                row=1,
+                col=col,
+            )
+            fig.add_vline(x=upper, line_dash="dot", line_color="firebrick", row=1, col=col)
+
+        fig.update_layout(
+            title=(
+                "5000 draws from Normal(0, 1) bounded above at 1 — censoring piles mass"
+                " on the bound, truncation renormalizes what remains"
+            ),
+            width=900,
+            height=350,
+            margin=dict(l=40, r=20, t=70, b=40),
+        )
+        return fig
+
+    plot_censored_truncated()
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ## Exercise: Choosing a Likelihood by Simulation
     """)
     return
 
@@ -1126,162 +1217,182 @@ def _():
 def _():
     mo.callout(
         mo.md("""
-        The UCI Bike Sharing Dataset contains daily counts of bike rentals. We'll compare Poisson and NegativeBinomial likelihoods.
+        The Mayo Clinic **primary biliary cholangitis (PBC)** study recorded serum
+        bilirubin (mg/dL) for 418 patients — a strictly positive, right-skewed
+        biomarker.
 
-        We will model `cnt`, the total number of rentals each day; the remaining
-        columns (season, weather, etc.) are ignored in this exercise.
+        Your job: find a distribution whose **draws look like this data**. There is
+        no fitting and no MCMC here — you pick a family and its parameters, simulate
+        from it with `pm.draw`, and compare the simulated values to the real ones by
+        eye. Adjust and repeat until the shape and tail match.
 
-        1. Fit a Poisson model with an appropriate prior for `mu`
-        2. Fit a NegativeBinomial model with appropriate priors for `mu` and `alpha`
-        3. Compare which fits the data better using posterior predictive checks
+        Two things to weigh as you choose:
+
+        1. **Support** — which values can the distribution even produce? Bilirubin is
+           a concentration, so it can never be negative.
+        2. **Shape** — the data are heavily right-skewed with a long upper tail.
+           Which families can reproduce that, and which cannot?
         """),
         kind="info",
     )
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
-    bike_df = pl.read_csv(data_path / "day.csv")
-    bike_df
-    return (bike_df,)
+    pbc_df = pl.read_csv(data_path / "pbc_bilirubin.csv")
+    pbc_df
+    return (pbc_df,)
 
 
-@app.cell
-def _(bike_df):
-    bike_df["cnt"].plot.hist()
-    return
-
-
-@app.cell
-def _(bike_df):
-    bike_df["cnt"].describe()
+@app.cell(hide_code=True)
+def _(pbc_df):
+    _fig, _ax = plt.subplots(figsize=(9, 4))
+    _ax.hist(pbc_df["bili"].to_numpy(), bins=50, density=True, color="C1", alpha=0.7)
+    _ax.set_xlabel("Serum bilirubin (mg/dL)")
+    _ax.set_ylabel("Density")
+    _ax.set_title("Serum bilirubin — 418 PBC patients")
+    _fig
     return
 
 
 @app.cell(hide_code=True)
-def _(bike_df):
-    bike_counts = bike_df["cnt"].to_numpy()
+def _(pbc_df):
+    pbc_df["bili"].describe()
+    return
+
+
+@app.cell(hide_code=True)
+def _(pbc_df):
+    bilirubin = pbc_df["bili"].to_numpy()
     mo.vstack(
         [
             mo.md(
-                f"**{len(bike_counts)} days** of bike rental data. Mean: {bike_counts.mean():.0f}, Std: {bike_counts.std():.0f}"
+                f"**{len(bilirubin)} patients.** Serum bilirubin ranges from "
+                f"{bilirubin.min():.1f} to {bilirubin.max():.1f} mg/dL "
+                f"(mean {bilirubin.mean():.2f}, median {np.median(bilirubin):.2f})."
             ),
             mo.md(
-                f"Note: the variance ({bike_counts.var():.0f}) is much larger than the mean ({bike_counts.mean():.0f}) — this is **overdispersion**."
+                "Note: every value is **strictly positive** and the mean sits well "
+                "above the median — the data are heavily **right-skewed**, with a "
+                "few patients carrying very high bilirubin. Keep both facts in mind "
+                "when you choose a likelihood."
             ),
         ]
     )
-    return (bike_counts,)
+    return (bilirubin,)
 
 
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The scaffold uses `pm.sample_posterior_predictive(trace, extend_inferencedata=True)`,
-    which simulates replicate datasets from the fitted model and stores them in a
-    new `posterior_predictive` group on the same object — the PyMC equivalent of
-    the manual scipy-based check you did in Session 1.1.
+    `pm.draw` samples directly from a distribution — no fitting, no MCMC. Build an
+    unfit distribution with `pm.SomeDistribution.dist(...)`, then
+    `pm.draw(dist, draws=N)` returns an array of simulated values:
+
+    ```python
+    draws = pm.draw(pm.LogNormal.dist(mu=0.5, sigma=1.0), draws=2000)
+    ```
+
+    Change the family or its parameters and the draws change instantly. That
+    immediate feedback is how you build intuition for what a prior or likelihood
+    actually implies about your data.
     """)
     return
 
 
 @app.cell
-def _(bike_counts, show_count_model_results):
-    def _fit_poisson_model():
-        with pm.Model():
-            mu = ...
-            pm.Poisson("obs", mu=mu, observed=bike_counts)
-            trace = ...
-            pm.sample_posterior_predictive(trace, extend_inferencedata=True)
-        return trace
+def _(bilirubin, show_draws_vs_data):
+    # Pick a distribution whose draws resemble the bilirubin data.
+    # The starter is a Normal with the data's mean and sd — run it, see what goes
+    # wrong, then change `candidate` to a better family and parameters.
+    candidate = pm.Normal.dist(mu=bilirubin.mean(), sigma=bilirubin.std())
 
-    def _fit_negbin_model():
-        with pm.Model():
-            mu = ...
-            alpha = ...
-            pm.NegativeBinomial("obs", mu=mu, alpha=alpha, observed=bike_counts)
-            trace = ...
-            pm.sample_posterior_predictive(trace, extend_inferencedata=True)
-        return trace
-
-    show_count_model_results(_fit_poisson_model(), _fit_negbin_model())
+    draws = pm.draw(candidate, draws=4000, random_seed=42)
+    show_draws_vs_data(draws)
     return
 
 
-@app.cell
-def _(bike_counts):
-    def show_count_model_results(poisson_trace, negbin_trace):
-        summary_p = az.summary(poisson_trace, var_names=["mu"])
-        summary_nb = az.summary(negbin_trace, var_names=["mu", "alpha"])
+@app.cell(hide_code=True)
+def _(bilirubin):
+    def show_draws_vs_data(draws):
+        draws = np.asarray(draws)
+        lo = min(0.0, float(draws.min()))
+        hi = min(max(float(bilirubin.max()), float(np.percentile(draws, 99))), 40.0)
+        bins = np.linspace(lo, hi, 60)
 
-        fig, axes = plt.subplots(1, 2, figsize=(14, 4), sharex=True)
-
-        axes[0].hist(
-            bike_counts, bins=50, density=True, alpha=0.5, color="C1", label="Data"
+        fig, ax = plt.subplots(figsize=(9, 4))
+        ax.hist(
+            bilirubin, bins=bins, density=True, alpha=0.5, color="C1",
+            label="Bilirubin data",
         )
-        ppc_p = poisson_trace.posterior_predictive["obs"].values.flatten()
-        axes[0].hist(
-            ppc_p,
-            bins=np.linspace(0, bike_counts.max() * 1.2, 80),
-            density=True,
-            alpha=0.3,
-            color="C0",
-            label="Posterior predictive",
+        ax.hist(
+            draws, bins=bins, density=True, alpha=0.4, color="C0",
+            label="Your draws",
         )
-        axes[0].set_title("Poisson")
-        axes[0].set_xlabel("Daily bike rentals")
-        axes[0].legend()
-
-        axes[1].hist(
-            bike_counts, bins=50, density=True, alpha=0.5, color="C1", label="Data"
-        )
-        ppc_nb = negbin_trace.posterior_predictive["obs"].values.flatten()
-        axes[1].hist(
-            ppc_nb,
-            bins=np.linspace(0, bike_counts.max() * 1.2, 80),
-            density=True,
-            alpha=0.3,
-            color="C0",
-            label="Posterior predictive",
-        )
-        axes[1].set_title("Negative Binomial")
-        axes[1].set_xlabel("Daily bike rentals")
-        axes[1].legend()
-
+        ax.axvline(0, color="k", lw=1, ls="--")
+        ax.set_xlabel("Serum bilirubin (mg/dL)")
+        ax.set_ylabel("Density")
+        ax.legend()
         fig.tight_layout()
 
-        return mo.vstack(
-            [
-                mo.md("**Poisson model summary:**"),
-                summary_p,
-                mo.md("**Negative Binomial model summary:**"),
-                summary_nb,
-                fig,
-            ]
+        frac_neg = float(np.mean(draws < 0))
+        stats_line = (
+            f"Draws: median {np.median(draws):.2f}, mean {draws.mean():.2f} "
+            f"(data: median {np.median(bilirubin):.2f}, mean {bilirubin.mean():.2f})."
         )
+        if frac_neg > 0.001:
+            verdict = (
+                f" **{frac_neg:.0%} of your draws are negative** — impossible for a "
+                "concentration, so this family is wrong."
+            )
+        else:
+            verdict = (
+                " All draws are positive — now check how well the peak and the right "
+                "tail line up with the data."
+            )
+        return mo.vstack([mo.md(stats_line + verdict), fig])
 
-    return (show_count_model_results,)
+    return (show_draws_vs_data,)
 
 
 @app.cell(hide_code=True)
-def _(
-    show_count_model_results,
-    solution_fit_negbin_model,
-    solution_fit_poisson_model,
-):
+def _(bilirubin, show_draws_vs_data):
     mo.accordion(
         {
             "Solution": mo.vstack(
                 [
                     mo.md(
-                        f"```python\n{inspect.getsource(solution_fit_poisson_model)}\n\n{inspect.getsource(solution_fit_negbin_model)}\n```"
+                        "Bilirubin is a **strictly positive, right-skewed** "
+                        "concentration. The Normal fails on support alone — centered "
+                        "near the mean it puts about a quarter of its draws below "
+                        "zero. A **LogNormal** lives on the positive axis and is "
+                        "right-skewed by construction, so its draws match both the "
+                        "peak and the long tail. A clean way to set its parameters is "
+                        "straight from the data on the log scale: "
+                        "`mu = np.log(bilirubin).mean()`, "
+                        "`sigma = np.log(bilirubin).std()`. (A Gamma works well too — "
+                        "try it and compare.)"
                     ),
-                    mo.lazy(
-                        lambda: show_count_model_results(
-                            solution_fit_poisson_model(), solution_fit_negbin_model()
-                        ),
-                        show_loading_indicator=True,
+                    mo.md(
+                        "```python\n"
+                        "candidate = pm.LogNormal.dist(\n"
+                        "    mu=np.log(bilirubin).mean(),\n"
+                        "    sigma=np.log(bilirubin).std(),\n"
+                        ")\n"
+                        "draws = pm.draw(candidate, draws=4000, random_seed=1)\n"
+                        "show_draws_vs_data(draws)\n"
+                        "```"
+                    ),
+                    show_draws_vs_data(
+                        pm.draw(
+                            pm.LogNormal.dist(
+                                mu=np.log(bilirubin).mean(),
+                                sigma=np.log(bilirubin).std(),
+                            ),
+                            draws=4000,
+                            random_seed=1,
+                        )
                     ),
                 ]
             ),
@@ -1320,7 +1431,7 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
     penguins_df = pl.read_csv(data_path / "penguins.csv", null_values="NA").drop_nulls()
     adelie_mass = penguins_df.filter(pl.col("species") == "Adelie")[
@@ -1330,7 +1441,7 @@ def _():
     return adelie_mass, penguins_df
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(penguins_df):
     penguins_df["body_mass_g"].plot.hist()
     return
@@ -1358,7 +1469,7 @@ def _():
     return (informed_prior,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
     prior_pred_log_toggle = mo.ui.switch(label="Log x-axis", value=True)
     prior_pred_log_toggle
@@ -1466,22 +1577,39 @@ def _():
 
 @app.cell
 def _(adelie_mass, show_penguin_prior_check):
-    def _exercise_penguin_prior_vs_posterior():
+    def exercise_penguin_prior_check():
         with pm.Model():
+            # YOUR CODE HERE — priors for mu and sigma, in grams
             mu = ...
             sigma = ...
-            obs = pm.Normal("obs", mu, sigma, observed=adelie_mass)
+            pm.Normal("obs", mu, sigma, observed=adelie_mass)
+            # YOUR CODE HERE — sample the prior predictive and the posterior
             prior_trace = ...
             posterior_trace = ...
 
-        return prior_trace, posterior_trace
+        return show_penguin_prior_check(prior_trace, posterior_trace)
 
-    _prior_trace, _posterior_trace = _exercise_penguin_prior_vs_posterior()
-    show_penguin_prior_check(_prior_trace, _posterior_trace)
+    return (exercise_penguin_prior_check,)
+
+
+@app.cell(hide_code=True)
+def _():
+    run_penguin_prior_check = mo.ui.run_button(label="▶ Run exercise")
+    run_penguin_prior_check
+    return (run_penguin_prior_check,)
+
+
+@app.cell(hide_code=True)
+def _(exercise_penguin_prior_check, run_penguin_prior_check):
+    mo.stop(
+        not run_penguin_prior_check.value,
+        mo.md("*Click ▶ Run exercise once your code is ready.*"),
+    )
+    exercise_penguin_prior_check()
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(adelie_mass):
     def show_penguin_prior_check(prior_trace, posterior_trace):
         fig, axes = plt.subplots(1, 3, figsize=(16, 4))
@@ -1657,6 +1785,130 @@ def _():
     mo.md(r"""
     ---
 
+    ## Multivariate distributions
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ### Multivariate Normal distribution
+
+    Core form: $e^{-\frac{1}{2}\, \mathbf{x}^\top \Sigma^{-1} \mathbf{x}}$
+
+    * Joint distribution of correlated continuous variables
+    * Parameterized by a mean vector $\mu$ and covariance matrix $\Sigma$
+    * All marginals and conditionals are Normal
+    * The workhorse behind correlated random effects and Gaussian processes (Session 5.2)
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mvn_rho_slider = mo.ui.slider(-0.95, 0.95, value=0.6, step=0.05, label="rho")
+    mvn_sigma2_slider = mo.ui.slider(0.4, 3, value=1.0, step=0.1, label="sigma_y")
+    mo.hstack([mvn_rho_slider, mvn_sigma2_slider], justify="start")
+    return mvn_rho_slider, mvn_sigma2_slider
+
+
+@app.cell(hide_code=True)
+def _(mvn_rho_slider, mvn_sigma2_slider):
+    def plot_mvn_scatter():
+        rho = mvn_rho_slider.value
+        sy = mvn_sigma2_slider.value
+        cov = np.array([[1.0, rho * sy], [rho * sy, sy**2]])
+        rng = np.random.default_rng(42)
+        xy = rng.multivariate_normal([0, 0], cov, size=1000)
+
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=xy[:, 0],
+                y=xy[:, 1],
+                mode="markers",
+                marker=dict(color=PYMC_BLUE, size=4, opacity=0.45),
+            )
+        )
+        fig.update_layout(
+            title=f"1000 draws from MVN(0, Σ) — rho={rho:.2f}, sigma_y={sy:.1f}",
+            xaxis_title="x",
+            yaxis_title="y",
+            xaxis=dict(range=[-4, 4]),
+            yaxis=dict(range=[-4 * max(sy, 1), 4 * max(sy, 1)], scaleanchor="x"),
+            width=600,
+            height=500,
+        )
+        return fig
+
+    plot_mvn_scatter()
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ### Dirichlet distribution
+
+    Core form: $\prod_{i} x_i^{\alpha_i - 1}$ on the simplex ($x_i \geq 0$, $\sum_i x_i = 1$)
+
+    * Multivariate generalization of the Beta — a distribution over **proportions**
+    * Conjugate prior for Categorical/Multinomial probabilities
+    * $\alpha_i < 1$: mass piles up at the corners; $\alpha = (1,1,1)$: uniform over the simplex; large $\alpha$: concentrated near the mean
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    dir_a1_slider = mo.ui.slider(0.1, 10, value=1.0, step=0.1, label="alpha_1")
+    dir_a2_slider = mo.ui.slider(0.1, 10, value=1.0, step=0.1, label="alpha_2")
+    dir_a3_slider = mo.ui.slider(0.1, 10, value=1.0, step=0.1, label="alpha_3")
+    mo.hstack([dir_a1_slider, dir_a2_slider, dir_a3_slider], justify="start")
+    return dir_a1_slider, dir_a2_slider, dir_a3_slider
+
+
+@app.cell(hide_code=True)
+def _(dir_a1_slider, dir_a2_slider, dir_a3_slider):
+    def plot_dirichlet_scatter():
+        alphas = (dir_a1_slider.value, dir_a2_slider.value, dir_a3_slider.value)
+        rng = np.random.default_rng(42)
+        samples = rng.dirichlet(alphas, size=1500)
+
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatterternary(
+                a=samples[:, 0],
+                b=samples[:, 1],
+                c=samples[:, 2],
+                mode="markers",
+                marker=dict(color=PYMC_BLUE, size=3.5, opacity=0.4),
+            )
+        )
+        fig.update_layout(
+            title=(
+                f"1500 draws from Dirichlet({alphas[0]:g}, {alphas[1]:g}, {alphas[2]:g})"
+            ),
+            ternary=dict(
+                aaxis=dict(title="x1"),
+                baxis=dict(title="x2"),
+                caxis=dict(title="x3"),
+            ),
+            width=600,
+            height=500,
+        )
+        return fig
+
+    plot_dirichlet_scatter()
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ---
+
     ## Priors for Correlation Matrices: The LKJ Distribution
 
     When modelling multivariate data, we often need priors on **correlation matrices**. Correlation matrices have special constraints (symmetric, positive definite, diagonal = 1), so we can't use standard priors.
@@ -1677,12 +1929,97 @@ def _():
     ```
 
     This is essential for hierarchical models with **correlated random effects** (Session 5.2) and multivariate models.
+    """)
+    return
 
+
+@app.cell(hide_code=True)
+def _():
+    lkj_eta_slider = mo.ui.slider(
+        steps=[0.2, 0.5, 1.0, 2.0, 5.0, 20.0, 100.0], value=1.0, label="eta"
+    )
+    lkj_eta_slider
+    return (lkj_eta_slider,)
+
+
+@app.cell(hide_code=True)
+def _(lkj_eta_slider):
+    def plot_lkj_samples():
+        eta = lkj_eta_slider.value
+        p = 5
+        n_show, n_hist = 6, 500
+
+        chol = np.asarray(
+            pm.draw(pm.LKJCorr.dist(n=p, eta=eta), draws=n_hist, random_seed=42)
+        )
+        corrs = chol @ np.swapaxes(chol, 1, 2)
+
+        from plotly.subplots import make_subplots
+
+        fig = make_subplots(
+            rows=1,
+            cols=n_show,
+            horizontal_spacing=0.02,
+            subplot_titles=[f"draw {i + 1}" for i in range(n_show)],
+        )
+        for i in range(n_show):
+            fig.add_trace(
+                go.Heatmap(
+                    z=corrs[i][::-1],
+                    zmin=-1,
+                    zmax=1,
+                    colorscale="RdBu",
+                    showscale=(i == n_show - 1),
+                    colorbar=dict(title="r", thickness=12),
+                ),
+                row=1,
+                col=i + 1,
+            )
+        fig.update_xaxes(showticklabels=False)
+        fig.update_yaxes(showticklabels=False)
+        fig.update_layout(
+            title=f"Six correlation matrices drawn from LKJ(eta={eta:g}), p={p}",
+            width=950,
+            height=220,
+            margin=dict(l=20, r=20, t=60, b=20),
+        )
+
+        off_diag = corrs[:, *np.triu_indices(p, k=1)].flatten()
+        hist = go.Figure()
+        hist.add_trace(
+            go.Histogram(
+                x=off_diag,
+                xbins=dict(start=-1, end=1, size=0.05),
+                histnorm="probability density",
+                marker_color=PYMC_BLUE,
+                opacity=0.7,
+            )
+        )
+        hist.update_layout(
+            title=f"Marginal distribution of off-diagonal correlations ({n_hist} draws)",
+            xaxis_title="pairwise correlation r",
+            yaxis_title="Density",
+            xaxis=dict(range=[-1, 1]),
+            width=950,
+            height=280,
+            margin=dict(l=20, r=20, t=60, b=40),
+        )
+        return mo.vstack([fig, hist])
+
+    plot_lkj_samples()
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     ---
 
     ## Summary
 
     - Match your likelihood to the data-generating process (Normal, Lognormal, Poisson, NegBin, etc.)
+    - Multivariate families: **MVN** for correlated continuous variables, **Dirichlet** for proportions
+    - Model the *observation process* too: **`pm.Censored`** / **`pm.Truncated`** wrap any base distribution
     - Always do prior predictive checks
     - Use PreliZ (`pz.maxent`, `pz.mle`) for principled prior elicitation
     - The choice of prior matters most with small data
@@ -1710,28 +2047,6 @@ def _(adelie_mass):
         return prior_trace, posterior_trace
 
     return (solution_exercise_1,)
-
-
-@app.cell(hide_code=True)
-def _(bike_counts):
-    def solution_fit_poisson_model():
-        with pm.Model():
-            mu = pm.HalfNormal("mu", sigma=5000)
-            pm.Poisson("obs", mu=mu, observed=bike_counts)
-            trace = pm.sample(500)
-            pm.sample_posterior_predictive(trace, extend_inferencedata=True)
-        return trace
-
-    def solution_fit_negbin_model():
-        with pm.Model():
-            mu = pm.HalfNormal("mu", sigma=5000)
-            alpha = pm.HalfNormal("alpha", sigma=10)
-            pm.NegativeBinomial("obs", mu=mu, alpha=alpha, observed=bike_counts)
-            trace = pm.sample(500)
-            pm.sample_posterior_predictive(trace, extend_inferencedata=True)
-        return trace
-
-    return solution_fit_negbin_model, solution_fit_poisson_model
 
 
 if __name__ == "__main__":

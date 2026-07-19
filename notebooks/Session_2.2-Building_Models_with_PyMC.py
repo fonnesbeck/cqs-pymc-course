@@ -129,7 +129,7 @@ def _():
         return model
 
     dose_model = build_dose_scalar_model()
-    mo.show_code(pm.model_to_graphviz(dose_model), position="above")
+    mo.show_code(dose_model, position="above")
     return
 
 
@@ -145,7 +145,7 @@ def _():
 def _():
     with pm.Model() as dose_model_1:
         beta_1 = pm.Normal("beta", mu=0, sigma=10, shape=2)
-    mo.show_code(pm.model_to_graphviz(dose_model_1), position="above")
+    mo.show_code(dose_model_1, position="above")
     return
 
 
@@ -161,7 +161,7 @@ def _():
 def _():
     with pm.Model(coords=dict(coeffs=["intercept", "slope"])) as dose_model_2:
         beta_2 = pm.Normal("beta", mu=0, sigma=10, dims="coeffs")
-    mo.show_code(pm.model_to_graphviz(dose_model_2), position="above")
+    mo.show_code(dose_model_2, position="above")
     return beta_2, dose_model_2
 
 
@@ -237,7 +237,7 @@ def _():
 def _(deaths_1, dose_model_2, n_1, p):
     with dose_model_2:
         y_2 = pm.Binomial("y", n=n_1, p=p, observed=deaths_1)
-    mo.show_code(pm.model_to_graphviz(dose_model_2), position="above")
+    mo.show_code(dose_model_2, position="above")
     return
 
 
@@ -341,7 +341,7 @@ def _(x_vals, y_vals):
         return model
 
     _potential_model = build_potential_model()
-    mo.show_code(pm.model_to_graphviz(_potential_model), position="above")
+    mo.show_code(_potential_model, position="above")
     return
 
 
@@ -355,7 +355,7 @@ def _():
 
 @app.cell(hide_code=True)
 def _(dose_model_2):
-    mo.show_code(dose_model_2.to_graphviz(), position="above")
+    mo.show_code(dose_model_2, position="above")
     return
 
 
@@ -384,14 +384,35 @@ def _():
 
 
 @app.cell
-def _():
-    def _exercise_positive_slope_model():
-        # YOUR CODE HERE — build the dose-response model using a
-        # positive-constrained prior for the slope instead of a Potential
-        model = ...
-        return model.to_graphviz()
+def _(deaths_1, dose_1, n_1):
+    def exercise_positive_slope_model():
+        with pm.Model() as model:
+            # YOUR CODE HERE — Normal prior for the intercept, and a
+            # positive-constrained prior for the slope (no Potential needed)
+            beta0 = ...
+            beta1 = ...
+            p = pm.math.invlogit(beta0 + beta1 * dose_1)
+            pm.Deterministic("ld50", -beta0 / beta1)
+            pm.Binomial("y", n=n_1, p=p, observed=deaths_1)
+        return model
 
-    _exercise_positive_slope_model()
+    return (exercise_positive_slope_model,)
+
+
+@app.cell(hide_code=True)
+def _():
+    run_positive_slope = mo.ui.run_button(label="▶ Run exercise")
+    run_positive_slope
+    return (run_positive_slope,)
+
+
+@app.cell(hide_code=True)
+def _(exercise_positive_slope_model, run_positive_slope):
+    mo.stop(
+        not run_positive_slope.value,
+        mo.md("*Click ▶ Run exercise once your code is ready.*"),
+    )
+    exercise_positive_slope_model()
     return
 
 
@@ -415,7 +436,7 @@ def _(deaths_1, dose_1, n_1):
                     mo.md(
                         f"```python\n{inspect.getsource(solution_positive_slope_model)}\n```"
                     ),
-                    dose_model_4.to_graphviz(),
+                    dose_model_4,
                     mo.md(
                         "_This model (`dose_model_4`) is used by the cells that follow, so the rest of the notebook works whether or not you complete the exercise._"
                     ),
@@ -637,7 +658,7 @@ def _(beta_6, deaths_data, dose_data, dose_model_5, n_1):
 
 @app.cell(hide_code=True)
 def _(dose_model_5):
-    mo.show_code(dose_model_5.to_graphviz(), position="above")
+    mo.show_code(dose_model_5, position="above")
     return
 
 
@@ -953,14 +974,35 @@ def _():
 
 
 @app.cell
-def _():
-    def _exercise_drug_model():
-        # YOUR CODE HERE — build a Bayesian model to compare IQ scores between
-        # the drug and placebo groups.
-        model = ...
-        return model.to_graphviz()
+def _(group_id, iq):
+    def exercise_drug_model():
+        drug_iq = iq[group_id == 0]
+        placebo_iq = iq[group_id == 1]
 
-    _exercise_drug_model()
+        with pm.Model() as model:
+            # YOUR CODE HERE — priors for each group's mean and a shared sigma
+            # YOUR CODE HERE — likelihoods for drug_iq and placebo_iq
+            # YOUR CODE HERE — an effect_size Deterministic (difference of means)
+            ...
+        return model
+
+    return (exercise_drug_model,)
+
+
+@app.cell(hide_code=True)
+def _():
+    run_drug_model = mo.ui.run_button(label="▶ Run exercise")
+    run_drug_model
+    return (run_drug_model,)
+
+
+@app.cell(hide_code=True)
+def _(exercise_drug_model, run_drug_model):
+    mo.stop(
+        not run_drug_model.value,
+        mo.md("*Click ▶ Run exercise once your code is ready.*"),
+    )
+    exercise_drug_model()
     return
 
 
@@ -995,7 +1037,7 @@ def _(group_id, iq):
                 [
                     mo.md(f"```python\n{inspect.getsource(solution_trial_model)}\n```"),
                     mo.lazy(
-                        lambda: solution_trial_model().to_graphviz(),
+                        lambda: solution_trial_model(),
                         show_loading_indicator=True,
                     ),
                 ]
@@ -1018,7 +1060,7 @@ def _(group_id, iq):
                     ),
                     mo.md(f"```python\n{inspect.getsource(extension_best_model)}\n```"),
                     mo.lazy(
-                        lambda: extension_best_model().to_graphviz(),
+                        lambda: extension_best_model(),
                         show_loading_indicator=True,
                     ),
                 ]

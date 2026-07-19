@@ -1889,24 +1889,41 @@ def _():
 
 
 @app.cell
-def _():
-    def _exercise_disaster_gp():
-        # YOUR CODE HERE.
-        #
-        # Suggested outline (fill in every ...):
-        # ell_params = pm.find_constrained_prior(...)  # see hint for the full call
-        # with pm.Model() as disaster_model:
-        #     ell = ...                                # lengthscale prior from ell_params
-        #     eta = ...                                # HalfNormal amplitude
-        #     cov = eta**2 * pm.gp.cov.Matern52(1, ls=...)
-        #     gp = pm.gp.Latent(cov_func=cov)
-        #     f = gp.prior("f", X=...)                 # years as a column vector
-        #     pm.Poisson(...)                          # exp link: mu = pm.math.exp(f)
-        #     disaster_trace = pm.sample(...)
-        disaster_trace = ...
+def _(disaster_years, disasters_array):
+    def exercise_disaster_gp():
+        # YOUR CODE HERE — elicit the lengthscale prior (see hint)
+        ell_params = ...
+
+        with pm.Model():
+            # YOUR CODE HERE — Gamma lengthscale from ell_params, and a
+            # HalfNormal amplitude
+            ell = ...
+            eta = ...
+            cov = eta**2 * pm.gp.cov.Matern52(1, ls=ell)
+            gp = pm.gp.Latent(cov_func=cov)
+            f = gp.prior("f", X=disaster_years[:, None])
+            # YOUR CODE HERE — Poisson likelihood on disasters_array with
+            # an exponential link: mu = pm.math.exp(f)
+            disaster_trace = pm.sample(random_seed=RANDOM_SEED)
         return az.summary(disaster_trace, var_names=["ell", "eta"])
 
-    _exercise_disaster_gp()
+    return (exercise_disaster_gp,)
+
+
+@app.cell(hide_code=True)
+def _():
+    run_disaster_gp = mo.ui.run_button(label="▶ Run exercise")
+    run_disaster_gp
+    return (run_disaster_gp,)
+
+
+@app.cell(hide_code=True)
+def _(exercise_disaster_gp, run_disaster_gp):
+    mo.stop(
+        not run_disaster_gp.value,
+        mo.md("*Click ▶ Run exercise once your code is ready.*"),
+    )
+    exercise_disaster_gp()
     return
 
 

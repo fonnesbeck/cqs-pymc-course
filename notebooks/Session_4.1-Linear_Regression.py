@@ -773,15 +773,83 @@ def _():
 
 
 @app.cell
-def _():
-    def _exercise_preliz_priors():
-        # YOUR CODE HERE — elicit priors with pz.maxent, rebuild the
-        # species-stratified model using prior.to_pymc(...), sample, and
-        # compare against unpooled_trace with LOO.
-        comparison = ...
-        return comparison
+def _(
+    fish_train,
+    train_mean_log_height,
+    train_mean_log_length,
+    train_mean_log_width,
+    unpooled_trace,
+):
+    def exercise_preliz_priors():
+        # YOUR CODE HERE — elicit intercept, slope, and sigma priors with
+        # pz.maxent from the ranges in the Hint (pass plot=False)
+        intercept_prior = ...
+        slope_prior = ...
+        sigma_prior = ...
 
-    _exercise_preliz_priors()
+        species_list = (
+            fish_train["Species"].unique(maintain_order=True).sort().to_list()
+        )
+        species_to_idx = {species: idx for idx, species in enumerate(species_list)}
+        species_idx = np.array(
+            [species_to_idx[species] for species in fish_train["Species"].to_list()],
+            dtype="int64",
+        )
+        coords = {
+            "slopes": ["width_effect", "height_effect", "length_effect"],
+            "species": species_list,
+            "obs_idx": range(fish_train.height),
+        }
+
+        with pm.Model(coords=coords):
+            lw = pm.Data(
+                "log_width",
+                (fish_train["log_width"] - train_mean_log_width).to_numpy(),
+                dims="obs_idx",
+            )
+            lh = pm.Data(
+                "log_height",
+                (fish_train["log_height"] - train_mean_log_height).to_numpy(),
+                dims="obs_idx",
+            )
+            ll = pm.Data(
+                "log_length",
+                (fish_train["log_length"] - train_mean_log_length).to_numpy(),
+                dims="obs_idx",
+            )
+            lweight = pm.Data(
+                "log_weight", fish_train["log_weight"].to_numpy(), dims="obs_idx"
+            )
+            s = pm.Data("species_idx", species_idx, dims="obs_idx")
+
+            # YOUR CODE HERE — convert the elicited priors with .to_pymc(...),
+            # build the expected log-weight, and add the Normal likelihood
+            ...
+
+            improved_trace = pm.sample(random_seed=RANDOM_SEED)
+            pm.compute_log_likelihood(improved_trace)
+
+        return az.compare(
+            {"original_unpooled": unpooled_trace, "improved_priors": improved_trace}
+        )
+
+    return (exercise_preliz_priors,)
+
+
+@app.cell(hide_code=True)
+def _():
+    run_preliz_priors = mo.ui.run_button(label="▶ Run exercise")
+    run_preliz_priors
+    return (run_preliz_priors,)
+
+
+@app.cell(hide_code=True)
+def _(exercise_preliz_priors, run_preliz_priors):
+    mo.stop(
+        not run_preliz_priors.value,
+        mo.md("*Click ▶ Run exercise once your code is ready.*"),
+    )
+    exercise_preliz_priors()
     return
 
 
@@ -1140,17 +1208,40 @@ def _():
 
 
 @app.cell
-def _():
-    def _exercise_harsh_costs():
-        # YOUR CODE HERE — scale the under-declaration costs by 5, recompute
-        # the optimal declared tiers, and count how many fish switch (and which way).
+def _(cost_matrix, optimal_tier, tier_probs):
+    def exercise_harsh_costs():
+        # YOUR CODE HERE — copy cost_matrix and scale the under-declaration
+        # entries (declared < actual) by 5
+        harsh_cost_matrix = ...
+
+        # YOUR CODE HERE — recompute expected costs from tier_probs and take
+        # the argmin to get each fish's new optimal declared tier
+        new_optimal_tier = ...
+
+        # YOUR CODE HERE — count switches vs optimal_tier, and upward moves
         n_changed = ...
         n_upward = ...
         return mo.md(
             f"**{n_changed}** fish change declared tier; **{n_upward}** move upward."
         )
 
-    _exercise_harsh_costs()
+    return (exercise_harsh_costs,)
+
+
+@app.cell(hide_code=True)
+def _():
+    run_harsh_costs = mo.ui.run_button(label="▶ Run exercise")
+    run_harsh_costs
+    return (run_harsh_costs,)
+
+
+@app.cell(hide_code=True)
+def _(exercise_harsh_costs, run_harsh_costs):
+    mo.stop(
+        not run_harsh_costs.value,
+        mo.md("*Click ▶ Run exercise once your code is ready.*"),
+    )
+    exercise_harsh_costs()
     return
 
 

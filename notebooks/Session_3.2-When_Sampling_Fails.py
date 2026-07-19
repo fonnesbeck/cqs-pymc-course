@@ -1116,36 +1116,61 @@ def _():
 
 @app.cell
 def _(disasters_array, years):
-    # YOUR CODE HERE — fix the priors, then build a two-change-point model.
-    def build_single_cp_fixed():
-        with pm.Model() as model:
-            early_lambda = ...
-            late_lambda = ...
-            change_point = ...
-            lam = pm.math.switch(years > change_point, late_lambda, early_lambda)
-            pm.Poisson("disasters", mu=lam, observed=disasters_array)
-        return model
+    def exercise_change_point():
+        def build_single_cp_fixed():
+            with pm.Model() as model:
+                # YOUR CODE HERE — fix the priors from the broken model above
+                early_lambda = ...
+                late_lambda = ...
+                change_point = ...
+                lam = pm.math.switch(years > change_point, late_lambda, early_lambda)
+                pm.Poisson("disasters", mu=lam, observed=disasters_array)
+            return model
 
-    def build_two_cp():
-        with pm.Model() as model:
-            early_lambda = ...
-            mid_lambda = ...
-            late_lambda = ...
-            cp1 = ...
-            cp2 = ...
-            lam = pm.math.switch(
-                years < cp1,
-                early_lambda,
-                pm.math.switch(years < cp2, mid_lambda, late_lambda),
-            )
-            pm.Poisson("disasters", mu=lam, observed=disasters_array)
-        return model
+        def build_two_cp():
+            with pm.Model() as model:
+                # YOUR CODE HERE — priors; constrain cp2 to lie above cp1
+                early_lambda = ...
+                mid_lambda = ...
+                late_lambda = ...
+                cp1 = ...
+                cp2 = ...
+                lam = pm.math.switch(
+                    years < cp1,
+                    early_lambda,
+                    pm.math.switch(years < cp2, mid_lambda, late_lambda),
+                )
+                pm.Poisson("disasters", mu=lam, observed=disasters_array)
+            return model
 
-    with build_single_cp_fixed():
-        single_cp_trace = pm.sample(1000, random_seed=RANDOM_SEED)
-    with build_two_cp():
-        two_cp_trace = pm.sample(1000, random_seed=RANDOM_SEED)
-    single_cp_trace, two_cp_trace
+        with build_single_cp_fixed():
+            single_cp_trace = pm.sample(1000, random_seed=RANDOM_SEED)
+            pm.compute_log_likelihood(single_cp_trace)
+        with build_two_cp():
+            two_cp_trace = pm.sample(1000, random_seed=RANDOM_SEED)
+            pm.compute_log_likelihood(two_cp_trace)
+
+        return az.compare(
+            {"single-changepoint": single_cp_trace, "two-changepoint": two_cp_trace}
+        )
+
+    return (exercise_change_point,)
+
+
+@app.cell(hide_code=True)
+def _():
+    run_change_point = mo.ui.run_button(label="▶ Run exercise")
+    run_change_point
+    return (run_change_point,)
+
+
+@app.cell(hide_code=True)
+def _(exercise_change_point, run_change_point):
+    mo.stop(
+        not run_change_point.value,
+        mo.md("*Click ▶ Run exercise once your code is ready.*"),
+    )
+    exercise_change_point()
     return
 
 

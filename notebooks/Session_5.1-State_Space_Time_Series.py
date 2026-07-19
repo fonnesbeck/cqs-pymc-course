@@ -1121,25 +1121,48 @@ def _():
 
 @app.cell
 def _(df, ss):
-    def _exercise_fit():
-        # YOUR CODE HERE — implement `fit(ss, df)` that:
-        #   1. opens `pm.Model(coords=ss.coords)`
-        #   2. registers `pm.Data("data_layoff", ...)` from
-        #      df[["layoff_active", "layoff_decay"]] with dims ["time", "state_layoff"]
-        #   3. defines priors for every parameter the SSM expects:
-        #      - initial_level   — initial [level, slope] of the latent trend
-        #      - sigma_level     — std of monthly level innovations
-        #      - beta_layoff     — regression coefficients on [active, decay]
-        #      - params_seasonal — 2 Fourier coefficients (sin + cos) for the annual cycle
-        #      - sigma_noise     — observation noise std
-        #      - P0_diag (Gamma) + P0 = pt.diag(P0_diag) — initial state covariance
-        #   4. calls `ss.build_statespace_graph(df["log_revenue"])`
-        #   5. samples and returns (model, trace)
-        fit = ...
+    def exercise_fit():
+        def fit(ss, df):
+            with pm.Model(coords=ss.coords) as model:
+                pm.Data(
+                    "data_layoff",
+                    df[["layoff_active", "layoff_decay"]].to_numpy(),
+                    dims=["time", "state_layoff"],
+                )
+                # YOUR CODE HERE — priors for every parameter the SSM expects
+                # (inspect ss.param_dims):
+                #   initial_level   — initial [level, slope] of the latent trend
+                #   sigma_level     — std of monthly level innovations
+                #   beta_layoff     — regression coefficients on [active, decay]
+                #   params_seasonal — 2 Fourier coefficients for the annual cycle
+                #   sigma_noise     — observation noise std
+                #   P0_diag (Gamma) + P0 = pt.diag(P0_diag) — initial state cov
+                ...
+
+                ss.build_statespace_graph(df["log_revenue"])
+                trace = pm.sample(draws=250, tune=500)
+            return model, trace
+
         _, my_trace = fit(ss, df)
         return my_trace
 
-    _exercise_fit()
+    return (exercise_fit,)
+
+
+@app.cell(hide_code=True)
+def _():
+    run_statespace_fit = mo.ui.run_button(label="▶ Run exercise")
+    run_statespace_fit
+    return (run_statespace_fit,)
+
+
+@app.cell(hide_code=True)
+def _(exercise_fit, run_statespace_fit):
+    mo.stop(
+        not run_statespace_fit.value,
+        mo.md("*Click ▶ Run exercise once your code is ready.*"),
+    )
+    exercise_fit()
     return
 
 
@@ -1602,28 +1625,40 @@ def _():
 
 
 @app.cell
-def _():
-    def _exercise_forecast():
-        # YOUR CODE HERE — fill in the scenario regressor block and two
-        # `ss.forecast(...)` calls. Suggested API:
-        #
-        #   event_regs = make_scenario_regressors(
-        #       24, len(df), second_event_at=6
-        #   )
-        #   my_fc_baseline = ss.forecast(
-        #       trace,
-        #       start=df.index[-1],
-        #       periods=24,
-        #       scenario={"data_layoff": baseline_regs},
-        #   )
-        #   my_fc_event = ss.forecast(
-        #       trace, ..., scenario={"data_layoff": event_regs},
-        #   )
-        my_fc_baseline = ...
+def _(baseline_regs, df, trace, ss):
+    def exercise_forecast():
+        # YOUR CODE HERE — regressors for the second-layoff scenario:
+        # make_scenario_regressors(24, len(df), second_event_at=6)
+        event_regs = ...
+
+        my_fc_baseline = ss.forecast(
+            trace,
+            start=df.index[-1],
+            periods=24,
+            scenario={"data_layoff": baseline_regs},
+            random_seed=SEED,
+        )
+        # YOUR CODE HERE — the same forecast under event_regs
         my_fc_event = ...
         return my_fc_event
 
-    _exercise_forecast()
+    return (exercise_forecast,)
+
+
+@app.cell(hide_code=True)
+def _():
+    run_forecast = mo.ui.run_button(label="▶ Run exercise")
+    run_forecast
+    return (run_forecast,)
+
+
+@app.cell(hide_code=True)
+def _(exercise_forecast, run_forecast):
+    mo.stop(
+        not run_forecast.value,
+        mo.md("*Click ▶ Run exercise once your code is ready.*"),
+    )
+    exercise_forecast()
     return
 
 

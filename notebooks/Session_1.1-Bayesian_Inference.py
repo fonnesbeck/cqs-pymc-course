@@ -1,8 +1,7 @@
 import marimo
 
-__generated_with = "0.23.9"
+__generated_with = "0.23.14"
 app = marimo.App(width="medium")
-
 
 with app.setup:
     import marimo as mo
@@ -498,7 +497,7 @@ def _(campaign_A):
             "obs", p=conversion_rate, n=campaign_A["n"], observed=campaign_A["k"]
         )
 
-    pm.model_to_graphviz(beta_binom_model)
+    beta_binom_model
     return (beta_binom_model,)
 
 
@@ -624,7 +623,7 @@ def _(ab_data_A, ab_data_B):
         pm.Binomial("obs_B", p=cr_B, n=ab_data_B["n"], observed=ab_data_B["k"])
 
         ab_test_trace = pm.sample(random_seed=RANDOM_SEED)
-    pm.model_to_graphviz(ab_model)
+    ab_model
     return (ab_test_trace,)
 
 
@@ -768,7 +767,7 @@ def _(hennepin_radon):
             "y", mu=mu, sigma=sigma, observed=hennepin_radon["log_radon"].to_numpy()
         )
 
-    pm.model_to_graphviz(radon_model)
+    radon_model
     return (radon_model,)
 
 
@@ -1125,7 +1124,7 @@ def _(batting_df):
         return model
 
     baseball_model = build_baseball_model()
-    pm.model_to_graphviz(baseball_model)
+    baseball_model
     return (baseball_model,)
 
 
@@ -1163,7 +1162,7 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(batting_df, baseline_trace):
+def _(baseline_trace, batting_df):
     def plot_shrinkage():
         observed_ba = batting_df["BA"].to_numpy()
         at_bats = batting_df["AB"].to_numpy()
@@ -1264,26 +1263,49 @@ def _():
         mo.md("""
         **Your task:** Build two models — one with `Beta(1, 1)` priors and one with `Beta(2, 20)` priors. Compare `P(B > A)` under the two priors.
 
-        Pass `random_seed=RANDOM_SEED` to `pm.sample` for reproducibility. Write your models inside the `_exercise_prior_sensitivity` function in the scaffold cell below — it must set both `p_b_better_uniform` and `p_b_better_informed` before the markdown summary renders.
+        Pass `random_seed=RANDOM_SEED` to `pm.sample` for reproducibility. Fill in the `exercise_prior_sensitivity` function in the scaffold cell below, then click **▶ Run exercise**.
         """),
         kind="info",
     )
     return
 
 
-@app.cell
-def _():
-    def _exercise_prior_sensitivity():
-        # YOUR CODE HERE — build both models (Beta(1, 1) and Beta(2, 20) priors),
-        # sample each, and compute P(B > A) under both.
-        p_b_better_uniform = ...
-        p_b_better_informed = ...
-        return mo.md(
-            f"P(B > A) — uniform prior: **{p_b_better_uniform:.1%}**, "
-            f"informed prior: **{p_b_better_informed:.1%}**"
-        )
+@app.function
+def exercise_prior_sensitivity():
+    # A/B test data: version A got 12/150 conversions, version B got 8/50
+    with pm.Model():
+        # YOUR CODE HERE — Beta(1, 1) priors on both conversion rates,
+        # Binomial likelihoods for the observed data
+        uniform_trace = pm.sample(random_seed=RANDOM_SEED)
 
-    _exercise_prior_sensitivity()
+    with pm.Model():
+        # YOUR CODE HERE — the same model, with Beta(2, 20) priors
+        informed_trace = pm.sample(random_seed=RANDOM_SEED)
+
+    # YOUR CODE HERE — compute P(B > A) from each trace
+    p_b_better_uniform = ...
+    p_b_better_informed = ...
+
+    return mo.md(
+        f"P(B > A) — uniform prior: **{p_b_better_uniform:.1%}**, "
+        f"informed prior: **{p_b_better_informed:.1%}**"
+    )
+
+
+@app.cell(hide_code=True)
+def _():
+    run_prior_sensitivity = mo.ui.run_button(label="▶ Run exercise")
+    run_prior_sensitivity
+    return (run_prior_sensitivity,)
+
+
+@app.cell(hide_code=True)
+def _(run_prior_sensitivity):
+    mo.stop(
+        not run_prior_sensitivity.value,
+        mo.md("*Click ▶ Run exercise once your code is ready.*"),
+    )
+    exercise_prior_sensitivity()
     return
 
 
@@ -1373,15 +1395,12 @@ def _():
     return
 
 
-@app.cell
-def _():
-    def bandit_run_campaign(state, n, seed):
-        """Simulate sending ``n`` emails for ``state`` and return updated totals."""
-        rng = np.random.default_rng(seed)
-        k = int(rng.binomial(n, state["p"]))
-        return {"p": state["p"], "n": state["n"] + n, "k": state["k"] + k}
-
-    return (bandit_run_campaign,)
+@app.function
+def bandit_run_campaign(state, n, seed):
+    """Simulate sending ``n`` emails for ``state`` and return updated totals."""
+    rng = np.random.default_rng(seed)
+    k = int(rng.binomial(n, state["p"]))
+    return {"p": state["p"], "n": state["n"] + n, "k": state["k"] + k}
 
 
 @app.cell(hide_code=True)
@@ -1409,7 +1428,7 @@ def _():
 
 
 @app.cell
-def _(bandit_run_campaign, bandit_state_A0, bandit_state_B0):
+def _(bandit_state_A0, bandit_state_B0):
     bandit_state_A1 = bandit_run_campaign(bandit_state_A0, 80, seed=11)
     bandit_state_B1 = bandit_run_campaign(bandit_state_B0, 20, seed=12)
     bandit_state_A1, bandit_state_B1
@@ -1520,13 +1539,7 @@ def _():
 
 
 @app.cell
-def _(
-    bandit_n_A_next,
-    bandit_n_B_next,
-    bandit_run_campaign,
-    bandit_state_A1,
-    bandit_state_B1,
-):
+def _(bandit_n_A_next, bandit_n_B_next, bandit_state_A1, bandit_state_B1):
     bandit_state_A2 = bandit_run_campaign(bandit_state_A1, bandit_n_A_next, seed=21)
     bandit_state_B2 = bandit_run_campaign(bandit_state_B1, bandit_n_B_next, seed=22)
     bandit_state_A2, bandit_state_B2

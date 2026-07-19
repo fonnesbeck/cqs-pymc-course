@@ -911,31 +911,52 @@ def _():
 
     $$y_i = \alpha_{j[i]} + \beta_{j[i]} x_{i} + \epsilon_i$$
 
-    Construct a varying-intercept, varying-slope model in the scaffold cell below
-    (give it your own name — e.g. `my_varying_model`). The notebook continues
-    with a reference implementation named `varying_intercept_slope`, so don't
-    reuse that exact name or marimo will complain about a duplicate definition.
+    Complete the model inside the `exercise_varying_intercept_slope` scaffold
+    below, then click ▶ Run exercise. The notebook continues with a reference
+    implementation named `varying_intercept_slope` (from the Solution), so the
+    rest of the notebook works whether or not you complete the exercise.
 
     Plot the model DAG to check your structure — the scaffold already returns
-    `model.to_graphviz()`, marimo's rendering of the model graph.
+    the model object, which marimo renders as the model graph.
     """)
     return
 
 
 @app.cell
-def _():
-    def _exercise_varying_intercept_slope():
-        # YOUR CODE HERE — build the varying-intercept, varying-slope model, e.g.:
-        #
-        # @pmx.as_model(coords=coords)
-        # def varying_intercept_slope_model():
-        #     ...
-        #
-        # model = varying_intercept_slope_model()
-        model = ...
-        return model.to_graphviz()
+def _(coords, county, floor_measure, log_radon):
+    def exercise_varying_intercept_slope():
+        @pmx.as_model(coords=coords)
+        def my_varying_model():
+            floor_idx = pmd.Data("floor_idx", floor_measure, dims="obs_id")
+            county_idx = pmd.Data("county_idx", county, dims="obs_id")
+            obs = pmd.as_xtensor(log_radon, dims=("obs_id",))
+            # YOUR CODE HERE — hyperpriors for the intercept and slope
+            # YOUR CODE HERE — county-level alpha and beta (dims="county")
+            # YOUR CODE HERE — sigma_y, the expected value
+            #   alpha[county_idx] + beta[county_idx] * floor_idx,
+            #   and the Normal likelihood (observed=obs, dims="obs_id")
+            ...
 
-    _exercise_varying_intercept_slope()
+        model = my_varying_model()
+        return model
+
+    return (exercise_varying_intercept_slope,)
+
+
+@app.cell(hide_code=True)
+def _():
+    run_varying_intercept_slope = mo.ui.run_button(label="▶ Run exercise")
+    run_varying_intercept_slope
+    return (run_varying_intercept_slope,)
+
+
+@app.cell(hide_code=True)
+def _(exercise_varying_intercept_slope, run_varying_intercept_slope):
+    mo.stop(
+        not run_varying_intercept_slope.value,
+        mo.md("*Click ▶ Run exercise once your code is ready.*"),
+    )
+    exercise_varying_intercept_slope()
     return
 
 
@@ -973,7 +994,7 @@ def _(coords, county, floor_measure, log_radon):
                     mo.md(
                         f"```python\n{inspect.getsource(solution_varying_intercept_slope)}\n```"
                     ),
-                    varying_intercept_slope.to_graphviz(),
+                    varying_intercept_slope,
                     mo.md(
                         "_This model (`varying_intercept_slope`) is sampled below, so the rest of the notebook works whether or not you complete the exercise._"
                     ),
