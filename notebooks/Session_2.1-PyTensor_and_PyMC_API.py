@@ -683,6 +683,25 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    ### The `pm.math` Namespace
+
+    When you need mathematical operations on model variables — link functions, conditional logic, matrix products — reach for the **`pm.math`** namespace. These are the same symbolic PyTensor operations from the start of this session, collected under a PyMC-friendly name. Commonly used members include `pm.math.log`, `exp`, `sqrt`, `dot`, `sum`, `switch` (element-wise if/else), and the link functions `invlogit`/`logit`.
+
+    Because they are symbolic, they add nodes to the graph rather than computing immediately — so they can be applied to model variables just like `+` or `*`. Later sessions use `pm.math.switch` and `pm.math.invlogit` without further introduction; this is where they come from.
+    """)
+    return
+
+
+@app.cell
+def _():
+    grid = np.linspace(-3, 3, 7)
+    pm.math.invlogit(grid).eval(), pm.math.switch(grid > 0, 1.0, 0.0).eval()
+    return (grid,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     ### Custom Distributions
 
     If you have a well-behaved density function, we can use it in a model to build a model log-likelihood function. Almost any Pytensor function can be turned into a
