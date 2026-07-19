@@ -6,7 +6,6 @@ app = marimo.App(width="medium")
 with app.setup:
     import marimo as mo
     import base64
-    import contextlib
     import inspect
     from pathlib import Path
     import numpy as np
@@ -409,17 +408,13 @@ def _():
 
 @app.cell
 def _(z_1):
-    _buf = io.StringIO()
-    z_1.dprint(file=_buf)
-    mo.vstack(
-        [
-            mo.md(
-                f"`type(z_1)` = `{type(z_1).__name__}`, "
-                f"`z_1.owner.op` = `{type(z_1.owner.op).__name__}`"
-            ),
-            mo.md(f"```\n{_buf.getvalue()}```"),
-        ]
-    )
+    type(z_1), z_1.owner.op
+    return
+
+
+@app.cell
+def _(z_1):
+    z_1.dprint()
     return
 
 
@@ -434,9 +429,7 @@ def _():
 @app.cell
 def _(z_1):
     z_logp = pm.logp(z_1, 2.5)
-    _buf = io.StringIO()
-    z_logp.dprint(file=_buf)
-    mo.md(f"```\n{_buf.getvalue()}```")
+    z_logp.dprint()
     return (z_logp,)
 
 
@@ -733,10 +726,7 @@ def _():
 
 @app.cell
 def _(broken_model):
-    _buf = io.StringIO()
-    with contextlib.redirect_stdout(_buf):
-        broken_model.debug()
-    mo.md(f"```\n{_buf.getvalue()}```")
+    broken_model.debug()
     return
 
 
