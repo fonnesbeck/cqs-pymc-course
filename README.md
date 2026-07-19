@@ -119,9 +119,10 @@ To run a notebook as a read-only app (code hidden by default):
 ### Day 2 (July 21): **Building Models with PyMC** (3 hours)
 
 **Part A — PyTensor and the PyMC API (90 min)** — `Session_2.1-PyTensor_and_PyMC_API.py`
-- PyTensor: symbolic variables, computational graphs, automatic differentiation
-- The PyMC `Model` context and random-variable API
-- Distribution classes, observed data, and deterministics
+- PyTensor: symbolic variables, computational graphs, and how to read them
+- A PyMC model is a PyTensor graph: random variables, log-probability, compilation
+- The `Model` context and Distribution API; the `pm.math` namespace
+- Debugging models before sampling (`point_logps`, `model.debug`)
 - Custom distributions
 
 **Part B — Building Models with PyMC (90 min)** — `Session_2.2-Building_Models_with_PyMC.py`
