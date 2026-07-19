@@ -745,6 +745,103 @@ def _(broken_model):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    ### Exercise: Fix the Broken Model
+
+    The model below builds without error, but sampling would fail immediately: its initial log-probability is `-inf`.
+
+    1. Use `model.point_logps()` (and `model.debug()` if you like) to find which variable is broken, and why.
+    2. Fix the model definition so that every value in `point_logps()` is finite.
+
+    The function should still define a variable named `"y"` and return `model.point_logps()`.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.accordion(
+        {
+            "Hint": mo.md(
+                "A `Binomial` with `n=5` can only take the values 0 through 5. "
+                "Where does the model's starting value for `y` come from? "
+                "Check `model.initial_point()`."
+            ),
+        }
+    )
+    return
+
+
+@app.function
+def exercise_debug_model():
+    with pm.Model() as model:
+        y = pm.Binomial("y", n=5, p=0.5, initval=6)
+
+    # YOUR CODE HERE — inspect model.point_logps() (and model.debug())
+    # to find the problem, then fix the model definition above so the
+    # log-probability is finite.
+    return model.point_logps()
+
+
+@app.cell(hide_code=True)
+def _():
+    run_debug = mo.ui.run_button(label="▶ Run exercise")
+    run_debug
+    return (run_debug,)
+
+
+@app.cell(hide_code=True)
+def _(run_debug):
+    mo.stop(
+        not run_debug.value,
+        mo.md("*Click ▶ Run exercise once your code is ready.*"),
+    )
+    _logps = exercise_debug_model()
+    _passed = set(_logps) == {"y"} and all(np.isfinite(_v) for _v in _logps.values())
+    mo.md(
+        f"`point_logps()` = `{_logps}` — "
+        + (
+            "**passed** ✅"
+            if _passed
+            else "**not yet** ❌ — the model must keep a variable named `y`, "
+            "and every log-probability must be finite."
+        )
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    def solution_debug_model():
+        with pm.Model() as model:
+            y = pm.Binomial("y", n=5, p=0.5, initval=2)
+        return model.point_logps()
+
+    mo.accordion(
+        {
+            "Solution": mo.vstack(
+                [
+                    mo.md(
+                        "The bug is the `initval`: 6 is outside the support of "
+                        "`Binomial(n=5, p=0.5)`, which only admits values 0–5, so the "
+                        "starting log-probability is `-inf`. The fix is a valid initial "
+                        "value (or simply deleting `initval` — PyMC then chooses a "
+                        "sensible default)."
+                    ),
+                    mo.md(f"```python\n{inspect.getsource(solution_debug_model)}\n```"),
+                    mo.lazy(
+                        lambda: mo.md(f"Result: `{solution_debug_model()}`"),
+                        show_loading_indicator=True,
+                    ),
+                ]
+            ),
+        }
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     ### Custom Distributions
 
     If you have a well-behaved density function, we can use it in a model to build a model log-likelihood function. Almost any Pytensor function can be turned into a
