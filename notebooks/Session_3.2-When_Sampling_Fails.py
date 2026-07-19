@@ -38,7 +38,7 @@ def _():
 
     # Session 3.2: When Sampling Fails
 
-    In Session 3.1 we built a well-specified model and confirmed that the sampler worked correctly. Now we'll see what happens when things go wrong — as they do — and learn to recognize, diagnose, and fix the problems. We'll also cover posterior predictive checks and model comparison.
+    In Session 3.1 we built a well-specified model and confirmed that the sampler worked correctly. Now we'll see what happens when things go wrong (as they do) and learn to recognize, diagnose, and fix the problems. We'll also cover posterior predictive checks and model comparison.
     """)
     return
 
@@ -87,7 +87,7 @@ def _():
     mo.md(r"""
     ## When Sampling Fails
 
-    Session 3.1's baseline model converged cleanly because it was well-specified. Now let's see what happens when it isn't — and learn to recognize and fix the problems.
+    Session 3.1's baseline model converged cleanly because it was well-specified. Now let's see what happens when it isn't, and learn to recognize and fix the problems.
     """)
     return
 
@@ -170,7 +170,7 @@ def _(overparam_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Look at the R-hat values for the intercept and species coefficients — they're well above 1.01, and the ESS values have collapsed.
+    Look at the R-hat values for the intercept and species coefficients: they're well above 1.01, and the ESS values have collapsed.
 
     But `sigma` looks fine. What's going on?
 
@@ -192,13 +192,13 @@ def _(overparam_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The chains are wandering without settling — they explore different regions of parameter space and never agree on where to stop. This is exactly the scenario **R-hat** is designed to detect.
+    The chains are wandering without settling; they explore different regions of parameter space and never agree on where to stop. This is exactly the scenario **R-hat** is designed to detect.
 
     Recall that R-hat compares the variance *between* chains to the variance *within* each chain. When chains are exploring different regions (as here), the between-chain variance is large relative to within-chain variance, and R-hat rises above 1.
 
-    **Split R-hat** goes further by also splitting each chain in half, catching non-stationarity *within* a single chain — if a chain drifts over the course of sampling, the two halves will disagree.
+    **Split R-hat** goes further by also splitting each chain in half, catching non-stationarity *within* a single chain: if a chain drifts over the course of sampling, the two halves will disagree.
 
-    The rank plot makes this even clearer — well-mixed chains would show flat Δ-ECDF lines near zero within the gray envelope, but here the chains' rank distributions diverge substantially.
+    The rank plot makes this even clearer: well-mixed chains would show flat Δ-ECDF lines near zero within the gray envelope, but here the chains' rank distributions diverge substantially.
 
     Some of the samples are so extreme, you cannot even see the grey envelope!
     """)
@@ -238,7 +238,7 @@ def _():
     mo.md(r"""
     #### Why this happens
 
-    The model has infinitely many parameter combinations that produce the same predictions. For example, shifting the intercept up by 1 and all species effects down by 1 gives identical fitted values. The posterior is a *ridge* (a flat direction in parameter space), not a peak. The sampler slides along this ridge without converging — the chains never agree on where on the ridge to settle.
+    The model has infinitely many parameter combinations that produce the same predictions. For example, shifting the intercept up by 1 and all species effects down by 1 gives identical fitted values. The posterior is a *ridge* (a flat direction in parameter space), not a peak. The sampler slides along this ridge without converging; the chains never agree on where on the ridge to settle.
     """)
     return
 
@@ -338,9 +338,9 @@ def _():
 
     ### Case 2: Divergences — Posterior Geometry Problems
 
-    Divergences are NUTS telling you that the sampler is systematically *under-exploring* some region of the posterior, which potentially **biases your inference** — not just makes it noisier.
+    Divergences are NUTS telling you that the sampler is systematically *under-exploring* some region of the posterior, which potentially **biases your inference**, not just makes it noisier.
 
-    For example: Our baseline model used a Normal likelihood, which assumes symmetric, light-tailed noise. What if the data has outliers? A **Student-t likelihood** (as we saw in our discussion of likelihoods) is more robust — but it introduces a degrees-of-freedom parameter `nu` that can create difficult **posterior geometry**.
+    For example: Our baseline model used a Normal likelihood, which assumes symmetric, light-tailed noise. What if the data has outliers? A **Student-t likelihood** (as we saw in our discussion of likelihoods) is more robust, but it introduces a degrees-of-freedom parameter `nu` that can create difficult **posterior geometry**.
     """)
     return
 
@@ -389,7 +389,7 @@ def _(robust_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The regression parameters (`alpha`, `beta`, `sigma`) look healthy — good R-hat and ESS. But look at `nu`: the ESS may be lower, and the divergences suggest the sampler struggled in some region of the posterior.
+    The regression parameters (`alpha`, `beta`, `sigma`) look healthy: good R-hat and ESS. But look at `nu`: the ESS may be lower, and the divergences suggest the sampler struggled in some region of the posterior.
 
     A pair plot reveals where the trouble is.
     """)
@@ -412,7 +412,7 @@ def _():
     mo.md(r"""
     #### Why this happens
 
-    When `nu` is small (near 1–2), the Student-t distribution has very heavy tails, and the likelihood surface changes rapidly — small shifts in `nu` have outsized effects. The sampler's step size is tuned for the bulk of the posterior where `nu` is moderate, but in the high-curvature region near small `nu`, that step size is too large for accurate trajectories.
+    When `nu` is small (near 1–2), the Student-t distribution has very heavy tails, and the likelihood surface changes rapidly: small shifts in `nu` have outsized effects. The sampler's step size is tuned for the bulk of the posterior where `nu` is moderate, but in the high-curvature region near small `nu`, that step size is too large for accurate trajectories.
 
     The sampler systematically under-explores the high-curvature region, which can bias your estimate if severe enough.
 
@@ -426,7 +426,7 @@ def _():
     mo.md(r"""
     #### Fix: Increase target acceptance rate
 
-    Increasing `target_accept` forces the sampler to use a smaller step size when simulating the trajectory for a new sample, navigating high-curvature regions more carefully — at the cost of slightly slower sampling.
+    Increasing `target_accept` forces the sampler to use a smaller step size when simulating the trajectory for a new sample, navigating high-curvature regions more carefully, at the cost of slightly slower sampling.
     """)
     return
 
@@ -469,7 +469,7 @@ def _():
 
     *What happens when the sampler can't explore the posterior efficiently?*
 
-    Case 1 was a model specification problem, while Case 2 was a hyperparameter misspecification issue that the sampler exposed. But sometimes the sampler itself is the bottleneck — either because a less efficient algorithm is being used, or because the model structure forces it.
+    Case 1 was a model specification problem, while Case 2 was a hyperparameter misspecification issue that the sampler exposed. But sometimes the sampler itself is the bottleneck: either because a less efficient algorithm is being used, or because the model structure forces it.
 
     We already saw a preview of this when we compared NUTS to Metropolis in the previous session. Now let's see a more realistic scenario: a model where **PyMC automatically uses Metropolis for some parameters** because they're discrete.
     """)
@@ -481,7 +481,7 @@ def _():
     mo.md(r"""
     #### A model with discrete and continuous parameters
 
-    Let's predict body mass using a latent group indicator — a discrete variable that PyMC can't sample with NUTS.
+    Let's predict body mass using a latent group indicator, a discrete variable that PyMC can't sample with NUTS.
     """)
     return
 
@@ -516,7 +516,7 @@ def _(mixed_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The `sigma` parameter has high ESS — NUTS handles it efficiently. But the discrete `group` parameter has dramatically lower ESS, and the `mu_groups` parameters are dragged down with it — their values depend on which observations are assigned to which group, so poor mixing in `group` propagates to the group means.
+    The `sigma` parameter has high ESS: NUTS handles it efficiently. But the discrete `group` parameter has dramatically lower ESS, and the `mu_groups` parameters are dragged down with it; their values depend on which observations are assigned to which group, so poor mixing in `group` propagates to the group means.
 
     This is the **ESS in action**. When you see ESS much lower than your nominal draw count, it means the sampler is producing correlated draws in that region of the model.
 
@@ -561,8 +561,8 @@ def _():
 
     We'll use two complementary approaches:
 
-    1. **Posterior predictive checks** — absolute model quality: "Does this model describe the data?"
-    2. **LOO cross-validation and model comparison** — relative model quality: "Which model describes the data better?"
+    1. **Posterior predictive checks**, absolute model quality: "Does this model describe the data?"
+    2. **LOO cross-validation and model comparison**, relative model quality: "Which model describes the data better?"
     """)
     return
 
@@ -605,7 +605,7 @@ def _():
 
     The idea is simple: for each posterior draw of the *fitted* parameters, simulate a new dataset from the likelihood. This gives a distribution of datasets the model considers plausible. If the real data look nothing like these simulated datasets, the model is missing something important.
 
-    We already checked the *prior* predictive distribution previously — that demonstrated whether our priors were reasonable. Now we check the *posterior* predictive — whether the fitted model captures the patterns in the data.
+    We already checked the *prior* predictive distribution previously: that demonstrated whether our priors were reasonable. Now we check the *posterior* predictive: whether the fitted model captures the patterns in the data.
     """)
     return
 
@@ -638,7 +638,7 @@ def _(pooled_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The pooled model's predictive distribution is unimodal — it can only produce a single bell curve. But the observed data has two clear modes corresponding to different species. The posterior predictive check reveals this misfit immediately.
+    The pooled model's predictive distribution is unimodal: it can only produce a single bell curve. But the observed data has two clear modes corresponding to different species. The posterior predictive check reveals this misfit immediately.
     """)
     return
 
@@ -667,7 +667,7 @@ def _(species_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The species-aware model captures the bimodal structure — the two peaks correspond to smaller species (Adélie, Chinstrap) and the larger Gentoo. The posterior predictive draws track both modes well, a clear improvement over the pooled model.
+    The species-aware model captures the bimodal structure: the two peaks correspond to smaller species (Adélie, Chinstrap) and the larger Gentoo. The posterior predictive draws track both modes well, a clear improvement over the pooled model.
     """)
     return
 
@@ -681,7 +681,7 @@ def _():
 
     The plot shows the distribution of the test statistic computed from each posterior predictive draw, with the observed value marked. If the observed statistic falls well within the posterior predictive distribution, the model captures that aspect of the data. If it falls in the tails, the model is systematically missing something.
 
-    You can change the test statistic using `t_stat=` — try `"mean"`, `"std"`, `"var"`, `"min"`, `"max"`, `"iqr"`, or `"mad"` to probe different aspects of the data.
+    You can change the test statistic using `t_stat=`: try `"mean"`, `"std"`, `"var"`, `"min"`, `"max"`, `"iqr"`, or `"mad"` to probe different aspects of the data.
     """)
     return
 
@@ -713,7 +713,7 @@ def _():
 
     **PSIS-LOO-CV** (Pareto Smoothed Importance Sampling Leave-One-Out Cross-Validation) estimates how well the model predicts each observation when that observation is held out. Crucially, it approximates this efficiently without refitting the model.
 
-    A model can "win" a LOO comparison and still be a bad model in absolute terms. LOO tells you which model is *less wrong*, not which is *right* — always combine it with posterior predictive checks.
+    A model can "win" a LOO comparison and still be a bad model in absolute terms. LOO tells you which model is *less wrong*, not which is *right*; always combine it with posterior predictive checks.
     """)
     return
 
@@ -757,11 +757,11 @@ def _():
 
     LOO-PIT is a calibration check. If the model is well-calibrated, the LOO-PIT values should follow a **uniform distribution**.
 
-    The plot shows the **Δ-ECDF** — the difference between the empirical CDF of the LOO-PIT values and the expected uniform CDF. A well-calibrated model produces a flat line near zero, staying within the gray simultaneous confidence envelope. Deviations reveal systematic misfit:
+    The plot shows the **Δ-ECDF**, the difference between the empirical CDF of the LOO-PIT values and the expected uniform CDF. A well-calibrated model produces a flat line near zero, staying within the gray simultaneous confidence envelope. Deviations reveal systematic misfit:
 
-    - **Positive hump then negative**: The model is overconfident — predictive intervals are too narrow
-    - **Negative dip then positive**: The model is underconfident — predictive intervals are too wide
-    - **Consistently above or below zero**: Systematic bias — the model consistently over- or under-predicts
+    - **Positive hump then negative**: The model is overconfident: predictive intervals are too narrow
+    - **Negative dip then positive**: The model is underconfident: predictive intervals are too wide
+    - **Consistently above or below zero**: Systematic bias: the model consistently over- or under-predicts
     """)
     return
 
@@ -775,7 +775,7 @@ def _(species_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The species-aware model's LOO-PIT stays within the confidence envelope — the model is well-calibrated.
+    The species-aware model's LOO-PIT stays within the confidence envelope; the model is well-calibrated.
     """)
     return
 
@@ -789,7 +789,7 @@ def _(pooled_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The pooled model shows clear deviations outside the envelope — its predictive intervals are systematically miscalibrated.
+    The pooled model shows clear deviations outside the envelope; its predictive intervals are systematically miscalibrated.
     """)
     return
 
@@ -801,7 +801,7 @@ def _():
 
     ### Model Comparison
 
-    `az.compare()` ranks models by their expected log pointwise predictive density (ELPD). The model with the highest ELPD (least negative) is ranked first. The `weight` column gives **stacking weights** — an estimate of how much each model should contribute to an optimal predictive mixture.
+    `az.compare()` ranks models by their expected log pointwise predictive density (ELPD). The model with the highest ELPD (least negative) is ranked first. The `weight` column gives **stacking weights**, an estimate of how much each model should contribute to an optimal predictive mixture.
     """)
     return
 
@@ -868,7 +868,7 @@ def _():
     az.mcse(trace)             # MCSE small relative to posterior SD?
     az.plot_mcse(trace)        # Stable across quantiles?
     ```
-    **Rule of thumb:** MCSE / posterior SD should be < 0.1. MCSE tells you how many decimal places you can trust — if MCSE ≈ 0.002, reporting to two decimal places is justified. If MCSE is too high: increase draws (or fix sampling first).
+    **Rule of thumb:** MCSE / posterior SD should be < 0.1. MCSE tells you how many decimal places you can trust: if MCSE ≈ 0.002, reporting to two decimal places is justified. If MCSE is too high: increase draws (or fix sampling first).
 
     ### Step 4: Check Model Fit
     ```python
@@ -1069,7 +1069,7 @@ def _():
     mo.md(r"""
     ### Your workflow:
 
-    **Step 1:** Run convergence diagnostics on `exercise_trace` — `az.summary()` (R-hat, ESS), `az.plot_trace_dist()` (mixing), `az.plot_energy()` (BFMI), and check `sample_stats` for divergences.
+    **Step 1:** Run convergence diagnostics on `exercise_trace`: `az.summary()` (R-hat, ESS), `az.plot_trace_dist()` (mixing), `az.plot_energy()` (BFMI), and check `sample_stats` for divergences.
 
     What problems do you see? (Hint: there are at least two distinct issues.)
     """)
@@ -1255,17 +1255,17 @@ def _():
 
     ## Key Takeaways
 
-    **Sampler magic.** `pm.sample()` constructs a Markov chain that *approximates* the posterior. NUTS does this remarkably well for continuous parameters — using gradients to take large, informed steps instead of Metropolis's blind random walk.
+    **Sampler magic.** `pm.sample()` constructs a Markov chain that *approximates* the posterior. NUTS does this remarkably well for continuous parameters, using gradients to take large, informed steps instead of Metropolis's blind random walk.
 
-    **Diagnostics answer two different questions.** R-hat, ESS, divergences, and BFMI tell you whether the *computation* worked — did the *sampler* converge and explore efficiently? Posterior predictive checks and LOO tell you whether the *model* is any good. A perfectly sampled posterior from a bad model is still a bad model.
+    **Diagnostics answer two different questions.** R-hat, ESS, divergences, and BFMI tell you whether the *computation* worked: did the *sampler* converge and explore efficiently? Posterior predictive checks and LOO tell you whether the *model* is any good. A perfectly sampled posterior from a bad model is still a bad model.
 
     **Most sampling failures are model problems, not sampler problems.**
 
     - Non-identifiable parameters (redundant intercept + all dummies) create ridges the sampler slides along forever. The fix is in the model: drop the redundancy or regularize with informative priors.
-    - Divergences mean the sampler's trajectory was *geometrically challenging* in some region — your posterior estimates are biased, not just noisy. The classic cause is funnel geometry (hierarchical models where group variance can approach zero). Non-centered parameterization breaks the funnel.
+    - Divergences mean the sampler's trajectory was *geometrically challenging* in some region: your posterior estimates are biased, not just noisy. The classic cause is funnel geometry (hierarchical models where group variance can approach zero). Non-centered parameterization breaks the funnel.
     - Low ESS usually means either the wrong sampler (Metropolis for discrete parameters) or a posterior the sampler can't navigate efficiently. Marginalize, reparameterize, or increase draws.
 
-    Posterior predictive checks compare simulated data to real data — if they don't match, the model is missing something. LOO cross-validation tells you which model predicts better, but "better" is relative — the winner can still be bad.
+    Posterior predictive checks compare simulated data to real data: if they don't match, the model is missing something. LOO cross-validation tells you which model predicts better, but "better" is relative: the winner can still be bad.
     """)
     return
 

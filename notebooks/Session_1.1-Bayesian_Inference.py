@@ -97,8 +97,8 @@ def _():
 
     Suppose a disease affects **0.1%** of the population. A screening test has:
 
-    - **Sensitivity** = 95% — it correctly detects 95% of people who have the disease
-    - **Specificity** = 95% — it correctly clears 95% of people who are healthy (5% false positive rate)
+    - **Sensitivity** = 95%: it correctly detects 95% of people who have the disease
+    - **Specificity** = 95%: it correctly clears 95% of people who are healthy (5% false positive rate)
 
     You take the test and it comes back **positive**. What is the probability you actually have the disease?
     """)
@@ -199,11 +199,11 @@ def _():
     mo.md(r"""
     ### Why Does This Feel Wrong?
 
-    Most people — including physicians — intuitively guess that the probability is somewhere around 95%, matching the test's accuracy. The actual answer of ~2% feels absurd. What's going on?
+    Most people (including physicians) intuitively guess that the probability is somewhere around 95%, matching the test's accuracy. The actual answer of ~2% feels absurd. What's going on?
 
     The trap is treating the test's accuracy as if it directly answers the question we care about. But $P(+ \mid \text{disease})$ and $P(\text{disease} \mid +)$ are **not the same thing**, and they can differ by orders of magnitude. Reversing the direction of a conditional probability without accounting for the base rate is sometimes called the **base rate fallacy**, and it's one of the most robust findings in cognitive psychology.
 
-    The key insight is that a rare disease means there are *far more* healthy people than sick people to begin with. Even with a low false positive rate, applying the test to a large healthy population generates many false alarms — enough to swamp the smaller number of true positives. The test *is* informative: it raises the probability of disease roughly twentyfold. But a twentyfold increase from a tiny base is still a small number.
+    The key insight is that a rare disease means there are *far more* healthy people than sick people to begin with. Even with a low false positive rate, applying the test to a large healthy population generates many false alarms, enough to swamp the smaller number of true positives. The test *is* informative: it raises the probability of disease roughly twentyfold. But a twentyfold increase from a tiny base is still a small number.
 
     This is why Bayesian reasoning matters in practice. Whenever you're tempted to go straight from "the evidence looks strong" to "the hypothesis must be true," Bayes' theorem forces you to ask: *how likely was the hypothesis in the first place?*
     """)
@@ -260,7 +260,7 @@ def _():
 
     ### Pseudocounts Interpretation
 
-    The Beta distribution parameters have an intuitive interpretation as **pseudocounts** — imaginary prior observations:
+    The Beta distribution parameters have an intuitive interpretation as **pseudocounts**, imaginary prior observations:
 
     - $\alpha$ = number of prior "successes" (responses)
     - $\beta$ = number of prior "failures" (non-responses)
@@ -271,7 +271,7 @@ def _():
 
     $$\text{Beta}(\alpha + k, \, \beta + n - k)$$
 
-    This is called a **conjugate update** — the posterior has the same family as the prior. For Beta(2, 5): we act as if we've already seen 2 responses and 5 non-responses, so our prior "sample size" is 7.
+    This is called a **conjugate update**: the posterior has the same family as the prior. For Beta(2, 5): we act as if we've already seen 2 responses and 5 non-responses, so our prior "sample size" is 7.
     """)
     return
 
@@ -298,7 +298,7 @@ def _():
                 f"**Mean:** {beta_prior_dist.mean():.3f}, **Std:** {beta_prior_dist.std():.3f}"
             ),
             mo.md(
-                "With these parameters, the mean is about 0.29 — we think a typical response rate is about 29%. But the width of the distribution indicates we are quite unsure."
+                "With these parameters, the mean is about 0.29; we think a typical response rate is about 29%. But the width of the distribution indicates we are quite unsure."
             ),
             beta_prior_fig,
         ]
@@ -311,7 +311,7 @@ def _():
     mo.md(r"""
     ### The Binomial Distribution
 
-    The prior tells us what we believe about the conversion rate $\theta$ before seeing data. We also need a **likelihood** — a probability model that links $\theta$ to the data we actually observe.
+    The prior tells us what we believe about the conversion rate $\theta$ before seeing data. We also need a **likelihood**: a probability model that links $\theta$ to the data we actually observe.
 
     Each email recipient either converts or doesn't, so we can think of every send as an independent Bernoulli trial with success probability $\theta$. The total number of conversions from $n$ independent trials is then distributed as:
 
@@ -319,9 +319,9 @@ def _():
     k \sim \text{Binomial}(n, \theta)
     $$
 
-    This gives us $P(k \mid \theta)$ — the probability of observing $k$ conversions for any given value of $\theta$. Bayes' theorem will combine this with the prior to produce the posterior.
+    This gives us $P(k \mid \theta)$, the probability of observing $k$ conversions for any given value of $\theta$. Bayes' theorem will combine this with the prior to produce the posterior.
 
-    To build intuition, let's pick an arbitrary single value from the prior — say $\theta = 0.2$ — and ask what the Binomial says about the number of conversions we'd expect from 50 emails.
+    To build intuition, let's pick an arbitrary single value from the prior (say $\theta = 0.2$) and ask what the Binomial says about the number of conversions we'd expect from 50 emails.
     """)
     return
 
@@ -345,7 +345,7 @@ def _():
     mo.vstack(
         [
             mo.md(
-                f"**Mean:** {binom_demo_dist.mean():.1f} — but values from 2 to 20 have non-negligible probability."
+                f"**Mean:** {binom_demo_dist.mean():.1f}, but values from 2 to 20 have non-negligible probability."
             ),
             binom_fig,
         ]
@@ -435,7 +435,7 @@ def _():
         [
             posterior_evolution_fig,
             mo.md("""
-        With only 5 observations the posterior is wide — many values of θ are plausible.
+        With only 5 observations the posterior is wide; many values of θ are plausible.
         With 750 observations it's tightly concentrated near the true value (~0.487).
         **The data overwhelm the prior.**
         """),
@@ -447,7 +447,7 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    In general we don't know the response rate — we have to estimate it from data.
+    In general we don't know the response rate; we have to estimate it from data.
 
     ---
 
@@ -506,7 +506,7 @@ def _():
     mo.md(r"""
     Before we look at any data, let's draw samples from the **prior** distribution. This serves two purposes:
 
-    1. **Sanity check**: it confirms that PyMC has encoded the model we intended — the sampled values should trace out the Beta(2, 5) curve we plotted earlier.
+    1. **Sanity check**: it confirms that PyMC has encoded the model we intended: the sampled values should trace out the Beta(2, 5) curve we plotted earlier.
     2. **Prior predictive check**: it lets us see what the model believes *before* seeing data. If the prior generates implausible values, that's a signal the prior is misspecified and should be revised before we ever touch the observed data.
     """)
     return
@@ -537,7 +537,7 @@ def _(prior_samples_ab):
     mo.vstack(
         [
             mo.md(
-                "The histogram shows the distribution of conversion counts implied by the Beta(2, 5) prior, applied to a campaign of n = 100 recipients: for each draw of `conversion_rate` from the prior, simulate one count from `Binomial(100, conversion_rate)`. The dashed line marks the value we actually observed (k = 8). Because the prior is broad, the predictive distribution covers a wide range of plausible counts — but it doesn't put weight on absurd values, so the prior isn't ruling out anything reasonable before we fit."
+                "The histogram shows the distribution of conversion counts implied by the Beta(2, 5) prior, applied to a campaign of n = 100 recipients: for each draw of `conversion_rate` from the prior, simulate one count from `Binomial(100, conversion_rate)`. The dashed line marks the value we actually observed (k = 8). Because the prior is broad, the predictive distribution covers a wide range of plausible counts, but it doesn't put weight on absurd values, so the prior isn't ruling out anything reasonable before we fit."
             ),
             fig,
         ]
@@ -548,7 +548,7 @@ def _(prior_samples_ab):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Now let's sample from the **posterior** — our beliefs after combining the prior with the observed data.
+    Now let's sample from the **posterior**: our beliefs after combining the prior with the observed data.
 
     For simple conjugate problems like this one, the posterior has a closed form. In general, though, the posterior is a complicated function of the prior, the likelihood, and the data, and we can't compute it exactly. PyMC instead draws a large random sample from the posterior, and we use that sample to represent the distribution: to compute means, intervals, probabilities, and predictions.
     """)
@@ -581,9 +581,9 @@ def _(ab_trace):
     mo.vstack(
         [
             mo.md("""
-            The posterior distribution represents what we believe **after seeing the data**. It's centered near the observed conversion rate of 8%, but it's pulled slightly toward the prior mean of 0.29 — a small amount of shrinkage, because with only 100 trials the prior still has a little influence.
+            The posterior distribution represents what we believe **after seeing the data**. It's centered near the observed conversion rate of 8%, but it's pulled slightly toward the prior mean of 0.29, a small amount of shrinkage, because with only 100 trials the prior still has a little influence.
 
-            The 94% HDI (highest density interval) gives us a direct probability statement: there is a 94% chance that the true conversion rate lies in this range, *subject to the assumptions of the model* — for example, that the conversion rate doesn't change over time, and that recipients respond independently. This is a stronger claim than a frequentist 94% confidence interval, which is a statement about the long-run coverage of an interval procedure rather than about the parameter itself.
+            The 94% HDI (highest density interval) gives us a direct probability statement: there is a 94% chance that the true conversion rate lies in this range, *subject to the assumptions of the model*: for example, that the conversion rate doesn't change over time, and that recipients respond independently. This is a stronger claim than a frequentist 94% confidence interval, which is a statement about the long-run coverage of an interval procedure rather than about the parameter itself.
             """),
             posterior_cr_fig,
         ]
@@ -598,9 +598,9 @@ def _():
 
     ## A/B Testing: Comparing Two Versions
 
-    So far we've estimated the conversion rate for a single campaign. But most real decisions involve a comparison: is version B better than version A? A frequentist approach to this question typically reaches for a hypothesis test, which ultimately delivers a binary verdict — "significant" or "not significant."
+    So far we've estimated the conversion rate for a single campaign. But most real decisions involve a comparison: is version B better than version A? A frequentist approach to this question typically reaches for a hypothesis test, which ultimately delivers a binary verdict: "significant" or "not significant."
 
-    But rather than merely distinguishing between *"yes, there's a difference"* and *"no, there isn't"*, it is more useful to compute the full distribution of possible differences. We want to know **how different** the conversion rates are, not just **whether** they differ — and with what probability one is larger than the other, and by how much.
+    But rather than merely distinguishing between *"yes, there's a difference"* and *"no, there isn't"*, it is more useful to compute the full distribution of possible differences. We want to know **how different** the conversion rates are, not just **whether** they differ, and with what probability one is larger than the other, and by how much.
 
     Now suppose we introduce a new version B of the email. We think it might be more effective, so we run an A/B test.
     """)
@@ -807,7 +807,7 @@ def _(radon_prior):
             radon_prior_fig,
             mo.md("""
         The prior predictive shows what data we'd expect **before** seeing real measurements.
-        With wide priors, the simulated range is enormous — but it includes the plausible range, so the priors aren't ruling out reasonable values.
+        With wide priors, the simulated range is enormous, but it includes the plausible range, so the priors aren't ruling out reasonable values.
         """),
         ]
     )
@@ -845,7 +845,7 @@ def _(radon_trace):
             radon_posterior_fig,
             mo.callout(
                 mo.md(f"""
-            **P(μ > log(4)) = {prob_above:.1%}** — the probability that the *average* home in Hennepin County exceeds the EPA action level.
+            **P(μ > log(4)) = {prob_above:.1%}**, the probability that the *average* home in Hennepin County exceeds the EPA action level.
 
             Note: individual homes can still exceed the threshold even if the average is below it.
             """),
@@ -910,8 +910,8 @@ def _(radon_trace):
 
             The posterior predictive is wider than the posterior on $\mu$ because it combines **two distinct sources of uncertainty**:
 
-            - **Epistemic** uncertainty — we don't know the exact values of $\mu$ and $\sigma$. This uncertainty shrinks as we collect more data; with enough measurements, the posterior on $\mu$ becomes nearly a point.
-            - **Aleatoric** uncertainty — even if we knew $\mu$ and $\sigma$ exactly, individual homes would still vary around the mean. This uncertainty does *not* shrink with more data — it's baked into the data-generating process.
+            - **Epistemic** uncertainty: we don't know the exact values of $\mu$ and $\sigma$. This uncertainty shrinks as we collect more data; with enough measurements, the posterior on $\mu$ becomes nearly a point.
+            - **Aleatoric** uncertainty: even if we knew $\mu$ and $\sigma$ exactly, individual homes would still vary around the mean. This uncertainty does *not* shrink with more data; it's baked into the data-generating process.
 
             This distinction matters whenever you report predictions: a narrow posterior on the mean tells you you're confident about the *average* home, but it says nothing about how much individual homes scatter around that average.
             """),
@@ -929,7 +929,7 @@ def _():
 
         ## Prior Sensitivity and Shrinkage
 
-        The previous examples use a **weakly informative prior** — it "lets the data speak for itself." That's a reasonable default when you have a lot of data, because the likelihood will dominate the prior in the posterior anyway. But when you have only a small dataset, the prior makes a big difference, and "letting the data speak for itself" can produce wildly unrealistic estimates.
+        The previous examples use a **weakly informative prior**: it "lets the data speak for itself." That's a reasonable default when you have a lot of data, because the likelihood will dominate the prior in the posterior anyway. But when you have only a small dataset, the prior makes a big difference, and "letting the data speak for itself" can produce wildly unrealistic estimates.
 
         ### The Rookie Problem
 
@@ -971,7 +971,7 @@ def _():
         [
             weak_prior_fig,
             mo.md(
-                "With a weak prior, the posterior is pulled toward 1.0 by the data (3/3). This is clearly unrealistic — no one bats 1.000 over a full season."
+                "With a weak prior, the posterior is pulled toward 1.0 by the data (3/3). This is clearly unrealistic: no one bats 1.000 over a full season."
             ),
         ]
     )
@@ -1033,7 +1033,7 @@ def _():
         [
             info_prior_fig,
             mo.md(r"""
-            With a strongly informative prior, the outcome of three at-bats barely moves the needle. This is the Bayesian version of [**shrinkage**](https://en.wikipedia.org/wiki/Shrinkage_(statistics)) — so called because an estimate based on small data "shrinks" toward the prior mean.
+            With a strongly informative prior, the outcome of three at-bats barely moves the needle. This is the Bayesian version of [**shrinkage**](https://en.wikipedia.org/wiki/Shrinkage_(statistics)), so called because an estimate based on small data "shrinks" toward the prior mean.
 
             In frequentist statistics, shrinkage is a regularization technique that has to be deliberately bolted on (think ridge regression, James–Stein estimators). In Bayesian statistics, it emerges *automatically* from the prior-posterior compromise: whenever the likelihood is weak relative to the prior, the posterior is pulled toward the prior, and extreme point estimates are tamed.
             """),
@@ -1049,7 +1049,7 @@ def _():
 
     ## Baseball Batting Averages: Hierarchical Shrinkage
 
-    With only one player the hierarchical model isn't necessary. But with hundreds of players, a hierarchical model learns about players *in general* from the entire dataset, and uses that to improve estimates for individual players — especially those with few at-bats.
+    With only one player the hierarchical model isn't necessary. But with hundreds of players, a hierarchical model learns about players *in general* from the entire dataset, and uses that to improve estimates for individual players, especially those with few at-bats.
     """)
     return
 
@@ -1142,7 +1142,7 @@ def _():
     Before looking at shrinkage, here is the informative prior implied by the
     fitted hierarchical model. First, the posterior densities of the
     hyperparameters `alpha` and `beta`, which land close to 7.5 and 23; then
-    raw draws from that `Beta(7.5, 23)` distribution itself — the
+    raw draws from that `Beta(7.5, 23)` distribution itself, the
     population-level batting-average curve every player's estimate gets
     shrunk toward below.
     """)
@@ -1234,7 +1234,7 @@ def _(baseline_trace, batting_df):
             mo.md("""
             Players with extreme observed batting averages (from few at-bats) are **shrunk** toward the league average. Players with many at-bats stay closer to their observed values.
 
-            This is the hierarchical model at work — it learns the overall distribution and uses it to regularize individual estimates.
+            This is the hierarchical model at work: it learns the overall distribution and uses it to regularize individual estimates.
             """),
         ]
     )
@@ -1261,7 +1261,7 @@ def _():
 def _():
     mo.callout(
         mo.md("""
-        **Your task:** Build two models — one with `Beta(1, 1)` priors and one with `Beta(2, 20)` priors. Compare `P(B > A)` under the two priors.
+        **Your task:** Build two models: one with `Beta(1, 1)` priors and one with `Beta(2, 20)` priors. Compare `P(B > A)` under the two priors.
 
         Pass `random_seed=RANDOM_SEED` to `pm.sample` for reproducibility. Fill in the `exercise_prior_sensitivity` function in the scaffold cell below, then click **▶ Run exercise**.
         """),
@@ -1287,7 +1287,7 @@ def exercise_prior_sensitivity():
     p_b_better_informed = ...
 
     return mo.md(
-        f"P(B > A) — uniform prior: **{p_b_better_uniform:.1%}**, "
+        f"P(B > A), uniform prior: **{p_b_better_uniform:.1%}**, "
         f"informed prior: **{p_b_better_informed:.1%}**"
     )
 
@@ -1367,7 +1367,7 @@ def _():
 
     ## Bayesian Bandits: Adaptive Experimentation
 
-    Earlier we built a posterior for the conversion rate of email campaigns A and B. But how do we put those beliefs into action? A traditional A/B test says: pick a sample size up front, send half of the next batch of emails to A and half to B, then decide. This is simple and statistically rigorous, but it has a real cost — while the test is running, half of every batch goes to the *worse* campaign.
+    Earlier we built a posterior for the conversion rate of email campaigns A and B. But how do we put those beliefs into action? A traditional A/B test says: pick a sample size up front, send half of the next batch of emails to A and half to B, then decide. This is simple and statistically rigorous, but it has a real cost: while the test is running, half of every batch goes to the *worse* campaign.
 
     Bayesian bandits take a different approach: send each email to A or B in **proportion to its probability of being the better campaign**. As long as we're unsure, A and B get roughly equal shares of the mailing list. As we become confident that one converts better, it claims more of the next batch. This naturally balances **exploration** (occasionally sending to the worse-looking campaign to learn more) with **exploitation** (sending to the campaign we currently believe is best).
 
@@ -1390,7 +1390,7 @@ def _():
     mo.md(r"""
     First, a small helper that simulates running a campaign: it draws the number of conversions from a Binomial with the campaign's true rate, then adds the new emails sent and conversions to a running total. Each campaign is just a dictionary with its (unknown to the algorithm) true rate `p`, the cumulative number of emails sent `n`, and the cumulative number of conversions `k`.
 
-    Note that — unlike the original notebook example — `bandit_run_campaign` returns a *new* dictionary rather than mutating the one we pass in. This keeps the function safe to call from marimo's reactive cells, where re-running a cell that mutated state would silently double-count.
+    Note that, unlike the original notebook example, `bandit_run_campaign` returns a *new* dictionary rather than mutating the one we pass in. This keeps the function safe to call from marimo's reactive cells, where re-running a cell that mutated state would silently double-count.
     """)
     return
 
@@ -1406,7 +1406,7 @@ def bandit_run_campaign(state, n, seed):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Suppose campaign A has a true conversion rate of 10% and campaign B is actually a bit better at 15% — though of course the algorithm doesn't know that.
+    Suppose campaign A has a true conversion rate of 10% and campaign B is actually a bit better at 15%, though of course the algorithm doesn't know that.
     """)
     return
 
@@ -1507,7 +1507,7 @@ def _(bandit_trace_v1):
         [
             bandit_post_fig_v1,
             mo.md(
-                f"On average B looks better, but the posteriors overlap a lot. The posterior probability that **B converts better than A** is **{bandit_p_sup_B_v1:.1%}** — promising, but far from certain."
+                f"On average B looks better, but the posteriors overlap a lot. The posterior probability that **B converts better than A** is **{bandit_p_sup_B_v1:.1%}**, promising, but far from certain."
             ),
         ]
     )
@@ -1549,7 +1549,7 @@ def _(bandit_n_A_next, bandit_n_B_next, bandit_state_A1, bandit_state_B1):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    And we re-fit the model on the accumulated data — this automates what you could do by manually re-running the cells above with updated totals: refit, recompute, and compare in one step.
+    And we re-fit the model on the accumulated data: this automates what you could do by manually re-running the cells above with updated totals: refit, recompute, and compare in one step.
     """)
     return
 
@@ -1578,7 +1578,7 @@ def _(bandit_trace_v2, plot_bandit_posteriors):
         [
             bandit_post_fig_v2,
             mo.md(
-                f"After the second batch, the green curve has tightened around its true value and the posterior probability that **B converts better than A** has moved to **{bandit_p_sup_B_v2:.1%}**. If we kept looping — fit, re-allocate, send another batch, re-fit — the algorithm would send a larger and larger share of each new batch through B until it was effectively certain."
+                f"After the second batch, the green curve has tightened around its true value and the posterior probability that **B converts better than A** has moved to **{bandit_p_sup_B_v2:.1%}**. If we kept looping (fit, re-allocate, send another batch, re-fit) the algorithm would send a larger and larger share of each new batch through B until it was effectively certain."
             ),
         ]
     )
@@ -1592,7 +1592,7 @@ def _():
 
     Doing this loop by hand, one batch at a time, gets old fast. Two simplifications turn it into a clean online algorithm:
 
-    1. **Don't wait for a batch.** Run Thompson sampling at the level of a *single* email — for each new send, draw one sample from each campaign's current posterior and pick the larger one.
+    1. **Don't wait for a batch.** Run Thompson sampling at the level of a *single* email: for each new send, draw one sample from each campaign's current posterior and pick the larger one.
     2. **Don't re-run PyMC every step.** Because the Beta prior is conjugate to the Binomial likelihood, the posterior after observing $k$ conversions in $n$ emails is just $\text{Beta}(\alpha_0 + k,\ \beta_0 + n - k)$. Updating reduces to incrementing two counters.
 
     The simulation below does both. You control the true rates, the size of the mailing list, and the seed; everything updates reactively, and a scrubber lets you replay the run email by email.
@@ -1625,7 +1625,7 @@ def _():
     mo.vstack(
         [
             mo.md(
-                "**Try changing the true conversion rates, the size of the mailing list, or the seed — every plot below updates automatically.**"
+                "**Try changing the true conversion rates, the size of the mailing list, or the seed; every plot below updates automatically.**"
             ),
             mo.hstack(
                 [bandit_rate_a, bandit_rate_b, bandit_n_rounds_ui, bandit_seed_ui],
@@ -1848,13 +1848,13 @@ def _():
     mo.md(r"""
     **Things to try:**
 
-    - Drag the **scrubber** from the first email to the last. Watch the Beta posteriors start as flat priors (Beta(1, 1)) and sharpen around the true conversion rates. Notice how the green curve (Campaign B) almost always pulls away faster — because the algorithm sends more of the mailing list through B once it suspects B is the better campaign.
+    - Drag the **scrubber** from the first email to the last. Watch the Beta posteriors start as flat priors (Beta(1, 1)) and sharpen around the true conversion rates. Notice how the green curve (Campaign B) almost always pulls away faster, because the algorithm sends more of the mailing list through B once it suspects B is the better campaign.
     - Set both true conversion rates **equal** (e.g. 0.10 and 0.10). The green allocation line wanders around 0.5 indefinitely and P(B better than A) hovers near 50%. Thompson sampling correctly *refuses to commit* when neither campaign is actually better.
-    - Make the gap **tiny** (0.10 vs 0.11). It now takes hundreds of emails — and many seeds will favour A for a long stretch before flipping. Small effects need large mailings, even for adaptive methods.
+    - Make the gap **tiny** (0.10 vs 0.11). It now takes hundreds of emails, and many seeds will favour A for a long stretch before flipping. Small effects need large mailings, even for adaptive methods.
     - Make the gap **large** (0.05 vs 0.30). The algorithm locks in on B within ~30 emails.
     - Change the **seed** to see how much early luck matters before the data overwhelms the prior.
 
-    This strategy — also called the **Bayesian bandit** — is optimal in the sense that it maximises expected conversions given current beliefs. It resolves the exploration/exploitation tradeoff automatically, with no tuning parameter, and converges to always sending the better campaign in the long run.
+    This strategy (also called the **Bayesian bandit**) is optimal in the sense that it maximises expected conversions given current beliefs. It resolves the exploration/exploitation tradeoff automatically, with no tuning parameter, and converges to always sending the better campaign in the long run.
 
     | | Traditional A/B Test | Bayesian Bandits |
     |---|---|---|

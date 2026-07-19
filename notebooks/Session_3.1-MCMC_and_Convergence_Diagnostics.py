@@ -63,7 +63,7 @@ def _():
     mo.md(r"""
     ## 0. Warm-up: two `trace` objects in the wild
 
-    Before we build anything, here are two `trace` objects handed to you by a colleague. They came from two different models fit to the penguin data. Your job, working in pairs: figure out **which one you would trust**, and explain why — using only the objects themselves.
+    Before we build anything, here are two `trace` objects handed to you by a colleague. They came from two different models fit to the penguin data. Your job, working in pairs: figure out **which one you would trust**, and explain why, using only the objects themselves.
 
     You have not yet been told what to look for. That is the point. Explore.
     """)
@@ -117,7 +117,7 @@ def _():
     1. Type `trace_a` and `trace_b` on their own lines. What groups does each one contain? Are they the same?
     2. How many `chain`s and `draw`s are in each `posterior`?
     3. What are the parameter names in each? Which parameters do they share?
-    4. Find where the observed penguin mass lives — the same penguin measurements
+    4. Find where the observed penguin mass lives, the same penguin measurements
        you met in Session 1.2, now used in a regression of body mass on flipper length.
     5. Look at `trace_a.sample_stats` and `trace_b.sample_stats`. List three variables you see in each.
     """)
@@ -139,7 +139,7 @@ def _(trace_a, trace_b):
         shared = sorted(set(post_a.data_vars) & set(post_b.data_vars))
         return mo.md(
             f"""
-- **Groups**: `trace_a` has `{groups_a}`, `trace_b` has `{groups_b}` — the same four.
+- **Groups**: `trace_a` has `{groups_a}`, `trace_b` has `{groups_b}`, the same four.
 - **Chains × draws**: `trace_a`: {post_a.sizes["chain"]} × {post_a.sizes["draw"]}; `trace_b`: {post_b.sizes["chain"]} × {post_b.sizes["draw"]}.
 - **Parameters**: `trace_a` has `{sorted(post_a.data_vars)}`; `trace_b` has `{sorted(post_b.data_vars)}`; shared: `{shared}`.
 - **Observed data**: `trace_a["observed_data"]["mass"]` (same location in `trace_b`).
@@ -168,7 +168,7 @@ def _():
     ### Stage 2 — Ask the summary
 
     1. Run `az.summary(...)` on each trace. Compare `ess_bulk`, `ess_tail`, and `r_hat` side by side. Which parameters look problematic in `trace_b`?
-    2. `sample_stats` contains a boolean flag `diverging` — draws where the sampler broke down. Check both runs: how many divergences does each have? (`.sum()` on the DataArray works.) Careful: a clean divergence count does **not** mean a clean run — as you're about to see, the trouble here shows up elsewhere in the summary.
+    2. `sample_stats` contains a boolean flag `diverging`, draws where the sampler broke down. Check both runs: how many divergences does each have? (`.sum()` on the DataArray works.) Careful: a clean divergence count does **not** mean a clean run; as you're about to see, the trouble here shows up elsewhere in the summary.
     """)
     return
 
@@ -197,7 +197,7 @@ def _(trace_a, trace_b):
                 mo.md(
                     f"Divergence flags: **{div_a}** in `trace_a`, **{div_b}** in `trace_b`. "
                     "Here the trouble shows up in the summary instead: `tau_alpha` and `sigma` "
-                    "in `trace_b` have `ess_bulk` around 10 and `r_hat` around 1.3 — "
+                    "in `trace_b` have `ess_bulk` around 10 and `r_hat` around 1.3: "
                     "the chains never mixed."
                 ),
             ]
@@ -225,13 +225,13 @@ def _():
 
     Call `az.plot_trace_dist(...)` on each trace. Minimal usage: `az.plot_trace_dist(trace_a)` (add `var_names=[...]` to focus it). A few things to know before you start:
 
-    - The two models have **different parameters**, so you can't use the same `var_names` for both — look at each `posterior` group to see what's there.
+    - The two models have **different parameters**, so you can't use the same `var_names` for both; look at each `posterior` group to see what's there.
     - `trace_b` has *hundreds* of `alpha` entries (one per penguin). Restrict `var_names` to the top-level parameters or the plot will be unreadable.
 
     Then:
 
     1. What visual difference do you see between the two traces? Look at how each chain moves over iterations and whether the chains agree.
-    2. Based only on what you have seen so far, write one sentence: *which `trace` would you trust, and what specifically convinced you?* Keep that sentence — over the next hour we will name every piece of evidence you used.
+    2. Based only on what you have seen so far, write one sentence: *which `trace` would you trust, and what specifically convinced you?* Keep that sentence: over the next hour we will name every piece of evidence you used.
     """)
     return
 
@@ -259,12 +259,12 @@ def _(trace_a, trace_b):
         return mo.vstack(
             [
                 mo.md(
-                    "**`trace_a`** — every chain wanders freely over the same region "
+                    "**`trace_a`**: every chain wanders freely over the same region "
                     "and the per-chain densities overlap (the 'fuzzy caterpillar'):"
                 ),
                 plot_a,
                 mo.md(
-                    "**`trace_b`** — the `tau_alpha` and `sigma` chains disagree and "
+                    "**`trace_b`**: the `tau_alpha` and `sigma` chains disagree and "
                     "get stuck for long stretches; each chain explores a different region:"
                 ),
                 plot_b,
@@ -304,7 +304,7 @@ def _():
     mo.md(r"""
     ## 1. What Does `pm.sample()` Give You?
 
-    You've been calling `pm.sample()` since Session 1. You know how to specify models and check traceplots. But when something goes wrong — and it will — your ability to fix it depends on understanding what the sampler is doing and what the diagnostics are telling you has occurred, relative to what was expected.
+    You've been calling `pm.sample()` since Session 1. You know how to specify models and check traceplots. But when something goes wrong (and it will) your ability to fix it depends on understanding what the sampler is doing and what the diagnostics are telling you has occurred, relative to what was expected.
 
     We'll organize around three questions:
 
@@ -312,7 +312,7 @@ def _():
     2. **Did the sampler work?** How do you diagnose and fix problems?
     3. **Does the model fit the data?**
 
-    Along the way, we'll build up your understanding of how the sampler works — not to implement it from scratch, but so you can reason about what's happening when diagnostics flag a problem.
+    Along the way, we'll build up your understanding of how the sampler works, not to implement it from scratch, but so you can reason about what's happening when diagnostics flag a problem.
     """)
     return
 
@@ -322,7 +322,7 @@ def _():
     mo.md(r"""
     ### A well-specified model
 
-    Let's start with a simple model we know works — predicting penguin body mass from flipper length. Before building a model, we should always look at the data.
+    Let's start with a simple model we know works: predicting penguin body mass from flipper length. Before building a model, we should always look at the data.
     """)
     return
 
@@ -363,7 +363,7 @@ def _(body_mass, flipper_length):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    There's a clear positive linear relationship — penguins with longer flippers tend to be heavier. There's also meaningful spread around the trend, which our model needs to capture.
+    There's a clear positive linear relationship: penguins with longer flippers tend to be heavier. There's also meaningful spread around the trend, which our model needs to capture.
 
     Before specifying the model, two practical choices:
 
@@ -382,7 +382,7 @@ def _():
 
     - **`alpha ~ Normal(4, 2)`**: The intercept is the expected mass at average flipper length. Penguins weigh roughly 3–6 kg, so a prior centered at 4 kg with SD of 2 covers the plausible range generously.
     - **`beta ~ Normal(0, 2)`**: The slope (effect of a 1-SD change in flipper length). A prior centered at zero expresses no prior directional preference; SD of 2 allows for substantial effects.
-    - **`sigma ~ HalfNormal(2)`**: The residual standard deviation. HalfNormal(2) puts most prior mass below ~4 kg of residual spread — generous for a variable that ranges over ~3 kg total.
+    - **`sigma ~ HalfNormal(2)`**: The residual standard deviation. HalfNormal(2) puts most prior mass below ~4 kg of residual spread, generous for a variable that ranges over ~3 kg total.
     """)
     return
 
@@ -407,7 +407,7 @@ def _():
     mo.md(r"""
     ### Prior predictive check
 
-    Before fitting the model, we can check whether our priors generate plausible data. A **prior predictive check** draws parameter values from the priors and simulates datasets — if these simulated datasets look nothing like real penguin data, our priors are poorly calibrated.
+    Before fitting the model, we can check whether our priors generate plausible data. A **prior predictive check** draws parameter values from the priors and simulates datasets: if these simulated datasets look nothing like real penguin data, our priors are poorly calibrated.
     """)
     return
 
@@ -429,7 +429,7 @@ def _(baseline_model):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The prior predictive distribution covers a wide range of body masses — some implausible (negative masses, masses above 10 kg) but with most of the density in a reasonable range. This tells us our priors are weakly informative: they don't force the model toward any particular answer, but they don't generate data that are off by orders of magnitude. That's exactly what we want for a first pass.
+    The prior predictive distribution covers a wide range of body masses, some implausible (negative masses, masses above 10 kg) but with most of the density in a reasonable range. This tells us our priors are weakly informative: they don't force the model toward any particular answer, but they don't generate data that are off by orders of magnitude. That's exactly what we want for a first pass.
 
     Now let's fit the model.
     """)
@@ -448,7 +448,7 @@ def _():
     mo.md(r"""
     ### The InferenceData object
 
-    The result of `pm.sample()` is an `InferenceData` object — a container built on top of xarray that holds everything about the sampling run, organized into groups like `posterior`, `sample_stats`, and `observed_data`.
+    The result of `pm.sample()` is an `InferenceData` object, a container built on top of xarray that holds everything about the sampling run, organized into groups like `posterior`, `sample_stats`, and `observed_data`.
     """)
     return
 
@@ -462,7 +462,7 @@ def _(nuts_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The `posterior` group contains the actual parameter draws — this is what you'll use for inference. It's an xarray Dataset with dimensions `(chain, draw)` for each parameter.
+    The `posterior` group contains the actual parameter draws; this is what you'll use for inference. It's an xarray Dataset with dimensions `(chain, draw)` for each parameter.
     """)
     return
 
@@ -525,13 +525,13 @@ def _():
     | Column | What it tells you |
     |--------|-------------------|
     | **mean** | Point estimate (posterior mean) |
-    | **sd** | Posterior standard deviation — uncertainty in the parameter |
-    | **eti89_lb** / **eti89_ub** | Bounds of the 89% Equal-Tailed Interval — equal probability (5.5%) excluded from each tail |
-    | **mcse_mean** | Monte Carlo Standard Error of the mean — how much the *estimate* of the mean would change with different random draws |
+    | **sd** | Posterior standard deviation, uncertainty in the parameter |
+    | **eti89_lb** / **eti89_ub** | Bounds of the 89% Equal-Tailed Interval, equal probability (5.5%) excluded from each tail |
+    | **mcse_mean** | Monte Carlo Standard Error of the mean, how much the *estimate* of the mean would change with different random draws |
     | **mcse_sd** | MCSE for the standard deviation |
     | **ess_bulk** | Effective sample size for the bulk (center) of the posterior |
     | **ess_tail** | Effective sample size for the tails (5% and 95% quantiles) |
-    | **r_hat** | Split R-hat convergence diagnostic — values near 1.0 indicate convergence |
+    | **r_hat** | Split R-hat convergence diagnostic, values near 1.0 indicate convergence |
     """)
     return
 
@@ -543,7 +543,7 @@ def _():
 
     Two columns in the summary table deserve a closer look: `eti89_lb` and `eti89_ub`. The **Equal-Tailed Interval** (ETI) is computed by cutting off equal probability in each tail of the posterior distribution. For an 89% ETI, we exclude 5.5% from each tail.
 
-    The ETI is the default in ArviZ because it is straightforward to interpret and compute. An alternative is the **Highest Density Interval** (HDI), which finds the *narrowest* interval containing the specified probability mass. For **skewed posteriors**, the HDI may be preferable since it always contains the most probable values — but for symmetric posteriors (like the ones here), the two are nearly identical.
+    The ETI is the default in ArviZ because it is straightforward to interpret and compute. An alternative is the **Highest Density Interval** (HDI), which finds the *narrowest* interval containing the specified probability mass. For **skewed posteriors**, the HDI may be preferable since it always contains the most probable values, but for symmetric posteriors (like the ones here), the two are nearly identical.
 
     The 89% default probability follows a convention that avoids the false precision of "95%" while providing a useful credible interval. It also has the practical benefit of lower variability in summary statistics compared to wider intervals.
 
@@ -583,7 +583,7 @@ def _():
 
     ## 2. Did the Sampler Work?
 
-    Having seen what the output looks like, let's now ask: can we trust it? The summary table showed healthy-looking numbers, but to understand *why* they're healthy — and to recognize when they're not — we need to understand what the sampler is doing.
+    Having seen what the output looks like, let's now ask: can we trust it? The summary table showed healthy-looking numbers, but to understand *why* they're healthy (and to recognize when they're not) we need to understand what the sampler is doing.
     """)
     return
 
@@ -593,7 +593,7 @@ def _():
     mo.md(r"""
     ### How the Sampler Works: From Random Walks to NUTS
 
-    When you call `pm.sample()`, PyMC doesn't draw independent samples from the posterior — it can't, because the posterior is a complex, high-dimensional distribution we only know up to a normalizing constant.
+    When you call `pm.sample()`, PyMC doesn't draw independent samples from the posterior; it can't, because the posterior is a complex, high-dimensional distribution we only know up to a normalizing constant.
 
     Instead, it constructs a **Markov chain**: a sequence of samples where each draw depends on the previous one, particularly designed so that after enough steps, the samples approximate draws from the posterior. At least, this is what theory guarantees.
 
@@ -633,7 +633,7 @@ def _():
     mo.md(r"""
     #### Metropolis from scratch, in 1D
 
-    Before watching an animation of it, let's build it. We'll target a **Beta(3, 2)** distribution — a nice 1D example with bounded support on $[0, 1]$ and a closed-form pdf we can plot for comparison. Here's the target:
+    Before watching an animation of it, let's build it. We'll target a **Beta(3, 2)** distribution, a nice 1D example with bounded support on $[0, 1]$ and a closed-form pdf we can plot for comparison. Here's the target:
     """)
     return
 
@@ -917,7 +917,7 @@ def _():
     mo.md(r"""
     #### Bounded parameters and the unconstrained space
 
-    A Beta(3, 2) is supported on $[0, 1]$ — the pdf is zero outside. Our proposal (a Gaussian centred on the current state) regularly suggests values like $x = -0.1$ or $x = 1.2$, which get rejected outright. This is wasted work, and it gets much worse for distributions like a `HalfNormal` or a `Dirichlet` where most Gaussian proposals land out of bounds.
+    A Beta(3, 2) is supported on $[0, 1]$; the pdf is zero outside. Our proposal (a Gaussian centred on the current state) regularly suggests values like $x = -0.1$ or $x = 1.2$, which get rejected outright. This is wasted work, and it gets much worse for distributions like a `HalfNormal` or a `Dirichlet` where most Gaussian proposals land out of bounds.
 
     PyMC solves this by sampling in **unconstrained space**. For a variable bounded on $[0, 1]$, it applies the logit transform $y = \log(x / (1 - x))$, samples in $y \in (-\infty, \infty)$ where any Gaussian proposal is valid, and transforms draws back. Let's try that naively:
     """)
@@ -999,13 +999,13 @@ def _(samples2, x_range, x_range_pdf):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The histogram is **skewed toward the boundaries** compared to the true Beta(3, 2) — too much mass piled up near $x = 1$, not enough in the middle. Something has gone wrong.
+    The histogram is **skewed toward the boundaries** compared to the true Beta(3, 2): too much mass piled up near $x = 1$, not enough in the middle. Something has gone wrong.
 
     #### Why the bias — and the change of variables
 
-    Equal-sized steps in logit space are *not* equal-sized steps in natural space. Near $y = 0$ (i.e. $x = 0.5$) the logit map is nearly linear — $dx/dy = x(1-x) = 0.25$, its maximum — so a step of $\Delta y = 0.1$ moves $x$ by about $0.025$. Near the boundaries (say $y = 4$, $x \approx 0.982$) the same $\Delta y = 0.1$ only moves $x$ by about $0.0018$ — fifteen times less.
+    Equal-sized steps in logit space are *not* equal-sized steps in natural space. Near $y = 0$ (i.e. $x = 0.5$) the logit map is nearly linear ($dx/dy = x(1-x) = 0.25$, its maximum) so a step of $\Delta y = 0.1$ moves $x$ by about $0.025$. Near the boundaries (say $y = 4$, $x \approx 0.982$) the same $\Delta y = 0.1$ only moves $x$ by about $0.0018$, fifteen times less.
 
-    The logit map stretches the edges of $[0, 1]$ out to infinity, so a huge chunk of $y$-space maps to a thin sliver of $x$-space near the boundaries. The naive sampler doesn't know this: it treats $\text{Beta}(\text{expit}(y); 3, 2)$ as if it were a density in $y$ and samples from it directly. When we transform the resulting draws back via $x = \text{expit}(y)$, all the draws made out in the tails of $y$-space cram into those tiny slivers near $x = 0$ and $x = 1$ — so those regions end up *over-represented* in the histogram, and the middle gets starved.
+    The logit map stretches the edges of $[0, 1]$ out to infinity, so a huge chunk of $y$-space maps to a thin sliver of $x$-space near the boundaries. The naive sampler doesn't know this: it treats $\text{Beta}(\text{expit}(y); 3, 2)$ as if it were a density in $y$ and samples from it directly. When we transform the resulting draws back via $x = \text{expit}(y)$, all the draws made out in the tails of $y$-space cram into those tiny slivers near $x = 0$ and $x = 1$, so those regions end up *over-represented* in the histogram, and the middle gets starved.
     """)
     return
 
@@ -1140,17 +1140,17 @@ def _(samples3, x_range, x_range_pdf):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    **Purple arrows** in the step-by-step plot above mark steps that *would* have been accepted by the naive sampler but were rejected by the adjusted one — that's the Jacobian doing its job, pushing the sampler away from regions that the unconstrained proposal over-represents.
+    **Purple arrows** in the step-by-step plot above mark steps that *would* have been accepted by the naive sampler but were rejected by the adjusted one; that's the Jacobian doing its job, pushing the sampler away from regions that the unconstrained proposal over-represents.
 
-    This is exactly what PyMC does under the hood for every bounded variable in your model: it transforms to an unconstrained space, samples there, and tacks the log-Jacobian onto the log-posterior. You normally never see it — but now you know what's happening when the sampler trace lives on some transformed scale.
+    This is exactly what PyMC does under the hood for every bounded variable in your model: it transforms to an unconstrained space, samples there, and tacks the log-Jacobian onto the log-posterior. You normally never see it, but now you know what's happening when the sampler trace lives on some transformed scale.
 
     ---
 
     #### Back to two dimensions
 
-    The 1D walk shows the algorithm clearly, but it hides the hard part: in high dimensions and with correlated posteriors, the step size is a tightrope between "never accept anything" and "never go anywhere". Let's rerun Metropolis on a slightly harder target — a **two-parameter posterior**: a bivariate normal over $(x_1, x_2)$ with correlation $\rho = 0.9$. The grey ellipses in the animation below are its density contours — the "ridge" where most of the probability mass lives.
+    The 1D walk shows the algorithm clearly, but it hides the hard part: in high dimensions and with correlated posteriors, the step size is a tightrope between "never accept anything" and "never go anywhere". Let's rerun Metropolis on a slightly harder target, a **two-parameter posterior**: a bivariate normal over $(x_1, x_2)$ with correlation $\rho = 0.9$. The grey ellipses in the animation below are its density contours, the "ridge" where most of the probability mass lives.
 
-    The left panel shows the sampler moving through parameter space —
+    The left panel shows the sampler moving through parameter space:
     <span style="color:#2ca02c">green</span> lines are accepted proposals,
     <span style="color:#d62728">red</span> lines are rejected ones.
 
@@ -1397,11 +1397,11 @@ def _(
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The critical tuning parameter is the **step size** — how far each proposal jumps. This single number controls the fundamental tradeoff of the algorithm:
+    The critical tuning parameter is the **step size**, how far each proposal jumps. This single number controls the fundamental tradeoff of the algorithm:
 
-    - **Too small**: Every proposal is accepted (it barely moved), but the chain crawls — it takes thousands of steps to cross the posterior. The trace looks like a slow, smooth random walk.
+    - **Too small**: Every proposal is accepted (it barely moved), but the chain crawls; it takes thousands of steps to cross the posterior. The trace looks like a slow, smooth random walk.
     - **Too large**: Most proposals land in low-density regions and get rejected. The chain gets stuck for long stretches, jumping only occasionally.
-    - **Just right**: A mix of accepted and rejected proposals. The trace looks like a "fuzzy caterpillar" — exactly what we want.
+    - **Just right**: A mix of accepted and rejected proposals. The trace looks like a "fuzzy caterpillar", exactly what we want.
 
     Try manually adjusting the step size below:
     """)
@@ -1457,13 +1457,13 @@ def _(step_size_slider, step_size_traces):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Notice how the step size controls everything about the sampler's behavior — the acceptance rate, the autocorrelation, and how quickly the chain explores the target distribution. This is what PyMC's **warmup phase** automates: finding the step size that produces that well-mixed caterpillar trace. When you call `pm.sample()`, the first `tune` draws (default: 1000) are a **warmup phase** where the sampler adapts to the posterior geometry.
+    Notice how the step size controls everything about the sampler's behavior: the acceptance rate, the autocorrelation, and how quickly the chain explores the target distribution. This is what PyMC's **warmup phase** automates: finding the step size that produces that well-mixed caterpillar trace. When you call `pm.sample()`, the first `tune` draws (default: 1000) are a **warmup phase** where the sampler adapts to the posterior geometry.
 
     `pm.sample(tune=500)`
 
     These draws are discarded and never appear in your trace, because the sampler's behavior is non-stationary while it's still learning.
 
-    If you see poor mixing in the early post-warmup draws, the warmup may not have been long enough. Try increasing `tune` (e.g., `tune=2000`). Complex models — hierarchical structures, many parameters, difficult geometry — often need more warmup to get both the step size and mass matrix right. We'll return to these settings in the sampler configuration tips in Session 3.2.
+    If you see poor mixing in the early post-warmup draws, the warmup may not have been long enough. Try increasing `tune` (e.g., `tune=2000`). Complex models (hierarchical structures, many parameters, difficult geometry) often need more warmup to get both the step size and mass matrix right. We'll return to these settings in the sampler configuration tips in Session 3.2.
     """)
     return
 
@@ -1485,12 +1485,12 @@ def _():
 
     **Hamiltonian Monte Carlo (HMC)** solves this by using the *gradient* of the log-posterior to make informed proposals. Instead of random steps, HMC simulates a physical system: imagine placing a ball on a surface shaped like the posterior density and giving it a random push. The ball rolls along the surface following Hamiltonian dynamics, naturally staying in high-density regions while covering large distances.
 
-    **NUTS** (the No-U-Turn Sampler) extends HMC by automatically choosing how far to "roll" — it stops the trajectory when it starts doubling back, which is the "no U-turn" criterion. This eliminates HMC's most sensitive tuning parameter (trajectory length).
+    **NUTS** (the No-U-Turn Sampler) extends HMC by automatically choosing how far to "roll"; it stops the trajectory when it starts doubling back, which is the "no U-turn" criterion. This eliminates HMC's most sensitive tuning parameter (trajectory length).
 
     NUTS adapts two things during warmup:
 
-    - **Step size**, via dual averaging — targeting the acceptance rate set by `target_accept` (default 0.8). This is the automated version of what the slider above let you do manually.
-    - **Mass matrix** (also called the inverse metric) — an estimate of the posterior covariance that lets the sampler take appropriately-scaled steps in each direction. Without it, a parameter with SD = 0.01 and one with SD = 100 would need very different step sizes. The mass matrix handles this automatically.
+    - **Step size**, via dual averaging, targeting the acceptance rate set by `target_accept` (default 0.8). This is the automated version of what the slider above let you do manually.
+    - **Mass matrix** (also called the inverse metric), an estimate of the posterior covariance that lets the sampler take appropriately-scaled steps in each direction. Without it, a parameter with SD = 0.01 and one with SD = 100 would need very different step sizes. The mass matrix handles this automatically.
 
     The result: proposals that are *distant* from the current position but still in high-density regions, producing nearly independent samples. Let's see the contrast directly.
     """)
@@ -1500,7 +1500,7 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The animation below shows both samplers targeting the same correlated bivariate normal distribution ($\rho=0.9$). Watch how Metropolis proposes small random steps (many rejected in <span style="color:#d62728">red</span>), while HMC follows curved trajectories along the density surface — covering far more ground per step.
+    The animation below shows both samplers targeting the same correlated bivariate normal distribution ($\rho=0.9$). Watch how Metropolis proposes small random steps (many rejected in <span style="color:#d62728">red</span>), while HMC follows curved trajectories along the density surface, covering far more ground per step.
     """)
     return
 
@@ -1706,7 +1706,7 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Now let's compare the autocorrelation — how correlated successive draws are — for both samplers on the same model.
+    Now let's compare the autocorrelation (how correlated successive draws are) for both samplers on the same model.
     """)
     return
 
@@ -1750,7 +1750,7 @@ def _(metropolis_trace, nuts_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    When ESS is much lower than expected, something about the posterior geometry is preventing efficient exploration — we'll see concrete examples in Session 3.2.
+    When ESS is much lower than expected, something about the posterior geometry is preventing efficient exploration; we'll see concrete examples in Session 3.2.
     """)
     return
 
@@ -1760,7 +1760,7 @@ def _():
     mo.md(r"""
     ### Visual Diagnostics
 
-    The visual diagnostic tools in ArviZ let you inspect the sampler's behavior directly. For each one, we'll show NUTS and Metropolis side by side on the same model — so you can see what "healthy" and "inefficient but correct" look like, and practice reading the diagnostics before we meet genuinely broken samplers in Session 3.2.
+    The visual diagnostic tools in ArviZ let you inspect the sampler's behavior directly. For each one, we'll show NUTS and Metropolis side by side on the same model, so you can see what "healthy" and "inefficient but correct" look like, and practice reading the diagnostics before we meet genuinely broken samplers in Session 3.2.
     """)
     return
 
@@ -1770,7 +1770,7 @@ def _():
     mo.md(r"""
     #### Trace Plots
 
-    The trace plot shows two things side by side: the posterior distribution (left) and the raw draws over time (right). You want to see "fuzzy caterpillars" — chains that mix well and overlap completely. `plot_trace_dist` combines the trace and distribution density in one view.
+    The trace plot shows two things side by side: the posterior distribution (left) and the raw draws over time (right). You want to see "fuzzy caterpillars", chains that mix well and overlap completely. `plot_trace_dist` combines the trace and distribution density in one view.
     """)
     return
 
@@ -1793,7 +1793,7 @@ def _():
 
     Rank plots (`plot_rank`) are often better than raw trace plots for detecting convergence problems. They work by ranking *all* draws across all chains (pooling them), converting to fractional ranks, then computing the empirical CDF of those ranks for each chain.
 
-    The plot shows the **Δ-ECDF** — the difference between each chain's observed rank ECDF and the expected uniform CDF. If chains are sampling from the same distribution, the lines should be flat near zero, staying within the gray envelope. Lines that extend outside the envelope or show "squared-off" patterns indicate convergence problems or low ESS.
+    The plot shows the **Δ-ECDF**, the difference between each chain's observed rank ECDF and the expected uniform CDF. If chains are sampling from the same distribution, the lines should be flat near zero, staying within the gray envelope. Lines that extend outside the envelope or show "squared-off" patterns indicate convergence problems or low ESS.
     """)
     return
 
@@ -1813,7 +1813,7 @@ def _():
     mo.md(r"""
     ### Numerical Diagnostics
 
-    Now let's attach numbers to the visual picture. Again we'll compare NUTS and Metropolis side by side on each diagnostic. Metropolis here isn't *broken* — R-hat will still look fine, for example — it's just wasteful. Session 3.2 is where we'll meet diagnostics that flag genuinely broken models.
+    Now let's attach numbers to the visual picture. Again we'll compare NUTS and Metropolis side by side on each diagnostic. Metropolis here isn't *broken* (R-hat will still look fine, for example), it's just wasteful. Session 3.2 is where we'll meet diagnostics that flag genuinely broken models.
     """)
     return
 
@@ -1827,7 +1827,7 @@ def _():
 
     We ran 4 independent chains. If they've all found the posterior, they should agree. R-hat quantifies this by comparing variance *between* chains to variance *within* chains. Values near 1.0 mean agreement. **Threshold: R-hat < 1.01.**
 
-    We'll see exactly what high R-hat looks like — and why it happens — in Session 3.2.
+    We'll see exactly what high R-hat looks like (and why it happens) in Session 3.2.
     """)
     return
 
@@ -1847,7 +1847,7 @@ def _(metropolis_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Both are near 1.0 — Metropolis is slow but the chains *do* agree on where the posterior is. **R-hat tells you about convergence, not efficiency** — it catches chains that disagree, not chains that are simply inefficient.
+    Both are near 1.0: Metropolis is slow but the chains *do* agree on where the posterior is. **R-hat tells you about convergence, not efficiency**: it catches chains that disagree, not chains that are simply inefficient.
     """)
     return
 
@@ -1859,7 +1859,7 @@ def _():
 
     *How precise are our posterior summaries?*
 
-    Even with good mixing, finite samples mean our estimates of the mean, SD, and quantiles have some Monte Carlo error. MCSE quantifies this. **Rule of thumb:** if MCSE / posterior SD > 0.1, you need more draws before trusting summaries. You can also think of MCSE as the number of decimal places you can trust — with MCSE ≈ 0.002, reporting to two decimal places is justified.
+    Even with good mixing, finite samples mean our estimates of the mean, SD, and quantiles have some Monte Carlo error. MCSE quantifies this. **Rule of thumb:** if MCSE / posterior SD > 0.1, you need more draws before trusting summaries. You can also think of MCSE as the number of decimal places you can trust: with MCSE ≈ 0.002, reporting to two decimal places is justified.
     """)
     return
 
@@ -1879,7 +1879,7 @@ def _(metropolis_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Metropolis MCSE values are noticeably larger than NUTS — the same number of draws buys less precision because successive samples are correlated. `plot_mcse` visualises how MCSE changes across quantiles of the posterior.
+    Metropolis MCSE values are noticeably larger than NUTS: the same number of draws buys less precision because successive samples are correlated. `plot_mcse` visualises how MCSE changes across quantiles of the posterior.
     """)
     return
 
@@ -1899,7 +1899,7 @@ def _():
     mo.md(r"""
     #### A Note on Thinning
 
-    You may read older advice to "thin" your chains — keeping every $n$th draw to reduce autocorrelation. Modern practice generally favors **collecting more samples** over thinning, since thinning discards information. NUTS already produces low-autocorrelation draws.
+    You may read older advice to "thin" your chains, keeping every $n$th draw to reduce autocorrelation. Modern practice generally favors **collecting more samples** over thinning, since thinning discards information. NUTS already produces low-autocorrelation draws.
 
     The one case where thinning makes sense is **storage**: if you have very many draws and only need rough summaries. ArviZ provides `az.thin()` for this:
     """)
@@ -1919,7 +1919,7 @@ def _(nuts_trace):
     Original beta ESS: {_original_ess:.0f}
     Thinned beta ESS:  {_thinned_ess:.0f}
 
-    ESS barely changes — thinning doesn't create new information.
+    ESS barely changes; thinning doesn't create new information.
     """)
     return
 
@@ -1931,7 +1931,7 @@ def _():
 
     *Is the sampler exploring the full posterior, or stuck in one region?*
 
-    This is an HMC-specific diagnostic. `az.plot_energy()` overlays two distributions — the marginal energy across all samples and the energy transition between successive samples. If the sampler explores efficiently, these should overlap well. BFMI (Bayesian Fraction of Missing Information) quantifies the overlap. **Values below 0.3 are concerning** — they indicate the sampler can't move freely between energy levels.
+    This is an HMC-specific diagnostic. `az.plot_energy()` overlays two distributions: the marginal energy across all samples and the energy transition between successive samples. If the sampler explores efficiently, these should overlap well. BFMI (Bayesian Fraction of Missing Information) quantifies the overlap. **Values below 0.3 are concerning**: they indicate the sampler can't move freely between energy levels.
     """)
     return
 
@@ -1976,14 +1976,14 @@ def _():
     We saw ESS in the NUTS vs. Metropolis comparison above. Two variants matter:
 
     - **Bulk ESS**: How well the chain explores the center of the distribution
-    - **Tail ESS**: How well it explores the extremes (5th and 95th percentiles) — often lower than bulk ESS
+    - **Tail ESS**: How well it explores the extremes (5th and 95th percentiles), often lower than bulk ESS
 
     Rule of thumb: you want at least **400 total effective samples** (across all chains) for reliable estimates.
 
     Two plots give complementary views of ESS:
 
     - **`plot_ess`** shows ESS across different quantiles of the posterior, helping identify whether the tails are as well-explored as the center.
-    - **`plot_ess_evolution`** shows ESS as a function of the number of draws. It plots two lines per variable — **bulk ESS** and **tail ESS** — tracked as if the chain had been stopped earlier. Both lines should grow roughly linearly with the number of draws; if a line flattens, collecting more samples stops buying you independent information.
+    - **`plot_ess_evolution`** shows ESS as a function of the number of draws. It plots two lines per variable (**bulk ESS** and **tail ESS**) tracked as if the chain had been stopped earlier. Both lines should grow roughly linearly with the number of draws; if a line flattens, collecting more samples stops buying you independent information.
     """)
     return
 
@@ -2014,7 +2014,7 @@ def _():
     mo.md(r"""
     ---
 
-    All the diagnostics above look healthy — our baseline model is well-specified and the sampler is working correctly. In **Session 3.2**, we'll see what happens when things go wrong: non-identifiable models, divergences, inefficient sampling, and how to diagnose and fix each problem. We'll also cover posterior predictive checks and model comparison.
+    All the diagnostics above look healthy; our baseline model is well-specified and the sampler is working correctly. In **Session 3.2**, we'll see what happens when things go wrong: non-identifiable models, divergences, inefficient sampling, and how to diagnose and fix each problem. We'll also cover posterior predictive checks and model comparison.
     """)
     return
 

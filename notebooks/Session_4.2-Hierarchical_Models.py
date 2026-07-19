@@ -916,7 +916,7 @@ def _():
     implementation named `varying_intercept_slope` (from the Solution), so the
     rest of the notebook works whether or not you complete the exercise.
 
-    Plot the model DAG to check your structure — the scaffold already returns
+    Plot the model DAG to check your structure; the scaffold already returns
     the model object, which marimo renders as the model graph.
     """)
     return
@@ -1428,7 +1428,7 @@ def _():
 def _():
     mo.md(r"""
     > **Note for learners:** This section is an advanced extension. It introduces correlated random effects
-    > via an LKJ prior. The rest of the notebook does not depend on this section — you may skip to
+    > via an LKJ prior. The rest of the notebook does not depend on this section; you may skip to
     > "Adding group-level predictors" if you prefer.
     """)
     return
@@ -1439,7 +1439,7 @@ def _():
     mo.md(r"""
     ## Correlated Random Effects
 
-    In the model above, the varying intercepts and slopes are drawn independently. But it's natural to expect them to be **correlated** — for example, counties with higher baseline radon (higher intercept) might show a stronger floor effect (steeper slope).
+    In the model above, the varying intercepts and slopes are drawn independently. But it's natural to expect them to be **correlated**: for example, counties with higher baseline radon (higher intercept) might show a stronger floor effect (steeper slope).
 
     We can model this correlation using a **multivariate normal** prior for the joint distribution of intercepts and slopes:
 

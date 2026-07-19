@@ -985,7 +985,7 @@ def _():
     4. Plot a histogram of the accepted $\theta$ values: this approximates the posterior.
     5. Compare to the exact posterior: $\text{Beta}(2 + 14, 2 + 6) = \text{Beta}(16, 8)$
 
-    *Hint:* `ex4_rng.binomial(n=20, p=prior_thetas)` accepts an *array* of probabilities and returns one simulated count per element — no Python loop needed.
+    *Hint:* `ex4_rng.binomial(n=20, p=prior_thetas)` accepts an *array* of probabilities and returns one simulated count per element; no Python loop needed.
     """)
     return
 

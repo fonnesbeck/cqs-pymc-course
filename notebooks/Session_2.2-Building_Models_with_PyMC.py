@@ -1050,7 +1050,7 @@ def _(group_id, iq):
                         "later sessions. First, instead of separate `mu_drug` / "
                         "`mu_placebo` variables it declares one vector `mu` with "
                         '`dims="group"` and picks each observation\'s mean by '
-                        "**indexing with the group array**: `mu[group_id]` — the "
+                        "**indexing with the group array**: `mu[group_id]`, the "
                         "core trick behind the hierarchical models of Session 4.2. "
                         "Second, it swaps the Normal likelihood for a **StudentT** "
                         "whose degrees of freedom `nu` are learned from the data "

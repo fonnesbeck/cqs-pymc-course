@@ -131,7 +131,7 @@ def _():
     mo.md(r"""
     Things to note:
 
-    - There are some **zero-weight** fish — either below the scale minimum or data-entry errors.
+    - There are some **zero-weight** fish: either below the scale minimum or data-entry errors.
     - The standard deviations are large, especially for weight, suggesting substantial variation across species and sizes.
 
     Let's visualize the relationships between variables:
@@ -159,7 +159,7 @@ def _():
     mo.md(r"""
     Weight increases **exponentially** with the size variables. A **log transformation** will linearize these relationships, making them more appropriate for linear regression.
 
-    There are also clear species-level differences — any model we build must account for these.
+    There are also clear species-level differences; any model we build must account for these.
     """)
     return
 
@@ -280,7 +280,7 @@ def _(baseline_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The data are clearly **multimodal** (different species have different weight ranges), but our baseline model produces a single unimodal distribution. It compensates by widening `sigma` — poor fit.
+    The data are clearly **multimodal** (different species have different weight ranges), but our baseline model produces a single unimodal distribution. It compensates by widening `sigma`: poor fit.
 
     We need predictors!
 
@@ -667,11 +667,11 @@ def _(unpooled_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The reference values (true observed weights, shown as vertical lines) all fall within the posterior predictive distributions — the model produces well-calibrated predictions.
+    The reference values (true observed weights, shown as vertical lines) all fall within the posterior predictive distributions; the model produces well-calibrated predictions.
 
     ### Business Insight: Weight-Tier Probabilities
 
-    With full posterior distributions we can compute the probability that any new fish exceeds a weight threshold — critical for estimating shipping costs.
+    With full posterior distributions we can compute the probability that any new fish exceeds a weight threshold, critical for estimating shipping costs.
     """)
     return
 
@@ -748,7 +748,7 @@ def _():
 
     1. Express what you know as ranges, not distribution parameters: a plausible interval and how much probability mass it should hold.
     2. Use `pz.maxent(dist, lower=..., upper=..., mass=...)` to find the maximum-entropy prior matching each range. Recall the log scale: a 100 g fish is about 4.6, a 2 kg fish about 7.6.
-    3. Convert each elicited PreliZ distribution into a PyMC prior with `prior.to_pymc(...)` — no hyperparameters typed by hand.
+    3. Convert each elicited PreliZ distribution into a PyMC prior with `prior.to_pymc(...)`: no hyperparameters typed by hand.
     4. Re-fit the model with your elicited priors and compare to the original unpooled model using LOO.
     """)
     return
@@ -931,7 +931,7 @@ def _(
                     ),
                     mo.lazy(solution_preliz_priors, show_loading_indicator=True),
                     mo.md(
-                        "The priors are now **elicited** with `pz.maxent` from stated ranges — no distribution hyperparameters are typed by hand — and converted into PyMC variables with `to_pymc`. The intercept range pins the prior on the correct log-weight scale (centred near 4.5 rather than 0). LOO is usually comparable because the data are informative, but the elicited priors are better located and easier to justify."
+                        "The priors are now **elicited** with `pz.maxent` from stated ranges (no distribution hyperparameters are typed by hand) and converted into PyMC variables with `to_pymc`. The intercept range pins the prior on the correct log-weight scale (centred near 4.5 rather than 0). LOO is usually comparable because the data are informative, but the elicited priors are better located and easier to justify."
                     ),
                 ]
             ),
@@ -1311,15 +1311,15 @@ def _():
 
     Our fish weight model worked well because (after log-transformation) the response was approximately continuous and symmetric. But many real-world outcomes don't fit this mold:
 
-    - **Counts** (number of events, page views, defects) — non-negative integers
-    - **Proportions** (approval rates, conversion rates) — bounded between 0 and 1
-    - **Skewed continuous data** (insurance claims, reaction times) — non-negative with long tails
+    - **Counts** (number of events, page views, defects): non-negative integers
+    - **Proportions** (approval rates, conversion rates): bounded between 0 and 1
+    - **Skewed continuous data** (insurance claims, reaction times): non-negative with long tails
 
     A Normal likelihood with an identity link can predict negative values, fractional counts, or probabilities outside [0, 1]. **Generalized Linear Models (GLMs)** solve this by combining three components:
 
     1. **A distribution family** appropriate for the data type (Poisson for counts, Binomial for proportions, etc.)
     2. **A link function** that maps the linear predictor to the distribution's natural parameter space
-    3. **A linear predictor** $\eta = \alpha + \beta_1 x_1 + \cdots + \beta_p x_p$ — same as before
+    3. **A linear predictor** $\eta = \alpha + \beta_1 x_1 + \cdots + \beta_p x_p$, same as before
 
     $$g(\mu) = \eta = X\beta$$
 

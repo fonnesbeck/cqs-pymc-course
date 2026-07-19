@@ -57,13 +57,13 @@ def header():
     mo.md(f"""
     # Session 2.1: PyTensor and the PyMC API
 
-    In this session we look under PyMC's hood. PyMC is built on **PyTensor**, a library for defining and compiling computational graphs. We'll learn just enough PyTensor to read the graphs PyMC builds — then use that lens to understand what a PyMC model actually *is*, and tour the parts of the PyMC API you'll use in every model: distributions, `logp` and `draw`, `pm.math`, and the model-debugging toolkit.
+    In this session we look under PyMC's hood. PyMC is built on **PyTensor**, a library for defining and compiling computational graphs. We'll learn just enough PyTensor to read the graphs PyMC builds, then use that lens to understand what a PyMC model actually *is*, and tour the parts of the PyMC API you'll use in every model: distributions, `logp` and `draw`, `pm.math`, and the model-debugging toolkit.
 
     ## PyTensor Basics
 
     {pytensor_html}
 
-    PyTensor is the computational backend of PyMC: every model you build with PyMC is, underneath, a PyTensor **computational graph**. You will rarely write PyTensor directly — the goal of this section is to learn just enough to *read* what PyMC builds for you. That literacy pays off throughout the course: it explains what model variables really are, what "compiling" a model means, and how to decode PyTensor's error messages when something goes wrong.
+    PyTensor is the computational backend of PyMC: every model you build with PyMC is, underneath, a PyTensor **computational graph**. You will rarely write PyTensor directly; the goal of this section is to learn just enough to *read* what PyMC builds for you. That literacy pays off throughout the course: it explains what model variables really are, what "compiling" a model means, and how to decode PyTensor's error messages when something goes wrong.
 
     In PyTensor, you define a computational graph explicitly. You start with input variables that are essentially placeholders, and from these build intermediate variables by applying operators. While PyTensor is designed to feel similar to NumPy, there is a key difference: PyTensor operations build a graph of computations to be executed **lazily**, rather than immediately returning values.
     """)
@@ -312,9 +312,9 @@ def _(a, b, d):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    These automatic simplifications are called **graph rewrites**. Because your code builds a graph rather than executing immediately, PyTensor is free to replace pieces of that graph with cheaper or safer equivalents before anything runs. Beyond removing redundant arithmetic, PyTensor can recognize and replace many common expressions with more numerically stable equivalents — for example, `log(1 + x)` is rewritten to use `log1p`, which stays accurate when `x` is very close to zero. (This is not a blanket guarantee: custom expressions can still be numerically unstable.)
+    These automatic simplifications are called **graph rewrites**. Because your code builds a graph rather than executing immediately, PyTensor is free to replace pieces of that graph with cheaper or safer equivalents before anything runs. Beyond removing redundant arithmetic, PyTensor can recognize and replace many common expressions with more numerically stable equivalents, for example, `log(1 + x)` is rewritten to use `log1p`, which stays accurate when `x` is very close to zero. (This is not a blanket guarantee: custom expressions can still be numerically unstable.)
 
-    When PyMC compiles your model's log-probability, all of these rewrites are applied automatically — you get the optimized, stabilized graph without asking for it.
+    When PyMC compiles your model's log-probability, all of these rewrites are applied automatically; you get the optimized, stabilized graph without asking for it.
     """)
     return
 
@@ -367,7 +367,7 @@ def _():
     mo.md(r"""
     ## From PyTensor to PyMC: A Model Is a Graph
 
-    Defining variables, building expressions, compiling functions — everything we just did by hand is exactly what PyMC automates. Bayesian inference begins with a probability model that relates unknown parameters to observed data; PyMC provides high-level building blocks for constructing these models, and **every one of those building blocks is a PyTensor object underneath**. In this section we'll build the smallest possible model and inspect it with the graph-reading tools from the previous section.
+    Defining variables, building expressions, compiling functions: everything we just did by hand is exactly what PyMC automates. Bayesian inference begins with a probability model that relates unknown parameters to observed data; PyMC provides high-level building blocks for constructing these models, and **every one of those building blocks is a PyTensor object underneath**. In this section we'll build the smallest possible model and inspect it with the graph-reading tools from the previous section.
     """)
     return
 
@@ -377,9 +377,9 @@ def _():
     mo.md(r"""
     ## Model Contexts and Random Variables
 
-    The canonical way to specify a PyMC model is with the `Model` **context manager** — the `with pm.Model() as model:` idiom you have already seen. Think of `Model` as a tape machine: while the context is open, it records every random variable and other component you create, along with the bookkeeping needed to move values between your Python code and the underlying graph.
+    The canonical way to specify a PyMC model is with the `Model` **context manager**, the `with pm.Model() as model:` idiom you have already seen. Think of `Model` as a tape machine: while the context is open, it records every random variable and other component you create, along with the bookkeeping needed to move values between your Python code and the underlying graph.
 
-    Most importantly for our purposes, a `Model` can compile PyTensor functions from the variables registered with it — which is exactly the machinery we are about to inspect.
+    Most importantly for our purposes, a `Model` can compile PyTensor functions from the variables registered with it, which is exactly the machinery we are about to inspect.
     """)
     return
 
@@ -401,7 +401,7 @@ def _(model):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    What did `pm.Normal("z", ...)` actually create? Not a special PyMC object — a plain PyTensor `TensorVariable`, whose `owner.op` is a **`RandomVariable`** operation. This is the same graph anatomy we inspected earlier:
+    What did `pm.Normal("z", ...)` actually create? Not a special PyMC object: a plain PyTensor `TensorVariable`, whose `owner.op` is a **`RandomVariable`** operation. This is the same graph anatomy we inspected earlier:
     """)
     return
 
@@ -421,7 +421,7 @@ def _(z_1):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Asking for the log-probability of a value builds a **new** graph — the density expression — from the random variable's graph:
+    Asking for the log-probability of a value builds a **new** graph (the density expression) from the random variable's graph:
     """)
     return
 
@@ -436,7 +436,7 @@ def _(z_1):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    A graph is not a number — to evaluate it we compile, exactly as before. `model.compile_logp()` applies the same compile-then-call pattern to the model's **joint** log-probability graph (the sum over all of the model's variables). Our model has a single variable, so the joint log-probability matches the single-variable graph we just printed:
+    A graph is not a number; to evaluate it we compile, exactly as before. `model.compile_logp()` applies the same compile-then-call pattern to the model's **joint** log-probability graph (the sum over all of the model's variables). Our model has a single variable, so the joint log-probability matches the single-variable graph we just printed:
     """)
     return
 
@@ -476,7 +476,7 @@ def _():
     mo.md(r"""
     ### Distributions and Random Variables
 
-    Statistical distributions are provided in PyMC as subclasses of `Distribution` — `pm.Normal`, `pm.Binomial`, and so on. Calling one does **not** return a distribution object: as we saw above, it creates a PyTensor `TensorVariable` whose `owner.op` is a `RandomVariable` (such as `NormalRV`), and registers that variable with the enclosing `Model`. This registration is why the named form is only usable inside a model context.
+    Statistical distributions are provided in PyMC as subclasses of `Distribution`: `pm.Normal`, `pm.Binomial`, and so on. Calling one does **not** return a distribution object: as we saw above, it creates a PyTensor `TensorVariable` whose `owner.op` is a `RandomVariable` (such as `NormalRV`), and registers that variable with the enclosing `Model`. This registration is why the named form is only usable inside a model context.
 
     `Distribution` subclasses accept several arguments when constructed. Some of the most important are:
 
@@ -604,7 +604,7 @@ def _(x_city):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Every distribution knows how to do two things: **generate random draws** and **compute the log-probability of a value**. Random generation is implemented by the underlying `RandomVariable` operation — the `NormalRV` we saw in the graph — and log-probabilities are provided through PyMC's `logp` dispatch system.
+    Every distribution knows how to do two things: **generate random draws** and **compute the log-probability of a value**. Random generation is implemented by the underlying `RandomVariable` operation (the `NormalRV` we saw in the graph) and log-probabilities are provided through PyMC's `logp` dispatch system.
 
     You don't call either mechanism directly. The user-facing functions are `pm.logp()` for log-probability and `pm.draw()` for simulation, and PyMC's inference algorithms use the same machinery internally when fitting models.
     """)
@@ -654,7 +654,7 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Sometimes we wish to use a distribution without adding a variable to a model — for example, just to generate random numbers. For this purpose, `Distribution` classes have a `.dist()` class method that returns an **unregistered** random-variable tensor: the same kind of `TensorVariable` as before, but not attached to any model, so it can be created and used anywhere.
+    Sometimes we wish to use a distribution without adding a variable to a model, for example, just to generate random numbers. For this purpose, `Distribution` classes have a `.dist()` class method that returns an **unregistered** random-variable tensor: the same kind of `TensorVariable` as before, but not attached to any model, so it can be created and used anywhere.
     """)
     return
 
@@ -677,9 +677,9 @@ def _():
     mo.md(r"""
     ### The `pm.math` Namespace
 
-    When you need mathematical operations on model variables — link functions, conditional logic, matrix products — reach for the **`pm.math`** namespace. These are the same symbolic PyTensor operations from the start of this session, collected under a PyMC-friendly name. Commonly used members include `pm.math.log`, `exp`, `sqrt`, `dot`, `sum`, `switch` (element-wise if/else), and the link functions `invlogit`/`logit`.
+    When you need mathematical operations on model variables (link functions, conditional logic, matrix products) reach for the **`pm.math`** namespace. These are the same symbolic PyTensor operations from the start of this session, collected under a PyMC-friendly name. Commonly used members include `pm.math.log`, `exp`, `sqrt`, `dot`, `sum`, `switch` (element-wise if/else), and the link functions `invlogit`/`logit`.
 
-    Because they are symbolic, they add nodes to the graph rather than computing immediately — so they can be applied to model variables just like `+` or `*`. Later sessions use `pm.math.switch` and `pm.math.invlogit` without further introduction; this is where they come from.
+    Because they are symbolic, they add nodes to the graph rather than computing immediately, so they can be applied to model variables just like `+` or `*`. Later sessions use `pm.math.switch` and `pm.math.invlogit` without further introduction; this is where they come from.
     """)
     return
 
@@ -698,11 +698,11 @@ def _():
 
     A model that *builds* without error can still be broken *numerically*. The most common failure: the model's log-probability is `-inf` at the sampler's starting point, so sampling fails immediately. PyMC ships a small toolkit for catching this before you sample:
 
-    - `model.initial_point()` — the starting values for every variable
-    - `model.point_logps()` — each variable's log-probability at that point
-    - `model.debug()` — an automated diagnosis that pinpoints the offending variable and value
+    - `model.initial_point()`: the starting values for every variable
+    - `model.point_logps()`: each variable's log-probability at that point
+    - `model.debug()`: an automated diagnosis that pinpoints the offending variable and value
 
-    Here is a model with a planted bug — a Poisson count variable whose initial value is negative, outside the distribution's support. It constructs without complaint:
+    Here is a model with a planted bug: a Poisson count variable whose initial value is negative, outside the distribution's support. It constructs without complaint:
     """)
     return
 
@@ -786,11 +786,11 @@ def _(run_debug):
     _logps = exercise_debug_model()
     _passed = set(_logps) == {"y"} and all(np.isfinite(_v) for _v in _logps.values())
     mo.md(
-        f"`point_logps()` = `{_logps}` — "
+        f"`point_logps()` = `{_logps}`: "
         + (
             "**passed** ✅"
             if _passed
-            else "**not yet** ❌ — the model must keep a variable named `y`, "
+            else "**not yet** ❌: the model must keep a variable named `y`, "
             "and every log-probability must be finite."
         )
     )
@@ -812,7 +812,7 @@ def _():
                         "The bug is the `initval`: 6 is outside the support of "
                         "`Binomial(n=5, p=0.5)`, which only admits values 0–5, so the "
                         "starting log-probability is `-inf`. The fix is a valid initial "
-                        "value (or simply deleting `initval` — PyMC then chooses a "
+                        "value (or simply deleting `initval`, PyMC then chooses a "
                         "sensible default)."
                     ),
                     mo.md(f"```python\n{inspect.getsource(solution_debug_model)}\n```"),

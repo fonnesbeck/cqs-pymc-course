@@ -51,14 +51,14 @@ def _():
 
     | Content |
     |---|
-    | Motivation — what state-space models are, what they cost, what you get |
-    | Position & velocity — the smallest non-trivial SSM |
-    | Structural "lego blocks" — the components you'll actually use |
-    | Case study — load the layoff series, build the structural model |
-    | **Exercise** — wire up priors and sample |
+    | Motivation: what state-space models are, what they cost, what you get |
+    | Position & velocity: the smallest non-trivial SSM |
+    | Structural "lego blocks": the components you'll actually use |
+    | Case study: load the layoff series, build the structural model |
+    | **Exercise**: wire up priors and sample |
     | Latent-state flavors and decomposition |
-    | **Exercise** — forecast under a hypothetical second layoff |
-    | Extension — modeling headcount jointly (restricted BVAR) |
+    | **Exercise**: forecast under a hypothetical second layoff |
+    | Extension: modeling headcount jointly (restricted BVAR) |
     | Where to next |
 
     The first three rows tour the framework. The remainder is an
@@ -83,12 +83,12 @@ def _():
     \end{aligned}
     $$
 
-    - $x_t$ is a **latent state** — the hidden story of the system (trend,
+    - $x_t$ is a **latent state**: the hidden story of the system (trend,
       seasonal position, velocity, whatever you encode).
-    - $T$ is the **transition** — how the latent state evolves between steps.
-    - $\varepsilon_t$ are **shocks** with covariance $Q$ — everything
+    - $T$ is the **transition**: how the latent state evolves between steps.
+    - $\varepsilon_t$ are **shocks** with covariance $Q$: everything
       unmodeled (news, events, innovations) pushing the state around.
-    - $R$ is the **selection** matrix — it picks which states the shocks
+    - $R$ is the **selection** matrix: it picks which states the shocks
       enter (e.g., the level gets innovations but the slope is deterministic).
     - $y_t$ is the **data you actually see**; $Z$ is the **design** matrix
       mapping latent state to observation, and $\eta_t$ is measurement
@@ -97,7 +97,7 @@ def _():
     **The canonical picture.** A car drives down the road and you watch it
     with a noisy GPS. The latent state is (position, velocity). The car
     enters a tunnel and you lose GPS for ten minutes. Where was the car
-    during the tunnel? The SSM tells you — the dynamics keep propagating
+    during the tunnel? The SSM tells you: the dynamics keep propagating
     the state forward whether you observe or not, and the estimate
     uncertainty widens, then tightens back up when the car pops out the
     other side. The Kalman filter is what does this inference.
@@ -222,7 +222,7 @@ def _():
     $T$ encodes "position increases by velocity, velocity persists"; $R$
     says only velocity gets shocked; $Z$ picks out position from the
     state because that's all the GPS reports. Inside the tunnel we just
-    drop the measurement update for $\eta_t$ — the dynamics keep
+    drop the measurement update for $\eta_t$: the dynamics keep
     propagating, with uncertainty growing every step.
     """)
     return
@@ -264,7 +264,7 @@ def _():
     mo.md(r"""
     ## The smallest non-trivial SSM: position and velocity
 
-    Imagine we're tracking something that moves smoothly — the download
+    Imagine we're tracking something that moves smoothly: the download
     rate of a game, the wishlist count, monthly revenue, whatever. What
     we see is noisy, but the underlying thing has *momentum*: if it was
     going up yesterday, it's probably still going up today.
@@ -367,7 +367,7 @@ def _():
 
     This exact model is already a structural component:
     `st.LevelTrend(order=2)`. `order=2` means "level plus its first
-    derivative" — which is exactly (position, velocity).
+    derivative": which is exactly (position, velocity).
     `innovations_order=[0, 1]` says the level itself is deterministic
     given velocity (no shock to the level equation), but velocity drifts.
     """)
@@ -502,34 +502,34 @@ def _():
     you'll reach for almost always. Each is a tiny SSM on its own; you
     combine them with `+` and call `.build()`. This section tours them.
 
-    - **`LevelTrend`** — level and its derivatives (trend, curvature).
-    - **`TimeSeasonality`** — repeating pattern in the time domain.
-    - **`Cycle`** — long, damped oscillation with estimable period.
-    - **`Autoregressive`** — serially correlated errors.
-    - **`Regression`** — exogenous drivers (used heavily in the structural model below).
-    - **`MeasurementError`** — observation noise (must be combined with
+    - **`LevelTrend`**: level and its derivatives (trend, curvature).
+    - **`TimeSeasonality`**: repeating pattern in the time domain.
+    - **`Cycle`**: long, damped oscillation with estimable period.
+    - **`Autoregressive`**: serially correlated errors.
+    - **`Regression`**: exogenous drivers (used heavily in the structural model below).
+    - **`MeasurementError`**: observation noise (must be combined with
       at least one dynamic component).
 
     ### LevelTrend
 
     The general-purpose trend builder. Two knobs:
 
-    - **`order`** — how many derivatives the latent state tracks.
+    - **`order`**: how many derivatives the latent state tracks.
       `order=1` is just a level; `order=2` adds a slope (think position +
       velocity, as in the earlier position+velocity example); `order=3` adds curvature.
-    - **`innovations_order`** — which of those derivatives are *noisy*
+    - **`innovations_order`**: which of those derivatives are *noisy*
       (i.e., receive a shock at every step). Pass a list of `0/1` flags,
-      one per derivative — `[1, 0]` means "level is noisy, slope is a
+      one per derivative: `[1, 0]` means "level is noisy, slope is a
       constant"; `[0, 1]` means "level is deterministic given slope,
       slope drifts". A bare integer `n` is shorthand for "the first `n`
       derivatives are noisy".
 
     A few common shapes:
 
-    - `order=1, innovations_order=1` — single noisy level → random walk.
-    - `order=2, innovations_order=1` — level noisy, slope constant →
+    - `order=1, innovations_order=1`: single noisy level → random walk.
+    - `order=2, innovations_order=1`: level noisy, slope constant →
       random walk with a fixed drift.
-    - `order=2, innovations_order=[0, 1]` — level deterministic, slope
+    - `order=2, innovations_order=[0, 1]`: level deterministic, slope
       wanders → a smooth trend. (The layoff case study instead uses
       `innovations_order=1`: noisy level, fixed drift.)
     """)
@@ -591,13 +591,13 @@ def _():
     ### TimeSeasonality
 
     A repeating pattern over `season_length`. The hidden states are the
-    per-period levels (one per phase of the cycle — e.g. Mon..Sun for
+    per-period levels (one per phase of the cycle, e.g. Mon..Sun for
     `season_length=7`); they're constrained to sum to zero so the
     seasonal component doesn't fight the trend for the overall level.
 
-    - `innovations=False` (default) — the pattern is rigid: whatever the
+    - `innovations=False` (default), the pattern is rigid: whatever the
       seven phase values are at $t=0$, they stay the same forever.
-    - `innovations=True` — a small shock perturbs the state at every
+    - `innovations=True`: a small shock perturbs the state at every
       step. Because the state rotates through one phase per step, what
       you actually *see* is each phase drifting cycle-to-cycle: this
       week's Monday-effect can morph slowly away from last year's.
@@ -669,14 +669,14 @@ def _():
     mo.md(r"""
     #### FrequencySeasonality — the Fourier alternative
 
-    `TimeSeasonality` carries one state per period (11 states for monthly data) —
+    `TimeSeasonality` carries one state per period (11 states for monthly data):
     interpretable, but bulky. `FrequencySeasonality` instead models the seasonal
     pattern in the frequency domain with `2n` states: `n` pairs of Fourier
     coefficients (a sine and cosine amplitude per harmonic). With `n=1` the
     pattern is a pure sine wave; at `n = season_length // 2` it can represent any
     periodic shape. Two things you buy with it: a compact state space for long
     seasonal periods, and support for non-integer season lengths (e.g. 365.25).
-    The price is interpretability — the states are Fourier coefficients, so there
+    The price is interpretability: the states are Fourier coefficients, so there
     is no isolable "January effect". The layoff case study below uses
     `FrequencySeasonality(season_length=12, n=1)`: a smooth annual cycle
     parameterized by just 2 coefficients.
@@ -697,21 +697,21 @@ def _():
     ### Cycle
 
     Long, often-damped oscillation. Great for macro-like business
-    cycles where you don't know the exact period — let the model
+    cycles where you don't know the exact period: let the model
     estimate it.
 
     Three structural flags:
 
-    - `estimate_cycle_length=True` — the period (steps per cycle) is a
+    - `estimate_cycle_length=True`: the period (steps per cycle) is a
       free parameter named `length_cyc`. Set `False` if you know the
       period a priori.
-    - `dampen=True` — the oscillation amplitude decays each step by
+    - `dampen=True`: the oscillation amplitude decays each step by
       `dampening_factor_cyc` (so old shocks die out). Set `False` for a
       sustained oscillation.
-    - `innovations=True` — adds a shock at every step; `False` makes
+    - `innovations=True`: adds a shock at every step; `False` makes
       the cycle deterministic given its initial state.
 
-    `params_cyc` is the cycle's initial state — two numbers
+    `params_cyc` is the cycle's initial state: two numbers
     parameterizing the starting phase and amplitude of the oscillator.
     The plot below draws four cycles with random `length_cyc` between
     20 and 60 steps, all damped at `0.97` per step.
@@ -785,17 +785,17 @@ def _():
     mo.md(r"""
     ### Autoregressive
 
-    Serially correlated errors — "yesterday's residual predicts
+    Serially correlated errors: "yesterday's residual predicts
     today's". A useful catch-all for short-term persistence the other
     components don't capture.
 
-    - `order` — number of lags. `AR(1)` depends on $y_{t-1}$ alone;
+    - `order`: number of lags. `AR(1)` depends on $y_{t-1}$ alone;
       `AR(2)` on $y_{t-1}$ and $y_{t-2}$; and so on.
-    - `params_ar` — one coefficient per lag. The example below uses
+    - `params_ar`: one coefficient per lag. The example below uses
       $\rho = 0.9$, meaning each step keeps 90% of the previous value
       plus a fresh innovation. Keep the coefficients in the stationary
       region (for `AR(1)`, $|\rho| < 1$) or the process blows up.
-    - `sigma_ar` — standard deviation of the innovation term.
+    - `sigma_ar`: standard deviation of the innovation term.
     """)
     return
 
@@ -843,14 +843,14 @@ def _():
     mo.md(r"""
     ### Regression
 
-    Attaches exogenous drivers — covariates the model doesn't predict
+    Attaches exogenous drivers: covariates the model doesn't predict
     but reads in at every step. The "states" of a Regression component
     are the *regression coefficients*; `state_names` labels them.
 
-    - `state_names` — one label per covariate column. The compiled
+    - `state_names`: one label per covariate column. The compiled
       model will expect a `data_<name>` array of shape
       `(time, len(state_names))`.
-    - `innovations` — when `True`, the regression coefficients drift
+    - `innovations`: when `True`, the regression coefficients drift
       over time (a time-varying-parameter regression). The default
       `False` keeps them constant.
 
@@ -873,8 +873,8 @@ def _():
     mo.md(r"""
     ### MeasurementError
 
-    Observation noise. It can't stand alone — it needs at least one
-    dynamic component to attach to — but you almost always want it. It
+    Observation noise. It can't stand alone: it needs at least one
+    dynamic component to attach to, but you almost always want it. It
     buys numerical stability in the filter and reflects the honest fact
     that your data has measurement error.
 
@@ -897,7 +897,7 @@ def _():
     ### Composing components
 
     You combine with `+`. The smallest realistic model has a trend, an
-    exogenous regressor, and observation noise — exactly the recipe the
+    exogenous regressor, and observation noise: exactly the recipe the
     layoff case study uses:
     """)
     return
@@ -958,7 +958,7 @@ def _():
       with calibrated uncertainty.
 
     **A note on left truncation.** We observe 36 months, but the account
-    existed before that — we just don't have the history. With only ~17
+    existed before that; we just don't have the history. With only ~17
     pre-event observations, the filter's initial-state prior
     $(x_0, P_0)$ isn't washed out by data the way it would be with ten
     years of history; it shows up directly in the early level estimates
@@ -968,8 +968,8 @@ def _():
     slope started), and $P_0$ is a prior on how *uncertain* we are about
     that starting point. A diffuse $P_0$ tells the filter "update
     aggressively from the first observations"; a tight $P_0$ anchors
-    hard. We pick something in between — `Gamma(2, 2)` on the diagonal,
-    mean 1, moderate spread — so the early posterior is mostly
+    hard. We pick something in between (`Gamma(2, 2)` on the diagonal,
+    mean 1, moderate spread) so the early posterior is mostly
     data-driven without being wildly volatile. This is the "right" way
     to handle a short pre-event window: not by pretending the data
     starts at the beginning of time, but by encoding the uncertainty
@@ -1017,29 +1017,29 @@ def _():
     mo.md(r"""
     Reading the plot:
 
-    - **`log_revenue`** — small upward drift through the first
+    - **`log_revenue`**: small upward drift through the first
       ~17 months, a drop coinciding with (or just after) the event,
       and a gradual recovery back toward the pre-event level over the
       following year.
-    - **`log_headcount`** — the parallel HR series. The layoff is
+    - **`log_headcount`**: the parallel HR series. The layoff is
       much sharper here: a one-step drop, then slow rebuild via
       re-hiring. The univariate case study ignores this column; the BVAR
       extension promotes it to a co-modeled state in a restricted BVAR.
-    - **`layoff_active`** — step indicator. 0 before the event, 1
+    - **`layoff_active`**: step indicator. 0 before the event, 1
       afterwards. A flexible basis function for any *persistent*
       component of the revenue effect.
-    - **`layoff_decay`** — exp-decay kernel that turns on at the
+    - **`layoff_decay`**: exp-decay kernel that turns on at the
       event and fades over months. A flexible basis for any
       *transient* component on top.
 
     `layoff_active` and `layoff_decay` are derived features, not part
-    of the data-generating process — the actual mechanism is that
+    of the data-generating process: the actual mechanism is that
     layoffs hit headcount, and revenue follows lagged headcount. The
     univariate case study uses the two basis functions as a Regression-style
     approximation; the BVAR extension throws them out and models the mechanism directly.
 
     Both observation series have a couple of NaN months (revenue
-    months 5–6, headcount months 21–23). They're deliberate — the
+    months 5–6, headcount months 21–23). They're deliberate: the
     framework's "free missing-data handling" promise from the motivation
     only means anything if the data actually has gaps. The univariate case
     study sails through the revenue gaps without special handling; the
@@ -1061,15 +1061,15 @@ def _():
 
     Four components:
 
-    - `LevelTrend(order=2, innovations_order=1)` — a latent level with a
+    - `LevelTrend(order=2, innovations_order=1)`: a latent level with a
       fixed drift: the level
-      accumulates noise like a random walk while the slope stays constant —
+      accumulates noise like a random walk while the slope stays constant,
       the "random walk with drift" configuration from the tour.
-    - `FrequencySeasonality(12, n=1)` — a smooth annual cycle (see the tour).
-    - `Regression(state_names=["layoff_active", "layoff_decay"])` — the
+    - `FrequencySeasonality(12, n=1)`: a smooth annual cycle (see the tour).
+    - `Regression(state_names=["layoff_active", "layoff_decay"])`: the
       two layoff regressors as exogenous drivers. The regression
       coefficients are what we actually want to interpret.
-    - `MeasurementError` — observation noise.
+    - `MeasurementError`: observation noise.
 
     Building the statespace returns a container that tells us which
     PyMC priors the model expects.
@@ -1103,7 +1103,7 @@ def _():
 
     `ss` is built. Wrap it in a `pm.Model` with a prior on every
     parameter the SSM expects, then sample. Wrap the lot in a
-    `fit(ss, df, ...)` function — the later forecasting exercise reuses
+    `fit(ss, df, ...)` function: the later forecasting exercise reuses
     it.
 
     Inspect `ss.param_dims` to see which priors are required and
@@ -1112,7 +1112,7 @@ def _():
     regressors later. Then call `ss.build_statespace_graph(df["log_revenue"])`
     and `pm.sample()`.
 
-    Center the `initial_level` prior on the scale of the observed data — the
+    Center the `initial_level` prior on the scale of the observed data: the
     log-revenue series sits around 14.5, so `mu=[14.5, 0.0]` says "start near the
     data, with no prior slope."
     """)
@@ -1265,11 +1265,11 @@ def _():
     The Kalman machinery gives us three different estimates of every
     hidden state at every time step:
 
-    - **predicted** — $x_{t|t-1}$, the estimate using only past data.
+    - **predicted**: $x_{t|t-1}$, the estimate using only past data.
       One-step-ahead forecasting done online.
-    - **filtered** — $x_{t|t}$, the estimate using all data *through
+    - **filtered**: $x_{t|t}$, the estimate using all data *through
       now*. The real-time best guess.
-    - **smoothed** — $x_{t|T}$, the estimate using *all* data including
+    - **smoothed**: $x_{t|T}$, the estimate using *all* data including
       future. The retrospective best guess.
 
     **The tunnel-and-GPS story.** Your car enters a tunnel:
@@ -1279,14 +1279,14 @@ def _():
       don't know what happens next. Your uncertainty widens.
     - **Smoothed** view: the car came out the other side at a known
       time and place. Knowing that retrospectively tightens where it
-      *must have been* during the tunnel — you can rule out
+      *must have been* during the tunnel: you can rule out
       trajectories that wouldn't match the exit point.
     - **Predicted** view: you only know up to where the car entered;
       every time step, you push the estimate forward one step.
 
     For historical decomposition (what we want next), use **smoothed**.
     For genuine forecasts, **predicted** is the honest comparison
-    target — it's what the model would've said before seeing each next
+    target: it's what the model would've said before seeing each next
     observation.
 
     `sample_conditional_posterior` produces all three;
@@ -1525,15 +1525,14 @@ def _():
     **Your task (30 min).** Compare two scenarios over a 24-month
     forecast horizon:
 
-    - **Baseline** — no further layoffs. The original event's `decay`
+    - **Baseline**: no further layoffs. The original event's `decay`
       kernel keeps fading; `active` stays at 1.
-    - **Second event in 6 months** — a new layoff hits at month 6 of
+    - **Second event in 6 months**: a new layoff hits at month 6 of
       the forecast window, adding a step to `active` and a fresh
       decay kernel on top of the existing one.
 
-    The hard part — extending the regressor columns into the future
-    — is provided as `make_scenario_regressors` below. You write the
-    two `ss.forecast` calls — the pre-built plots below consume your
+    The hard part (extending the regressor columns into the future) is provided as `make_scenario_regressors` below. You write the
+    two `ss.forecast` calls: the pre-built plots below consume your
     forecasts.
 
     **What you'll produce.**
@@ -1550,7 +1549,7 @@ def _():
       *same* `random_seed` for both scenarios so the per-month
       difference is a clean draw-by-draw delta (not noise).
     - The object returned by `ss.forecast` is an InferenceData with
-      its own groups — print it and dig around to find which one
+      its own groups: print it and dig around to find which one
       holds the predictive samples for the observed series.
     """)
     return
@@ -1613,12 +1612,12 @@ def _(baseline_regs):
 def _():
     mo.md(r"""
     The decay starts at $\exp(-19/6) \approx 0.04$ because the
-    forecast picks up 19 months past the original event — most of the
+    forecast picks up 19 months past the original event: most of the
     transient hit has already faded. The `active` column (not plotted)
     sits at a constant `1`: that's the *permanent* part of the
     layoff. In the second-event scenario, the decay curve gets a
     fresh `exp(-(t-6)/6)` bump added on top starting at forecast
-    month 6 — that bump is what drives the dollar gap between
+    month 6: that bump is what drives the dollar gap between
     scenarios.
     """)
     return
@@ -1793,13 +1792,13 @@ def _():
     The cumulative-loss panel is the headline number: the posterior
     over the dollar exposure of *one additional layoff event in six
     months*, conditional on the model. Everything in this plot is
-    a model-based scenario comparison — same posterior parameters, two
+    a model-based scenario comparison: same posterior parameters, two
     different exogenous-regressor futures, draw-by-draw differenced.
     The 89% ETI gives the CFO a calibrated range, not just a point
     estimate.
 
     **Caveat.** The hypothetical event uses the same decay half-life
-    and the same `beta_layoff` posterior as the historical one — i.e.,
+    and the same `beta_layoff` posterior as the historical one, i.e.,
     we're assuming a "similar kind of layoff." Different-magnitude
     events would need a per-event `beta` (see "Where to next" below).
     """)
@@ -1814,7 +1813,7 @@ def _():
     So far the layoff has been an exogenous regressor: we
     hand-engineered `layoff_active` and `layoff_decay` as the *shape*
     of its impact on revenue, then asked the model for the
-    coefficients. That works, but it's a thin causal story — we're
+    coefficients. That works, but it's a thin causal story: we're
     asserting "revenue dropped at this time and recovered like
     *this*", not "revenue dropped *because headcount dropped*".
 
@@ -1833,7 +1832,7 @@ def _():
 
     Headcount has its own AR dynamics. Revenue depends on its own lag
     *and* on lagged headcount. The restriction is that revenue does
-    *not* feed back into headcount — the layoff calendar is set by
+    *not* feed back into headcount: the layoff calendar is set by
     the client's executives, not by what last quarter's billing did.
     In matrix form:
 
@@ -1843,20 +1842,19 @@ def _():
 
     The zero in the upper-right is the restriction. We use the
     off-the-shelf `pmss.BayesianVARMAX` and impose the restriction by
-    constructing the AR-coefficient tensor as a `pm.Deterministic` —
+    constructing the AR-coefficient tensor as a `pm.Deterministic`:
     the zero entry stays a literal zero, the others get scalar priors.
 
     **What this buys.**
 
     - **A structural counterfactual.** Shock headcount by 0.3 log
       points (~26%) at $t=0$ and trace what revenue does over the
-      next 24 months. That's an impulse-response, with a posterior —
-      and unlike the earlier univariate counterfactual, the recovery shape is *learned*
+      next 24 months. That's an impulse-response, with a posterior, and unlike the earlier univariate counterfactual, the recovery shape is *learned*
       from the data, not stipulated by the analyst.
     - **The layoff doesn't appear in the model.** No `layoff_active`,
       no `layoff_decay`. The layoff is a fact about the data (a big
       innovation to $h_t$ at one specific month), not a feature we
-      engineered. The mechanism — not the calendar — is what gets
+      engineered. The mechanism (not the calendar) is what gets
       modeled.
     - **Two side benefits worth knowing about** (we'll see both
       below): joint forecasting becomes one call instead of needing
@@ -1873,7 +1871,7 @@ def _():
     mo.md(r"""
     ### Detrend each series
 
-    The VAR(1) above is stationary around zero — no intercept, no
+    The VAR(1) above is stationary around zero: no intercept, no
     trend. The data have visible drift (headcount slowly grows
     pre-layoff; revenue drifts up over the whole window), so we
     pre-detrend with simple OLS lines and fit on the residuals. The
@@ -1932,12 +1930,12 @@ def _():
 
     `pmss.BayesianVARMAX` is the off-the-shelf vector ARMA component.
     For VAR(1) we set `order=(1, 0)`. With two endogenous series, the
-    AR-coefficient tensor `ar_params` has shape `(2, 1, 2)` — `[i, 0, j]`
+    AR-coefficient tensor `ar_params` has shape `(2, 1, 2)`: `[i, 0, j]`
     is the coefficient on $x_{j, t-1}$ in the equation for $x_{i, t}$.
 
     For the restricted VAR we never declare `ar_params` as a free
     random variable. Instead we build it from scalar priors and a
-    literal zero, and register the result as a `pm.Deterministic` —
+    literal zero, and register the result as a `pm.Deterministic`:
     the framework picks it up by name. (The class docstring says it
     explicitly: *"For restricted models, set zeros directly on the
     priors."*)
@@ -1964,14 +1962,14 @@ def _():
     Five scalar dynamics parameters, one zero, plus initial-state
     mean/covariance. Priors:
 
-    - `phi_h ~ TruncatedNormal(0.7, 0.2)` — moderate AR persistence
+    - `phi_h ~ TruncatedNormal(0.7, 0.2)`: moderate AR persistence
       for headcount, kept inside the unit circle.
-    - `phi_r ~ TruncatedNormal(0.3, 0.3)` — weaker prior on revenue's
+    - `phi_r ~ TruncatedNormal(0.3, 0.3)`: weaker prior on revenue's
       own persistence; the data should drive it.
-    - `gamma ~ Normal(0, 0.5)` — agnostic about the cross-coupling
+    - `gamma ~ Normal(0, 0.5)`: agnostic about the cross-coupling
       sign and magnitude. The mechanism (more headcount → more
       revenue) implies positive, but we let the data decide.
-    - `sigma_h, sigma_r ~ HalfNormal` — innovation scales.
+    - `sigma_h, sigma_r ~ HalfNormal`: innovation scales.
 
     `ar_params[0, 0, 1]` is hard-coded to zero. That's the restriction.
     """)
@@ -2130,7 +2128,7 @@ def _():
     ### Impulse response — a representative layoff shock
 
     The IRF asks the counterfactual: *if headcount drops by 0.3 log
-    points (~26% — the size of one layoff in this dataset) at $t=0$
+    points (~26%, the size of one layoff in this dataset) at $t=0$
     and nothing else, how does revenue respond over the next 24
     months?* The dynamics are linear, so the answer scales: a
     half-size layoff gives half this response.
@@ -2223,22 +2221,21 @@ def _():
     | | Univariate Regression | BVAR |
     |---|---|---|
     | What's modeled | revenue alone | headcount + revenue |
-    | Layoff appears as | hand-coded `(active, decay)` regressors | nothing — it's a big innovation in the data |
+    | Layoff appears as | hand-coded `(active, decay)` regressors | nothing: it's a big innovation in the data |
     | Recovery shape | hard-coded $\exp(-(t-t_e)/\tau)$ | learned via $\phi_h$ |
     | Counterfactual | subtract regression contribution | impulse-response |
     | Forecasting | needs `make_scenario_regressors` for *every* covariate | one `forecast` call extrapolates both series |
-    | Missing data in covariate | crashes (`pm.Data` can't have NaN) | filter handles transparently — see the smoothed-posterior section |
+    | Missing data in covariate | crashes (`pm.Data` can't have NaN) | filter handles transparently: see the smoothed-posterior section |
     | Identification cost | low (3 + extras parameters) | higher (5 + extras), and the restriction |
     | Causal story | "revenue dropped because event happened" | "revenue dropped because headcount dropped" |
 
     With short data (36 monthly observations, one event), the
-    Regression model is statistically more efficient — fewer
+    Regression model is statistically more efficient: fewer
     parameters, sharper posteriors. The BVAR is more honest about
     the mechanism, doesn't require a fixed decay shape, gives an IRF
     for free, *and* gracefully degrades when the predictor itself has
     gaps. The restriction (`T[0, 1] = 0`) is a strong assumption: if
-    revenue *does* feed back into headcount decisions on long horizons
-    — shrinking accounts triggering further cuts — the IRF
+    revenue *does* feed back into headcount decisions on long horizons (shrinking accounts triggering further cuts), the IRF
     underestimates the total dynamic effect.
 
     A hierarchical extension lifts both: pool

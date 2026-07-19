@@ -1564,7 +1564,7 @@ def _(multi_spin_rate_model):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Again, we specify a grid of inputs to predict over — every day of the season for each of the five pitchers — and add the GP conditional to the model:
+    Again, we specify a grid of inputs to predict over (every day of the season for each of the five pitchers) and add the GP conditional to the model:
     """)
     return
 
@@ -1856,7 +1856,7 @@ def _():
     mo.callout(
         mo.md(r"""
     1. Build a `pm.gp.Latent` model for `disasters_array` using `disaster_years[:, None]` as the input.
-    2. Use `pm.find_constrained_prior` to choose a `Gamma` prior for the Matérn-5/2 lengthscale with 94% mass in `[2, 10]` years. (`pm.find_constrained_prior` is PyMC's analogue of the `pz.maxent` elicitation you used in Session 1.2 — it solves for the distribution parameters that put a target probability mass between bounds.)
+    2. Use `pm.find_constrained_prior` to choose a `Gamma` prior for the Matérn-5/2 lengthscale with 94% mass in `[2, 10]` years. (`pm.find_constrained_prior` is PyMC's analogue of the `pz.maxent` elicitation you used in Session 1.2: it solves for the distribution parameters that put a target probability mass between bounds.)
     3. Put a weakly-informative prior on the GP amplitude, exponentiate the latent GP to get a positive `rate`, and use a `Poisson` likelihood.
     4. Sample the model and plot the posterior mean disaster rate with a 94% HDI over the observed counts.
     5. Optional: run a posterior predictive check. Does a Poisson likelihood reproduce the observed count dispersion?
@@ -2082,7 +2082,7 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The inducing points don't need to coincide with observations — they're auxiliary variables introduced solely to compress the GP. The sparse GP will:
+    The inducing points don't need to coincide with observations; they're auxiliary variables introduced solely to compress the GP. The sparse GP will:
 
     1. Learn latent function values at the 20 inducing locations.
     2. Use the kernel to propagate information from inducing points to observations.
@@ -2090,7 +2090,7 @@ def _():
 
     ### The approximation, visualized
 
-    The sparse GP replaces the full covariance $K_{nn}$ with the low-rank reconstruction $K_{nm} K_{mm}^{-1} K_{mn}$. Smooth GPs have covariance matrices that are **inherently low-rank** — nearby points are highly correlated, distant points contribute almost nothing — so the approximation is tight.
+    The sparse GP replaces the full covariance $K_{nn}$ with the low-rank reconstruction $K_{nm} K_{mm}^{-1} K_{mn}$. Smooth GPs have covariance matrices that are **inherently low-rank** (nearby points are highly correlated, distant points contribute almost nothing), so the approximation is tight.
     """)
     return
 
@@ -2250,7 +2250,7 @@ def _():
 
     ### The computational wall
 
-    Exact GP regression inverts an $n \times n$ covariance matrix on every likelihood evaluation: $\mathcal{O}(n^3)$. With more than 2000 swing-decision observations, that is billions of operations per MCMC step — effectively impossible with `gp.Marginal`. Sparse GPs dropped us to $\mathcal{O}(nm^2)$ but still leave us choosing and placing inducing points. HSGP does better.
+    Exact GP regression inverts an $n \times n$ covariance matrix on every likelihood evaluation: $\mathcal{O}(n^3)$. With more than 2000 swing-decision observations, that is billions of operations per MCMC step, effectively impossible with `gp.Marginal`. Sparse GPs dropped us to $\mathcal{O}(nm^2)$ but still leave us choosing and placing inducing points. HSGP does better.
 
     ### The idea
 
@@ -2258,10 +2258,10 @@ def _():
 
     $$f(x) \approx \sum_{j=1}^{m} \phi_j(x)\, \beta_j(\ell).$$
 
-    - The **basis functions** $\phi_j(x)$ are sinusoidal-like and depend only on the input domain — *not* on the kernel, and *not* on inducing points we have to place.
-    - The **coefficients** $\beta_j$ are determined by the kernel's **spectral density** — loosely, the kernel's power at each spatial frequency (formally, the Fourier transform of $k$). A long lengthscale concentrates power at low frequencies; a short one spreads it to higher ones. HSGP truncates this spectrum at a finite basis.
+    - The **basis functions** $\phi_j(x)$ are sinusoidal-like and depend only on the input domain, *not* on the kernel, and *not* on inducing points we have to place.
+    - The **coefficients** $\beta_j$ are determined by the kernel's **spectral density**: loosely, the kernel's power at each spatial frequency (formally, the Fourier transform of $k$). A long lengthscale concentrates power at low frequencies; a short one spreads it to higher ones. HSGP truncates this spectrum at a finite basis.
 
-    Cost drops from $\mathcal{O}(n^3)$ to $\mathcal{O}(nm + m)$ — *linear* in $n$. The approximation is excellent whenever $m$ covers the frequencies the kernel actually cares about, and the input domain isn't too much smaller than the lengthscale.
+    Cost drops from $\mathcal{O}(n^3)$ to $\mathcal{O}(nm + m)$, *linear* in $n$. The approximation is excellent whenever $m$ covers the frequencies the kernel actually cares about, and the input domain isn't too much smaller than the lengthscale.
     """)
     return
 
@@ -2275,7 +2275,7 @@ def _():
 
     $$f \sim \mathcal{GP}\bigl(0,\, k(x, x'; \ell)\bigr) \;\longrightarrow\; f \approx \phi(x)\,\beta(\ell)$$
 
-    where the basis functions $\phi$ depend only on the input domain and the coefficients $\beta$ depend only on the kernel hyperparameters. This separation is what makes HSGP a *parametric* model — once the basis is precomputed, prediction is the same as any other PyMC regression. There is no `.conditional` step required: the HSGP is a drop-in component you can place inside any larger model with any likelihood function.
+    where the basis functions $\phi$ depend only on the input domain and the coefficients $\beta$ depend only on the kernel hyperparameters. This separation is what makes HSGP a *parametric* model: once the basis is precomputed, prediction is the same as any other PyMC regression. There is no `.conditional` step required: the HSGP is a drop-in component you can place inside any larger model with any likelihood function.
     """)
     return
 
@@ -2395,13 +2395,13 @@ def _():
     mo.md(r"""
     - **Left ($L = S$, $c = 1$).** The basis pinches to zero exactly at the data edges. The HSGP approximation becomes poor as you approach $x = \pm 5$, and how quickly depends on the lengthscale.
     - **Middle ($c = 1.2$).** The Riutort-Mayol *et al.* recommended minimum. The pinch is pushed just outside the data range, which is usually enough.
-    - **Right ($c = 4$).** Larger $c$ accommodates longer lengthscales — but the *period* of every basis function grows, so you need more of them (larger $m$) to recover short-lengthscale behavior. Notice the first eigenvector flattens almost completely; in this regime it can become unidentifiable with the model intercept, which is why we set `drop_first=True` whenever we have a separate intercept term.
+    - **Right ($c = 4$).** Larger $c$ accommodates longer lengthscales, but the *period* of every basis function grows, so you need more of them (larger $m$) to recover short-lengthscale behavior. Notice the first eigenvector flattens almost completely; in this regime it can become unidentifiable with the model intercept, which is why we set `drop_first=True` whenever we have a separate intercept term.
 
     To summarize:
 
     - Increasing $m$ helps the HSGP approximate GPs with **smaller lengthscales**, at the cost of computation.
     - Increasing $c$ (or $L$) helps the HSGP approximate GPs with **larger lengthscales**, but may require larger $m$ to compensate.
-    - Always consider the locations where you'll need to make predictions — they shouldn't sit near the boundary pinch either.
+    - Always consider the locations where you'll need to make predictions; they shouldn't sit near the boundary pinch either.
     """)
     return
 
@@ -2411,9 +2411,9 @@ def _():
     mo.md(r"""
     ### The two knobs
 
-    **`m`** — number of basis functions. More = better approximation at short lengthscales. Typical: 20–200 in 1-D. If the kernel's lengthscale is much longer than the data spacing, small `m` is fine.
+    **`m`**: number of basis functions. More = better approximation at short lengthscales. Typical: 20–200 in 1-D. If the kernel's lengthscale is much longer than the data spacing, small `m` is fine.
 
-    **`c`** — boundary extension. Basis functions live on an interval extended by factor `c` beyond the data range, so edge effects don't bite. Typical: 1.3–4.0.
+    **`c`**: boundary extension. Basis functions live on an interval extended by factor `c` beyond the data range, so edge effects don't bite. Typical: 1.3–4.0.
 
     Rather than guess, use **`pm.gp.hsgp_approx.approx_hsgp_hyperparams`**: give it the data's x-range and a plausible range of lengthscales, and it returns recommended `m` and `c` from the Riutort-Mayol et al. (2023) approximation-error bounds. We'll use it below.
 
@@ -2433,7 +2433,7 @@ def _():
     f = pm.Deterministic("f", phi @ beta)
     ```
 
-    The same non-centered reparameterization trick used to tame hierarchical funnels — decorrelates the basis coefficients from their scale so NUTS doesn't stall. It matters most when the noise level is uncertain or data is sparse.
+    The same non-centered reparameterization trick used to tame hierarchical funnels also decorrelates the basis coefficients from their scale so NUTS doesn't stall. It matters most when the noise level is uncertain or data is sparse.
 
     **`drop_first=True`** removes the first (constant) basis function from the HSGP expansion. We include an explicit `intercept` term in the model, so keeping the constant basis would create collinearity. Always pair `drop_first=True` with a separate intercept.
 
@@ -2488,7 +2488,7 @@ def _(swing_decisions):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Each curve marks where the HSGP approximation is reliable for that value of $c$. **The right value depends on your prior over $\ell$.** Our prior puts 90% of its mass on $\ell \in [1, 15]$ years (player age), so we pick $c$ and $m$ such that the entire prior range falls inside a valid region — and `approx_hsgp_hyperparams` does exactly that calculation for us, which is what the model below uses. Smaller $m$ is better for speed; $c$ has no effect on cost.
+    Each curve marks where the HSGP approximation is reliable for that value of $c$. **The right value depends on your prior over $\ell$.** Our prior puts 90% of its mass on $\ell \in [1, 15]$ years (player age), so we pick $c$ and $m$ such that the entire prior range falls inside a valid region, and `approx_hsgp_hyperparams` does exactly that calculation for us, which is what the model below uses. Smaller $m$ is better for speed; $c$ has no effect on cost.
     """)
     return
 
@@ -2498,7 +2498,7 @@ def _():
     mo.md(r"""
     #### Swing decision data
 
-    Let's revisit the swing decision dataset — which we earlier modeled with a spline — and fit an HSGP to it. There are well over 2000 data points, which would make this slow to fit with an exact GP.
+    Let's revisit the swing decision dataset (which we earlier modeled with a spline) and fit an HSGP to it. There are well over 2000 data points, which would make this slow to fit with an exact GP.
     """)
     return
 
@@ -2640,7 +2640,7 @@ def _():
 
     The success above is real, but HSGP carries restrictions worth knowing before you reach for it on the next problem:
 
-    1. **Stationary kernels only.** HSGP works through the kernel's *spectral density*, which means it is compatible with any covariance class that implements `power_spectral_density` — the Matérn family, exponentiated quadratic, etc. Non-stationary or composite-non-stationary kernels are out of scope. The `Periodic` kernel is a special case handled by `pm.gp.HSGPPeriodic`.
+    1. **Stationary kernels only.** HSGP works through the kernel's *spectral density*, which means it is compatible with any covariance class that implements `power_spectral_density`: the Matérn family, exponentiated quadratic, etc. Non-stationary or composite-non-stationary kernels are out of scope. The `Periodic` kernel is a special case handled by `pm.gp.HSGPPeriodic`.
     2. **Does not scale well with input dimension.** HSGP is excellent in 1-D (time series) and tolerable in 2-D (spatial point processes). Beyond three input dimensions, the basis-function count grows quickly and the approximation loses its computational edge.
     3. **May struggle with rapidly-varying processes.** If the function changes very quickly relative to the extent of the domain, you may need an impractically large $m$ to capture the high-frequency structure.
     4. **Small data: prefer the exact GP.** For a few hundred observations, exact `pm.gp.Marginal` is simple, fast enough, and removes one source of potential error.
