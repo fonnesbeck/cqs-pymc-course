@@ -372,11 +372,9 @@ def _(z):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## The PyMC API
+    ## From PyTensor to PyMC: A Model Is a Graph
 
-    Notice how much code was required for a simple logistic regression in raw PyTensor: defining variables, computing gradients, writing an optimization loop--and that wasn't even a Bayesian model!
-
-    Bayesian inference begins with a probability model that relates unknown parameters to observed data. PyMC provides high-level building blocks for constructing these models.
+    Defining variables, building expressions, compiling functions — everything we just did by hand is exactly what PyMC automates. Bayesian inference begins with a probability model that relates unknown parameters to observed data; PyMC provides high-level building blocks for constructing these models, and **every one of those building blocks is a PyTensor object underneath**. In this section we'll build the smallest possible model and inspect it with the graph-reading tools from the previous section.
     """)
     return
 
@@ -401,7 +399,7 @@ def _():
     with pm.Model() as model:
         z_1 = pm.Normal("z", mu=0.0, sigma=5.0)
     model
-    return (model,)
+    return model, z_1
 
 
 @app.cell
@@ -410,9 +408,58 @@ def _(model):
     return
 
 
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    What did `pm.Normal("z", ...)` actually create? Not a special PyMC object — a plain PyTensor `TensorVariable`, whose `owner.op` is a **`RandomVariable`** operation. This is the same graph anatomy we inspected earlier:
+    """)
+    return
+
+
 @app.cell
-def _(model):
-    model.compile_logp()({"z": 2.5})
+def _(z_1):
+    _buf = io.StringIO()
+    z_1.dprint(file=_buf)
+    mo.vstack(
+        [
+            mo.md(
+                f"`type(z_1)` = `{type(z_1).__name__}`, "
+                f"`z_1.owner.op` = `{type(z_1.owner.op).__name__}`"
+            ),
+            mo.md(f"```\n{_buf.getvalue()}```"),
+        ]
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Asking for the log-probability of a value builds a **new** graph — the density expression — from the random variable's graph:
+    """)
+    return
+
+
+@app.cell
+def _(z_1):
+    z_logp = pm.logp(z_1, 2.5)
+    _buf = io.StringIO()
+    z_logp.dprint(file=_buf)
+    mo.md(f"```\n{_buf.getvalue()}```")
+    return (z_logp,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    A graph is not a number — to evaluate it we compile, exactly as before. `model.compile_logp()` applies the same compile-then-call pattern to the model's **joint** log-probability graph (the sum over all of the model's variables). Our model has a single variable, so the joint log-probability matches the single-variable graph we just printed:
+    """)
+    return
+
+
+@app.cell
+def _(model, z_logp):
+    z_logp.eval(), model.compile_logp()({"z": 2.5})
     return
 
 
