@@ -490,11 +490,11 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ### The Distribution Class
+    ### Distributions and Random Variables
 
-    A stochastic variable is represented in PyMC by a `Distribution` class. This structure adds functionality to Pytensor's `pytensor.tensor.random.op.RandomVariable` class, mainly by registering it with an associated PyMC `Model` -- so `Distribution` objects are only usable inside of a `Model` context.
+    Statistical distributions are provided in PyMC as subclasses of `Distribution` — `pm.Normal`, `pm.Binomial`, and so on. Calling one does **not** return a distribution object: as we saw in the bridge section, it creates a PyTensor `TensorVariable` whose `owner.op` is a `RandomVariable` (such as `NormalRV`), and registers that variable with the enclosing `Model`. This registration is why the named form is only usable inside a model context.
 
-    `Distribution` subclasses (i.e. implementations of specific statistical distributions) will accept several arguments when constructed. Some of the most important are:
+    `Distribution` subclasses accept several arguments when constructed. Some of the most important are:
 
     `name`
     : Name for the new model variable. This argument is **required**, and is used as a label and index value for the variable.
@@ -586,7 +586,7 @@ def _():
     * Mixture
     * Timeseries
 
-    Probability distributions are all subclasses of `Distribution`, which in turn has two major subclasses: `Discrete` and `Continuous`. In terms of data types, a `Continuous` random variable is given whichever floating point type is defined by `pytensor.config.floatX`, while `Discrete` variables are given `int16` types when `pytensor.config.floatX` is `float32`, and `int64` otherwise.
+    Probability distributions are all subclasses of `Distribution`, which in turn has two major subclasses: `Discrete` and `Continuous`. In terms of data types, a `Continuous` random variable is given whichever floating point type is defined by `pytensor.config.floatX`, while `Discrete` variables are given the `int64` type.
     """)
     return
 
@@ -620,25 +620,9 @@ def _(x_city):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    All of the `Distribution` subclasses included in PyMC will have two key methods, `rng_fn()` and `logp()`, which are used to generate random values and compute the log-probability of a value, respectively.
+    Every distribution knows how to do two things: **generate random draws** and **compute the log-probability of a value**. Random generation is implemented by the underlying `RandomVariable` operation — the `NormalRV` we saw in the graph — and log-probabilities are provided through PyMC's `logp` dispatch system.
 
-    ```python
-    class SomeDistribution(Continuous):
-        def __init__(...):
-            ...
-        @classmethod
-        def rng_fn(cls, rng, size=None, ...):
-            ...
-            return random_samples
-
-        def logp(value, *params):
-            ...
-            return log_prob
-    ```
-
-    PyMC expects the `logp()` method to return a log-probability evaluated at the passed `value` argument. This method is used internally by all of the inference methods to calculate the model log-probability that is used for fitting models.
-
-    Users do not call this method directly; it is used internally by PyMC to implement the user-facing `logp()` function.
+    You don't call either mechanism directly. The user-facing functions are `pm.logp()` for log-probability and `pm.draw()` for simulation, and PyMC's inference algorithms use the same machinery internally when fitting models.
     """)
     return
 
@@ -652,16 +636,6 @@ def _(x_3):
 @app.cell
 def _(x_city):
     pm.logp(x_city, value=np.random.randn(5)).eval()
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    The `rng_fn()` method is used to simulate values from the variable, and is used internally for predictive sampling.
-
-    Users call the `pm.draw()` function to simulate values from a random variable.
-    """)
     return
 
 
@@ -688,7 +662,7 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Sometimes we wish to use a particular statistical distribution, without using it as a variable in a model; for example, to generate random numbers from the distribution. For this purpose, `Distribution` objects have a method `dist` that returns a **stateless** probability distribution of that type; that is, without being wrapped in a PyMC random variable object.
+    Sometimes we wish to use a distribution without adding a variable to a model — for example, just to generate random numbers. For this purpose, `Distribution` classes have a `.dist()` class method that returns an **unregistered** random-variable tensor: the same kind of `TensorVariable` as before, but not attached to any model, so it can be created and used anywhere.
     """)
     return
 
