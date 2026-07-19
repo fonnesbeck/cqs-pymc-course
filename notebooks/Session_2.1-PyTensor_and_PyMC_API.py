@@ -695,7 +695,7 @@ def _():
 def _():
     def uniform_logp(value, lower, upper):
         return pm.math.switch(
-            (value > upper) | (value < lower), -np.inf, -pm.math.log(upper - lower + 1)
+            (value > upper) | (value < lower), -np.inf, -pm.math.log(upper - lower)
         )
 
     with pm.Model():
@@ -726,7 +726,7 @@ def _(u):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    To emphasize, the Python function passed to `CustomDist` should compute the *log*-density or *log*-probability of the variable. That is why the return value in the example above is `-log(upper-lower+1)` rather than `1/(upper-lower+1)`.
+    To emphasize, the Python function passed to `CustomDist` should compute the *log*-density or *log*-probability of the variable. That is why the return value in the example above is `-log(upper - lower)` rather than `1/(upper - lower)`.
     """)
     return
 
