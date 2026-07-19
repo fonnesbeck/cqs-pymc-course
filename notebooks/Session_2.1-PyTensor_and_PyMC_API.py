@@ -378,12 +378,9 @@ def _():
     mo.md(r"""
     ## Model Contexts and Random Variables
 
-    As we have seen, the canonical way to specify PyMC models is using a `Model` context manager. Generally speaking, a context manager is a Python idiom that define what happens when entering and exiting a with statement. They provide a clean, reliable way to set up and tear down resources,
+    The canonical way to specify a PyMC model is with the `Model` **context manager** — the `with pm.Model() as model:` idiom you have already seen. Think of `Model` as a tape machine: while the context is open, it records every random variable and other component you create, along with the bookkeeping needed to move values between your Python code and the underlying graph.
 
-    As an analogy, `Model` is a tape machine that records what is being added to the model; it keeps track the random variables (observed or unobserved) and other model components. The model context then computes some simple model properties, builds a **bijection** mapping that transforms between Python dictionaries and numpy/Pytensor ndarrays.
-
-    More importantly, a `Model` contains methods to compile Pytensor functions that take Random Variables--that are also
-    initialised within the same model--as input.
+    Most importantly for our purposes, a `Model` can compile PyTensor functions from the variables registered with it — which is exactly the machinery we are about to inspect.
     """)
     return
 
@@ -486,7 +483,7 @@ def _():
     mo.md(r"""
     ### Distributions and Random Variables
 
-    Statistical distributions are provided in PyMC as subclasses of `Distribution` — `pm.Normal`, `pm.Binomial`, and so on. Calling one does **not** return a distribution object: as we saw in the bridge section, it creates a PyTensor `TensorVariable` whose `owner.op` is a `RandomVariable` (such as `NormalRV`), and registers that variable with the enclosing `Model`. This registration is why the named form is only usable inside a model context.
+    Statistical distributions are provided in PyMC as subclasses of `Distribution` — `pm.Normal`, `pm.Binomial`, and so on. Calling one does **not** return a distribution object: as we saw above, it creates a PyTensor `TensorVariable` whose `owner.op` is a `RandomVariable` (such as `NormalRV`), and registers that variable with the enclosing `Model`. This registration is why the named form is only usable inside a model context.
 
     `Distribution` subclasses accept several arguments when constructed. Some of the most important are:
 
@@ -630,6 +627,14 @@ def _(x_3):
 @app.cell
 def _(x_city):
     pm.logp(x_city, value=np.random.randn(5)).eval()
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ...and `pm.draw()` simulates values from a variable, whether or not it belongs to a model:
+    """)
     return
 
 
