@@ -137,9 +137,9 @@ def _():
     mo.md(r"""
     #### When does the Normal apply?
 
-    The Normal distribution is a good model when the variability is just **symmetric, unstructured noise** — no hidden subgroups, no skew, no heavy tails. It's the maximum entropy distribution for a given mean and variance, so it's the "least informative" choice when all you know is the center and spread.
+    The Normal distribution is a good model when the variability is just **symmetric, unstructured noise**: no hidden subgroups, no skew, no heavy tails. It's the maximum entropy distribution for a given mean and variance, so it's the "least informative" choice when all you know is the center and spread.
 
-    But if the data contains **unmodeled structure**, the Normal breaks down. Consider human heights: if we mix males and females, the combined distribution is bimodal. More data makes the bimodality *sharper*, not more Normal. However, **conditioned on gender**, each subgroup is well-described by a Normal — the remaining variability is just noise.
+    But if the data contains **unmodeled structure**, the Normal breaks down. Consider human heights: if we mix males and females, the combined distribution is bimodal. More data makes the bimodality *sharper*, not more Normal. However, **conditioned on gender**, each subgroup is well-described by a Normal; the remaining variability is just noise.
     """)
     return
 
@@ -429,7 +429,7 @@ def _():
 
     Core form: $e^{-x^2}$ for $x \geq 0$
 
-    * A Normal folded at zero — only the positive half
+    * A Normal folded at zero: only the positive half
     * Single parameter: $\sigma$ (scale)
     * Common prior for standard deviations and other positive scale parameters
     """)
@@ -615,7 +615,7 @@ def _():
 
     * Constant density over the interval $[a, b]$
     * Maximum entropy distribution for a bounded variable with known support
-    * Often considered "uninformative" but is actually quite strong — it says all values in the range are equally likely and values outside are impossible
+    * Often considered "uninformative" but is actually quite strong: it says all values in the range are equally likely and values outside are impossible
     * Special case of Beta(1, 1) on [0, 1]
     """)
     return
@@ -748,7 +748,7 @@ def _():
 
     Core form: $p^k(1-p)^{1-k}$ for $k \in \{0, 1\}$
 
-    * The simplest discrete distribution — a single trial with two outcomes
+    * The simplest discrete distribution: a single trial with two outcomes
     * Building block for the Binomial (sum of Bernoullis)
     * Generalizes to multivariate as Categorical
     """)
@@ -911,7 +911,7 @@ def _():
 
     * Two parameters: $\mu$ (mean) and $\alpha$ (concentration)
     * Variance always **greater** than the mean
-    * As $\alpha \to \infty$, converges to Poisson — just like StudentT $\to$ Normal
+    * As $\alpha \to \infty$, converges to Poisson, just like StudentT $\to$ Normal
     * The go-to for overdispersed count data
     """)
     return
@@ -982,7 +982,7 @@ def _():
     mo.md(r"""
     #### Overdispersion: when Poisson fails
 
-    Real count data often has variance much larger than the mean — this is **overdispersion**. The Poisson can't capture it (its mean *is* its variance), so it either overestimates the peak or underestimates the spread. The Negative Binomial handles this naturally via its extra parameter $\alpha$.
+    Real count data often has variance much larger than the mean; this is **overdispersion**. The Poisson can't capture it (its mean *is* its variance), so it either overestimates the peak or underestimates the spread. The Negative Binomial handles this naturally via its extra parameter $\alpha$.
 
     Below: samples are drawn from a NegBin. As you decrease $\alpha$, the data becomes more overdispersed and the best-fit Poisson increasingly fails.
     """)
@@ -1070,6 +1070,110 @@ def _(od_alpha_slider, od_n_slider):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    ### Zero-inflated distributions
+
+    Overdispersion isn't the only way count data breaks the Poisson. Just as often, the problem is **too many zeros**: cigarettes smoked per day, doctor visits per year, parasite eggs per fecal sample. These datasets have a spike at zero that no Poisson (or even NegBin) can reproduce, because the zeros come from *two different processes*:
+
+    * **Structural zeros**, never at risk: non-smokers smoke zero cigarettes no matter what
+    * **Sampling zeros**, at risk, but happened to be zero: a smoker on a day they didn't smoke
+
+    The **Zero-Inflated Poisson (ZIP)** models this as a mixture: with probability $1-\psi$ the observation is a structural zero, and with probability $\psi$ it comes from a Poisson:
+
+    $$P(X=0) = (1-\psi) + \psi e^{-\theta}, \qquad P(X=k) = \psi \frac{\theta^k e^{-\theta}}{k!} \quad (k \geq 1)$$
+
+    PyMC provides these ready-made: `pm.ZeroInflatedPoisson`, `pm.ZeroInflatedNegativeBinomial`, and `pm.ZeroInflatedBinomial`.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    zip_psi_slider = mo.ui.slider(
+        0.1, 1.0, value=0.6, step=0.05, label="psi (P(Poisson component))"
+    )
+    zip_theta_slider = mo.ui.slider(1, 20, value=6, step=1, label="theta")
+    mo.hstack([zip_psi_slider, zip_theta_slider], justify="start")
+    return zip_psi_slider, zip_theta_slider
+
+
+@app.cell(hide_code=True)
+def _(zip_psi_slider, zip_theta_slider):
+    def plot_zip_pmf():
+        psi = zip_psi_slider.value
+        theta = zip_theta_slider.value
+        x = np.arange(0, 30)
+
+        y_zip = psi * stats.poisson.pmf(x, theta)
+        y_zip[0] += 1 - psi
+
+        # Poisson forced to match the ZIP's mean — what a naive fit would use
+        lam = psi * theta
+        y_pois = stats.poisson.pmf(x, lam)
+
+        fig = go.Figure()
+        fig.add_trace(
+            go.Bar(
+                x=x,
+                y=y_zip,
+                marker_color=PYMC_BLUE,
+                opacity=0.7,
+                name=f"ZIP(ψ={psi}, θ={theta})",
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=y_pois,
+                mode="lines+markers",
+                line=dict(color=PYMC_GREEN, width=2, dash="dash"),
+                marker=dict(size=4),
+                name=f"Poisson(λ={lam:.1f}), same mean",
+            )
+        )
+        fig.update_layout(
+            title=f"ZIP(psi={psi}, theta={theta}) vs Poisson with the same mean",
+            xaxis_title="k",
+            yaxis_title="P(X=k)",
+            width=700,
+            height=350,
+        )
+        return fig, y_zip[0], y_pois[0]
+
+    _fig, _zip0, _pois0 = plot_zip_pmf()
+    mo.vstack(
+        [
+            _fig,
+            mo.md(
+                f"**P(X=0):** ZIP gives {_zip0:.3f}; a same-mean Poisson can only manage {_pois0:.3f}"
+            ),
+        ]
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    #### Mixtures: the general tool
+
+    Zero-inflation is a special case of a **mixture distribution**: data drawn from latent subpopulations, each with its own distribution. The ZIP above is exactly:
+
+    ```python
+    pm.Mixture(
+        "y",
+        w=[1 - psi, psi],
+        comp_dists=[pm.DiracDelta.dist(0), pm.Poisson.dist(theta)],
+    )
+    ```
+
+    a point mass at zero mixed with a Poisson. `pm.Mixture` accepts any weights and component distributions, so the same construction handles bimodal measurements, outlier-contaminated data, or any situation where observations come from groups you can't directly label.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     ---
 
     ## Choosing distributions
@@ -1107,6 +1211,7 @@ def _():
     | **Continuous measurements** | Normal, StudentT | StudentT is more robust to outliers |
     | **Durations / positive values** | Exponential, Gamma, Weibull, Lognormal | Always positive |
     | **Counts** | Poisson, NegativeBinomial | NegBin handles overdispersion |
+    | **Counts with excess zeros** | ZeroInflatedPoisson, ZeroInflatedNegativeBinomial | Mixture of structural zeros and counts |
     | **Proportions / binary** | Bernoulli, Binomial | Beta prior is conjugate |
 
     **Key principle:** Choose distributions with appropriate domains and enough flexibility to model your data.
@@ -1119,19 +1224,19 @@ def _():
     mo.md(r"""
     ### Censored and Truncated Data
 
-    Sometimes the mismatch between data and likelihood isn't the distribution family — it's the **observation process**:
+    Sometimes the mismatch between data and likelihood isn't the distribution family; it's the **observation process**:
 
     - **Truncated**: values outside the bounds are *never observed at all*, and you don't know how many you missed. Only insurance claims above the deductible are filed; only admitted students appear in the dataset. The density is renormalized over the observable range.
     - **Censored**: an observation happened, but you only learn that it hit a bound. A sensor reads "≥ 100" at its detection limit; a patient is still alive when the study ends. Probability mass piles up *at* the bounds.
 
-    PyMC handles both by wrapping any base distribution:
+    PyMC models both with `pm.Censored` and `pm.Truncated`, which take any base distribution and apply the observation process to it:
 
     ```python
     pm.Censored("y", pm.Normal.dist(mu, sigma), lower=None, upper=limit, observed=y)
     pm.Truncated("y", pm.Normal.dist(mu, sigma), lower=0, observed=y)
     ```
 
-    (`pm.TruncatedNormal` is a named shortcut for the common case — you'll see it in Session 5.1.) Fitting the *wrong* wrapper — or ignoring the observation process entirely — biases every parameter estimate, so recognizing censoring vs truncation is as important as picking the right family.
+    (`pm.TruncatedNormal` is a named shortcut for the common case, you'll see it in Session 5.1.) Applying the wrong type (or ignoring the observation process entirely and fitting the plain distribution) biases every parameter estimate, so recognizing censoring versus truncation is as important as picking the right family.
     """)
     return
 
@@ -1188,7 +1293,9 @@ def _(censored_draws, truncated_draws):
                 row=1,
                 col=col,
             )
-            fig.add_vline(x=upper, line_dash="dot", line_color="firebrick", row=1, col=col)
+            fig.add_vline(
+                x=upper, line_dash="dot", line_color="firebrick", row=1, col=col
+            )
 
         fig.update_layout(
             title=(
@@ -1218,19 +1325,19 @@ def _():
     mo.callout(
         mo.md("""
         The Mayo Clinic **primary biliary cholangitis (PBC)** study recorded serum
-        bilirubin (mg/dL) for 418 patients — a strictly positive, right-skewed
+        bilirubin (mg/dL) for 418 patients, a strictly positive, right-skewed
         biomarker.
 
         Your job: find a distribution whose **draws look like this data**. There is
-        no fitting and no MCMC here — you pick a family and its parameters, simulate
+        no fitting and no MCMC here: you pick a family and its parameters, simulate
         from it with `pm.draw`, and compare the simulated values to the real ones by
         eye. Adjust and repeat until the shape and tail match.
 
         Two things to weigh as you choose:
 
-        1. **Support** — which values can the distribution even produce? Bilirubin is
+        1. **Support**: which values can the distribution even produce? Bilirubin is
            a concentration, so it can never be negative.
-        2. **Shape** — the data are heavily right-skewed with a long upper tail.
+        2. **Shape**: the data are heavily right-skewed with a long upper tail.
            Which families can reproduce that, and which cannot?
         """),
         kind="info",
@@ -1274,7 +1381,7 @@ def _(pbc_df):
             ),
             mo.md(
                 "Note: every value is **strictly positive** and the mean sits well "
-                "above the median — the data are heavily **right-skewed**, with a "
+                "above the median; the data are heavily **right-skewed**, with a "
                 "few patients carrying very high bilirubin. Keep both facts in mind "
                 "when you choose a likelihood."
             ),
@@ -1286,7 +1393,7 @@ def _(pbc_df):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    `pm.draw` samples directly from a distribution — no fitting, no MCMC. Build an
+    `pm.draw` samples directly from a distribution: no fitting, no MCMC. Build an
     unfit distribution with `pm.SomeDistribution.dist(...)`, then
     `pm.draw(dist, draws=N)` returns an array of simulated values:
 
@@ -1323,11 +1430,19 @@ def _(bilirubin):
 
         fig, ax = plt.subplots(figsize=(9, 4))
         ax.hist(
-            bilirubin, bins=bins, density=True, alpha=0.5, color="C1",
+            bilirubin,
+            bins=bins,
+            density=True,
+            alpha=0.5,
+            color="C1",
             label="Bilirubin data",
         )
         ax.hist(
-            draws, bins=bins, density=True, alpha=0.4, color="C0",
+            draws,
+            bins=bins,
+            density=True,
+            alpha=0.4,
+            color="C0",
             label="Your draws",
         )
         ax.axvline(0, color="k", lw=1, ls="--")
@@ -1343,12 +1458,12 @@ def _(bilirubin):
         )
         if frac_neg > 0.001:
             verdict = (
-                f" **{frac_neg:.0%} of your draws are negative** — impossible for a "
+                f" **{frac_neg:.0%} of your draws are negative**: impossible for a "
                 "concentration, so this family is wrong."
             )
         else:
             verdict = (
-                " All draws are positive — now check how well the peak and the right "
+                " All draws are positive; now check how well the peak and the right "
                 "tail line up with the data."
             )
         return mo.vstack([mo.md(stats_line + verdict), fig])
@@ -1364,14 +1479,14 @@ def _(bilirubin, show_draws_vs_data):
                 [
                     mo.md(
                         "Bilirubin is a **strictly positive, right-skewed** "
-                        "concentration. The Normal fails on support alone — centered "
+                        "concentration. The Normal fails on support alone: centered "
                         "near the mean it puts about a quarter of its draws below "
                         "zero. A **LogNormal** lives on the positive axis and is "
                         "right-skewed by construction, so its draws match both the "
                         "peak and the long tail. A clean way to set its parameters is "
                         "straight from the data on the log scale: "
                         "`mu = np.log(bilirubin).mean()`, "
-                        "`sigma = np.log(bilirubin).std()`. (A Gamma works well too — "
+                        "`sigma = np.log(bilirubin).std()`. (A Gamma works well too, "
                         "try it and compare.)"
                     ),
                     mo.md(
@@ -1425,7 +1540,7 @@ def _():
 
     Let's model the body mass of Adelie penguins. We'll compare a **vague** prior with a **weakly informative** prior.
 
-    These are the Palmer Penguins data — body measurements (mass in grams) for
+    These are the Palmer Penguins data, body measurements (mass in grams) for
     three penguin species collected at Palmer Station, Antarctica.
     """)
     return
@@ -1537,7 +1652,7 @@ def _(informed_prior, prior_pred_log_toggle, vague_prior):
         [
             plot_prior_predictive_comparison(),
             mo.md("""
-            The vague priors produce wildly unrealistic predictions — penguins heavier than a person, or lighter than an egg. The weakly informative priors generate data in a plausible range. **Always check your prior predictive distribution before fitting.**
+            The vague priors produce wildly unrealistic predictions: penguins heavier than a person, or lighter than an egg. The weakly informative priors generate data in a plausible range. **Always check your prior predictive distribution before fitting.**
             """),
         ]
     )
@@ -1563,12 +1678,11 @@ def _():
         1. Complete the PyMC model (which uses a `Normal` likelihood)
         2. Define mu and sigma priors
         3. Use `pm.sample_prior_predictive()` to generate predictions
-        4. Use `pm.sample()` to get the posterior
-        5. Compare the prior predictive distribution to the observed body-mass data —
+        4. Compare the prior predictive distribution to the observed body-mass data:
            does your prior put mass in the plausible range before seeing the data?
 
         Note: unlike the log-scale LogNormal demo above, this model is on the natural
-        scale — your priors are in grams (e.g., a mean body mass near 4000 g).
+        scale: your priors are in grams (e.g., a mean body mass near 4000 g).
         """),
         kind="info",
     )
@@ -1583,11 +1697,10 @@ def _(adelie_mass, show_penguin_prior_check):
             mu = ...
             sigma = ...
             pm.Normal("obs", mu, sigma, observed=adelie_mass)
-            # YOUR CODE HERE — sample the prior predictive and the posterior
+            # YOUR CODE HERE — sample the prior predictive
             prior_trace = ...
-            posterior_trace = ...
 
-        return show_penguin_prior_check(prior_trace, posterior_trace)
+        return show_penguin_prior_check(prior_trace)
 
     return (exercise_penguin_prior_check,)
 
@@ -1611,24 +1724,16 @@ def _(exercise_penguin_prior_check, run_penguin_prior_check):
 
 @app.cell(hide_code=True)
 def _(adelie_mass):
-    def show_penguin_prior_check(prior_trace, posterior_trace):
+    def show_penguin_prior_check(prior_trace):
         fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
-        # mu: prior vs posterior
         _g, _p, _ = az.kde(prior_trace.prior["mu"].values.flatten())
-        axes[0].plot(_g, _p, label="Prior")
-        _g, _p, _ = az.kde(posterior_trace.posterior["mu"].values.flatten())
-        axes[0].plot(_g, _p, color="C1", label="Posterior")
-        axes[0].set_title("mu")
-        axes[0].legend()
+        axes[0].plot(_g, _p)
+        axes[0].set_title("mu prior")
 
-        # sigma: prior vs posterior
         _g, _p, _ = az.kde(prior_trace.prior["sigma"].values.flatten())
-        axes[1].plot(_g, _p, label="Prior")
-        _g, _p, _ = az.kde(posterior_trace.posterior["sigma"].values.flatten())
-        axes[1].plot(_g, _p, color="C1", label="Posterior")
-        axes[1].set_title("sigma")
-        axes[1].legend()
+        axes[1].plot(_g, _p)
+        axes[1].set_title("sigma prior")
 
         # Prior predictive vs observed data
         _g, _p, _ = az.kde(prior_trace.prior_predictive["obs"].values.flatten())
@@ -1655,7 +1760,7 @@ def _(show_penguin_prior_check, solution_exercise_1):
                 [
                     mo.md(f"```python\n{inspect.getsource(solution_exercise_1)}\n```"),
                     mo.lazy(
-                        lambda: show_penguin_prior_check(*solution_exercise_1()),
+                        lambda: show_penguin_prior_check(solution_exercise_1()),
                         show_loading_indicator=True,
                     ),
                 ]
@@ -1675,8 +1780,8 @@ def _():
     [PreliZ](https://preliz.readthedocs.io/) is a library designed specifically for prior elicitation. It provides tools to find distributions that match your domain knowledge.
 
     Two key functions:
-    - **`pz.maxent()`** — find the maximum entropy distribution matching specified quantile constraints
-    - **`pz.mle()`** — fit a distribution to data using maximum likelihood
+    - **`pz.maxent()`**: find the maximum entropy distribution matching specified quantile constraints
+    - **`pz.mle()`**: fit a distribution to data using maximum likelihood
     """)
     return
 
@@ -1727,7 +1832,7 @@ def _():
 def _():
     mo.md(r"""
     A fitted PreliZ distribution can be dropped straight into a PyMC model with
-    `.to_pymc("name")` — you will use this in Session 4.1.
+    `.to_pymc("name")`; you will use this in Session 4.1.
     """)
     return
 
@@ -1853,7 +1958,7 @@ def _():
 
     Core form: $\prod_{i} x_i^{\alpha_i - 1}$ on the simplex ($x_i \geq 0$, $\sum_i x_i = 1$)
 
-    * Multivariate generalization of the Beta — a distribution over **proportions**
+    * Multivariate generalization of the Beta, a distribution over **proportions**
     * Conjugate prior for Categorical/Multinomial probabilities
     * $\alpha_i < 1$: mass piles up at the corners; $\alpha = (1,1,1)$: uniform over the simplex; large $\alpha$: concentrated near the mean
     """)
@@ -2019,7 +2124,7 @@ def _():
 
     - Match your likelihood to the data-generating process (Normal, Lognormal, Poisson, NegBin, etc.)
     - Multivariate families: **MVN** for correlated continuous variables, **Dirichlet** for proportions
-    - Model the *observation process* too: **`pm.Censored`** / **`pm.Truncated`** wrap any base distribution
+    - Model the *observation process* too: **`pm.Censored`** / **`pm.Truncated`** take any base distribution and model how it is observed
     - Always do prior predictive checks
     - Use PreliZ (`pz.maxent`, `pz.mle`) for principled prior elicitation
     - The choice of prior matters most with small data
@@ -2042,9 +2147,8 @@ def _(adelie_mass):
             sigma = pm.HalfNormal("sigma", sigma=500)
             pm.Normal("obs", mu, sigma, observed=adelie_mass)
             prior_trace = pm.sample_prior_predictive()
-            posterior_trace = pm.sample()
 
-        return prior_trace, posterior_trace
+        return prior_trace
 
     return (solution_exercise_1,)
 

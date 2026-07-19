@@ -112,6 +112,7 @@ To run a notebook as a read-only app (code hidden by default):
 **Part B — Prior and Likelihood Selection (90 min)** — `Session_1.2-Prior_and_Likelihood_Selection.py`
 - Distribution families: continuous, discrete, bounded
 - Choosing likelihoods for different data types (counts, proportions, continuous)
+- Zero-inflated counts and mixture distributions
 - Choosing priors for location, scale, and rate parameters
 - Prior predictive simulation as a sanity check
 - Interactive prior elicitation with PreliZ; LKJ priors for correlation matrices
