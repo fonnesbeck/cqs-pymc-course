@@ -1,8 +1,7 @@
 import marimo
 
-__generated_with = "0.22.4"
+__generated_with = "0.23.14"
 app = marimo.App(width="medium")
-
 
 with app.setup:
     import marimo as mo
@@ -46,7 +45,6 @@ with app.setup:
 @app.cell(hide_code=True)
 def header():
     mo.md("""
-
     # Session 2.1: PyTensor and the PyMC API
 
     In this session, we'll explore the fundamental components of PyMC: PyTensor and PyMC's variable classes. We'll learn how PyTensor defines and optimizes computational graphs, and how PyMC uses these capabilities to build probabilistic models.
@@ -82,15 +80,18 @@ def _():
 
 @app.cell(hide_code=True)
 def _():
-    mo.vstack(
-        [
-            mo.md(r"""
+    mo.md(r"""
     ### Tensors and Basic Operations
 
     To begin, let's define some PyTensor tensors and show how to perform some basic operations.
-    """),
-            mo.callout(
-                mo.md(r"""
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.callout(
+        mo.md(r"""
     **What is a Tensor?**
 
     A tensor is a multi-dimensional array that serves as the fundamental data structure.
@@ -102,15 +103,18 @@ def _():
     * A 2-D tensor is a grid of numbers (a matrix).
     * A 3-D tensor is a cube of numbers, and so on for any number of dimensions.
     """),
-                kind="info",
-            ),
-            mo.md(r"""
+        kind="info",
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     A tensor can be a **scalar** or a **vector** with any number of dimensions.
 
     Concretely:
-    """),
-        ]
-    )
+    """)
     return
 
 
@@ -321,7 +325,7 @@ def _():
         img_html = ""
         if img_path.exists():
             b64 = base64.b64encode(img_path.read_bytes()).decode()
-            img_html = f'<img src="data:image/png;base64,{b64}" width="600">'
+            img_html = f'<img src="data:image/png;base64,{b64}" width="400">'
         return img_html
 
     apply_html = render_apply_diagram()
@@ -696,7 +700,7 @@ def _():
 def _():
     with pm.Model() as model:
         z_1 = pm.Normal("z", mu=0.0, sigma=5.0)
-    model.to_graphviz()
+    model
     return (model,)
 
 
@@ -790,7 +794,7 @@ def _():
     city_names = ["Vancouver", "Calgary", "Toronto", "Montreal", "Halifax"]
     with pm.Model(coords={"city": city_names}) as model_1:
         x_city = pm.Normal("x_city", dims="city")
-    model_1.to_graphviz()
+    model_1
     return model_1, x_city
 
 
@@ -1038,18 +1042,33 @@ def _():
     return
 
 
-@app.cell
-def _():
-    def _exercise_triangular():
-        # YOUR CODE HERE — define triangular_logp(value, lower, mode, upper),
-        # then create the CustomDist inside a model context:
-        #
-        # with pm.Model():
-        #     tri = pm.CustomDist("tri", 0, 2, 5, logp=triangular_logp)
-        tri = ...
-        return pm.logp(tri, 2).eval(), pm.logp(tri, -1).eval()
+@app.function
+def exercise_triangular():
+    def triangular_logp(value, lower, mode, upper):
+        # YOUR CODE HERE — nested pm.math.switch: the outer switch handles
+        # out-of-support values (-np.inf), the inner one picks the rising
+        # or falling branch. Return the *log* of the density.
+        ...
 
-    _exercise_triangular()
+    with pm.Model():
+        tri = ...
+    return pm.logp(tri, 2).eval(), pm.logp(tri, -1).eval()
+
+
+@app.cell(hide_code=True)
+def _():
+    run_triangular = mo.ui.run_button(label="▶ Run exercise")
+    run_triangular
+    return (run_triangular,)
+
+
+@app.cell(hide_code=True)
+def _(run_triangular):
+    mo.stop(
+        not run_triangular.value,
+        mo.md("*Click ▶ Run exercise once your code is ready.*"),
+    )
+    exercise_triangular()
     return
 
 
@@ -1078,7 +1097,10 @@ def _():
             "Solution": mo.vstack(
                 [
                     mo.md(f"```python\n{inspect.getsource(solution_triangular)}\n```"),
-                    mo.md(f"Result: `{solution_triangular()}`"),
+                    mo.lazy(
+                        lambda: mo.md(f"Result: `{solution_triangular()}`"),
+                        show_loading_indicator=True,
+                    ),
                 ]
             ),
         }
