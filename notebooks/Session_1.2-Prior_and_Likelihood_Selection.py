@@ -13,7 +13,6 @@ with app.setup:
     from scipy import stats
     import arviz as az
     import matplotlib.pyplot as plt
-    from matplotlib.ticker import MaxNLocator
     import inspect
     from pathlib import Path
     import preliz as pz
@@ -1074,8 +1073,8 @@ def _():
 
     Overdispersion isn't the only way count data breaks the Poisson. Just as often, the problem is **too many zeros**: cigarettes smoked per day, doctor visits per year, parasite eggs per fecal sample. These datasets have a spike at zero that no Poisson (or even NegBin) can reproduce, because the zeros come from *two different processes*:
 
-    * **Structural zeros**, never at risk: non-smokers smoke zero cigarettes no matter what
-    * **Sampling zeros**, at risk, but happened to be zero: a smoker on a day they didn't smoke
+    * **Structural zeros** — never at risk: non-smokers smoke zero cigarettes no matter what
+    * **Sampling zeros** — at risk, but happened to be zero: a smoker on a day they didn't smoke
 
     The **Zero-Inflated Poisson (ZIP)** models this as a mixture: with probability $1-\psi$ the observation is a structural zero, and with probability $\psi$ it comes from a Poisson:
 
@@ -1144,7 +1143,7 @@ def _(zip_psi_slider, zip_theta_slider):
         [
             _fig,
             mo.md(
-                f"**P(X=0):** ZIP gives {_zip0:.3f}; a same-mean Poisson can only manage {_pois0:.3f}"
+                f"**P(X=0):** ZIP gives {_zip0:.3f} — a same-mean Poisson can only manage {_pois0:.3f}"
             ),
         ]
     )
@@ -1156,7 +1155,7 @@ def _():
     mo.md(r"""
     #### Mixtures: the general tool
 
-    Zero-inflation is a special case of a **mixture distribution**: data drawn from latent subpopulations, each with its own distribution. The ZIP above is exactly:
+    Zero-inflation is a special case of a **mixture distribution** — data drawn from latent subpopulations, each with its own distribution. The ZIP above is exactly:
 
     ```python
     pm.Mixture(
@@ -1664,25 +1663,57 @@ def _():
     mo.md(r"""
     ---
 
-    ## Exercise: Prior Predictive Check for Penguin Mass
+    ## Exercise: Vague prior specification for modeling binary outcomes
     """)
     return
 
 
 @app.cell(hide_code=True)
 def _():
+    n_emails = 100
+    observed_conversions = 8
+
+    _fig, _ax = plt.subplots(figsize=(7, 2.4))
+    _counts = [observed_conversions, n_emails - observed_conversions]
+    _ax.barh(["Converted", "Did not convert"], _counts, color=["C1", "C0"])
+    for _i, _v in enumerate(_counts):
+        _ax.text(_v + 1, _i, str(_v), va="center")
+    _ax.set_xlabel("Number of recipients")
+    _ax.set_xlim(0, n_emails + 8)
+    _ax.set_title(f"Email campaign: {observed_conversions} of {n_emails} recipients converted")
+    _fig.tight_layout()
+
+    mo.vstack(
+        [
+            _fig,
+            mo.md(
+                f"**The data (from Session 1.1):** a promotional email sent to **{n_emails}** "
+                f"recipients, of whom **{observed_conversions}** converted "
+                f"({observed_conversions / n_emails:.0%}). You will set a prior for the "
+                "conversion rate before fitting."
+            ),
+        ]
+    )
+    return n_emails, observed_conversions
+
+
+@app.cell(hide_code=True)
+def _():
     mo.callout(
         mo.md("""
-        Using the Adelie penguin body mass data:
+        You are about to estimate the conversion rate `p` of the campaign above.
+        Before fitting, you set a **prior** for `p`. Since `p` lives between 0 and 1,
+        you model it on the **log-odds** scale, `logit(p)`, with a Normal, and map
+        back with `invlogit`. How would we specify a vague or uninformative prior on `p`?
 
-        1. Complete the PyMC model (which uses a `Normal` likelihood)
-        2. Define mu and sigma priors
-        3. Use `pm.sample_prior_predictive()` to generate predictions
-        4. Compare the prior predictive distribution to the observed body-mass data:
-           does your prior put mass in the plausible range before seeing the data?
+        In the scaffold below:
 
-        Note: unlike the log-scale LogNormal demo above, this model is on the natural
-        scale: your priors are in grams (e.g., a mean body mass near 4000 g).
+        1. Fill in a **wide** `Normal` prior on the log-odds (start with `sigma=10`)
+           and sample the prior predictive.
+        2. Click ▶ Run exercise. Look at the conversion counts your prior predicts for
+           100 emails, and the implied prior on `p`. Are they plausible?
+        3. Lower the width and re-run until the predicted conversions cover a sensible
+           range instead of all-or-nothing.
         """),
         kind="info",
     )
@@ -1690,77 +1721,95 @@ def _():
 
 
 @app.cell
-def _(adelie_mass, show_penguin_prior_check):
-    def exercise_penguin_prior_check():
+def _(n_emails, observed_conversions):
+    def exercise_uninformative_prior():
         with pm.Model():
-            # YOUR CODE HERE — priors for mu and sigma, in grams
-            mu = ...
-            sigma = ...
-            pm.Normal("obs", mu, sigma, observed=adelie_mass)
+            # YOUR CODE HERE — a "vague" Normal prior on the log-odds
+            logit_p = ...
+            p = pm.Deterministic("p", pm.math.invlogit(logit_p))
+            pm.Binomial("y", n=n_emails, p=p, observed=observed_conversions)
             # YOUR CODE HERE — sample the prior predictive
             prior_trace = ...
 
-        return show_penguin_prior_check(prior_trace)
+        return show_prior_predictive_check(prior_trace, n_emails)
 
-    return (exercise_penguin_prior_check,)
+    return (exercise_uninformative_prior,)
 
 
 @app.cell(hide_code=True)
 def _():
-    run_penguin_prior_check = mo.ui.run_button(label="▶ Run exercise")
-    run_penguin_prior_check
-    return (run_penguin_prior_check,)
+    run_uninformative_prior = mo.ui.run_button(label="▶ Run exercise")
+    run_uninformative_prior
+    return (run_uninformative_prior,)
 
 
 @app.cell(hide_code=True)
-def _(exercise_penguin_prior_check, run_penguin_prior_check):
+def _(exercise_uninformative_prior, run_uninformative_prior):
     mo.stop(
-        not run_penguin_prior_check.value,
+        not run_uninformative_prior.value,
         mo.md("*Click ▶ Run exercise once your code is ready.*"),
     )
-    exercise_penguin_prior_check()
+    exercise_uninformative_prior()
     return
 
 
+@app.function(hide_code=True)
+def show_prior_predictive_check(prior_trace, n_emails):
+    observed_k = int(prior_trace.observed_data["y"])
+    p = prior_trace.prior["p"].values.flatten()
+    y = prior_trace.prior_predictive["y"].values.flatten()
+    extreme = float(np.mean((p < 0.02) | (p > 0.98)))
+    all_or_nothing = float(np.mean((y == 0) | (y == n_emails)))
+
+    az.plot_dist(prior_trace, group="prior_predictive", var_names=["y"], kind="hist")
+    fig_counts = plt.gcf()
+    fig_counts.axes[0].axvline(observed_k, color="C1", lw=2, label=f"observed = {observed_k}")
+    fig_counts.axes[0].set_title(f"Prior predictive conversions (out of {n_emails})")
+    fig_counts.axes[0].legend()
+
+    az.plot_dist(prior_trace, group="prior", var_names=["p"], kind="hist")
+    fig_p = plt.gcf()
+    fig_p.axes[0].set_title("Implied prior on the conversion rate p")
+
+    if all_or_nothing > 0.15:
+        verdict = (
+            f"This prior predicts **{all_or_nothing:.0%}** of campaigns as all-or-nothing "
+            f"(0 or {n_emails} conversions), and puts **{extreme:.0%}** of the prior mass on "
+            "p beyond 0.02 or 0.98. That is not uninformative: a wide prior on the log-odds is "
+            "betting the rate is near-certain, one way or the other."
+        )
+    else:
+        verdict = (
+            f"Now only **{all_or_nothing:.0%}** of predicted campaigns are all-or-nothing and "
+            f"**{extreme:.0%}** of the mass on p is at the extremes: the prior spreads "
+            "conversions over a plausible range that comfortably includes the observed count."
+        )
+    return mo.vstack([mo.md(verdict), fig_counts, fig_p])
+
+
 @app.cell(hide_code=True)
-def _(adelie_mass):
-    def show_penguin_prior_check(prior_trace):
-        fig, axes = plt.subplots(1, 3, figsize=(16, 4))
-
-        _g, _p, _ = az.kde(prior_trace.prior["mu"].values.flatten())
-        axes[0].plot(_g, _p)
-        axes[0].set_title("mu prior")
-
-        _g, _p, _ = az.kde(prior_trace.prior["sigma"].values.flatten())
-        axes[1].plot(_g, _p)
-        axes[1].set_title("sigma prior")
-
-        # Prior predictive vs observed data
-        _g, _p, _ = az.kde(prior_trace.prior_predictive["obs"].values.flatten())
-        axes[2].plot(_g, _p, label="Prior predictive")
-        _g, _p, _ = az.kde(adelie_mass)
-        axes[2].plot(_g, _p, color="C1", label="Observed data")
-        axes[2].set_title("Prior Predictive vs Data")
-        axes[2].legend()
-
-        for ax in axes:
-            ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
-        fig.tight_layout()
-
-        return fig
-
-    return (show_penguin_prior_check,)
-
-
-@app.cell(hide_code=True)
-def _(show_penguin_prior_check, solution_exercise_1):
+def _(n_emails, solution_uninformative_prior):
     mo.accordion(
         {
             "Solution": mo.vstack(
                 [
-                    mo.md(f"```python\n{inspect.getsource(solution_exercise_1)}\n```"),
+                    mo.md(
+                        "A wide Normal on the log-odds is **not** uninformative. `invlogit` "
+                        "squashes the whole real line back into (0, 1), so the long tails of a "
+                        "`Normal(0, 10)` pile up against 0 and 1, and a Binomial with p near 0 or "
+                        "1 produces all-or-nothing conversion counts. A `sigma` near **1.6** keeps "
+                        "the implied prior on p roughly flat and the predicted counts spread over a "
+                        "plausible range around the observed 8. Same trap as the Uniform "
+                        "'uninformative' prior from earlier: vague on one scale can be quietly "
+                        "strong on the scale you care about."
+                    ),
+                    mo.md(
+                        f"```python\n{inspect.getsource(solution_uninformative_prior)}\n```"
+                    ),
                     mo.lazy(
-                        lambda: show_penguin_prior_check(solution_exercise_1()),
+                        lambda: show_prior_predictive_check(
+                            solution_uninformative_prior(), n_emails
+                        ),
                         show_loading_indicator=True,
                     ),
                 ]
@@ -2140,17 +2189,16 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(adelie_mass):
-    def solution_exercise_1():
+def _(n_emails, observed_conversions):
+    def solution_uninformative_prior():
         with pm.Model():
-            mu = pm.Normal("mu", mu=4000, sigma=500)
-            sigma = pm.HalfNormal("sigma", sigma=500)
-            pm.Normal("obs", mu, sigma, observed=adelie_mass)
-            prior_trace = pm.sample_prior_predictive()
-
+            logit_p = pm.Normal("logit_p", mu=0, sigma=1.6)
+            p = pm.Deterministic("p", pm.math.invlogit(logit_p))
+            pm.Binomial("y", n=n_emails, p=p, observed=observed_conversions)
+            prior_trace = pm.sample_prior_predictive(2000, random_seed=42)
         return prior_trace
 
-    return (solution_exercise_1,)
+    return (solution_uninformative_prior,)
 
 
 if __name__ == "__main__":
