@@ -25,7 +25,6 @@ with app.setup:
 
     data_path = Path(__file__).parent / "data"
     RANDOM_SEED = 20090425
-    RNG = np.random.default_rng(RANDOM_SEED)
     warnings.filterwarnings("ignore", module="mkl_fft")
     warnings.filterwarnings("ignore", category=RuntimeWarning)
     warnings.filterwarnings("ignore", category=UserWarning)
@@ -340,7 +339,7 @@ def _():
 
     Divergences are NUTS telling you that the sampler is systematically *under-exploring* some region of the posterior, which potentially **biases your inference**, not just makes it noisier.
 
-    For example: Our baseline model used a Normal likelihood, which assumes symmetric, light-tailed noise. What if the data has outliers? A **Student-t likelihood** (as we saw in our discussion of likelihoods) is more robust, but it introduces a degrees-of-freedom parameter `nu` that can create difficult **posterior geometry**.
+    For example: Our baseline model used a Normal likelihood, which assumes symmetric, light-tailed noise. What if the data has outliers? A **Student-t likelihood** (as we saw in our discussion of likelihoods) is more robust, but it introduces a degrees-of-freedom parameter `nu` that can create difficult **posterior geometry**. We use `nu ~ Exponential(lam=1 / 30)`, whose mean is 30.
     """)
     return
 
