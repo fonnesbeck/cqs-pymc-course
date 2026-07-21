@@ -321,7 +321,7 @@ def _(floor_measure, log_radon):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    You may be wondering why we are using the `pm.Data` container above even though the variable `floor_ind` is not an observed variable nor a parameter of the model. As you'll see, this will make our lives much easier when we plot and diagnose our model. ArviZ will thus include `floor_ind` as a variable in the `constant_data` group of the resulting `DataTree` object. Moreover, including `floor_ind` in the `DataTree` makes sharing and reproducing analysis much easier: all the data needed to analyze or rerun the model is stored there.
+    Although `floor_ind` is neither an observed variable nor a model parameter, placing it in a `pm.Data` container keeps this model input with the analysis. When we later plot and diagnose the model, ArviZ includes `floor_ind` in the `constant_data` group of the sampled result, an ArviZ `DataTree`. Keeping the input in that `DataTree` also makes the analysis easier to share and reproduce because it contains the data needed to analyze or rerun the model.
     """)
     return
 
@@ -347,7 +347,7 @@ def _(pooled_model):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ArviZ `DataTree` output uses `xarray.Dataset`s under the hood, which give access to several common plotting functions with `.plot`. In this case, we want a scatter plot of the mean log radon level (which is stored in variable `a`) for each of the two levels we are considering. If our desired plot is supported by xarray plotting capabilities, we can take advantage of xarray to automatically generate both plot and labels for us. Notice how everything is directly plotted and annotated; the only change we need to make is renaming the y-axis label from `a` to `Mean log radon level`.
+    ArviZ `DataTree` output uses `xarray.Dataset`s under the hood, which give access to several common plotting functions with `.plot`. In this case, we want a scatter plot of the mean log radon level (which is stored in variable `alpha`) for each of the two levels we are considering. If our desired plot is supported by xarray plotting capabilities, we can take advantage of xarray to automatically generate both plot and labels for us. Notice how everything is directly plotted and annotated; the only change we need to make is renaming the y-axis label from `alpha` to `Mean log radon level`.
     """)
     return
 
@@ -1028,7 +1028,7 @@ def _():
     mo.md(r"""
     ## Non-centered Parameterization
 
-    The partial pooling models specified above uses a **centered** parameterization of the slope random effect. That is, the individual county effects are distributed around a county mean, with a spread controlled by the hierarchical standard deviation parameter. As the preceding plot reveals, this constraint serves to **shrink** county estimates toward the overall mean, to a degree proportional to the county sample size. This is exactly what we want, and the model appears to fit well--the Gelman-Rubin statistics are exactly 1.
+    The partial pooling models specified above use a **centered** parameterization of the slope random effect. That is, the individual county effects are distributed around a county mean, with a spread controlled by the hierarchical standard deviation parameter. As the preceding plot reveals, this constraint serves to **shrink** county estimates toward the overall mean, to a degree proportional to the county sample size. This is exactly what we want, and the model appears to fit well--the Gelman-Rubin statistics are close to 1.
 
     But, on closer inspection, there are signs of trouble. Specifically, let's look at the trace of the random effects, and their corresponding standard deviation:
     """)
@@ -1037,28 +1037,12 @@ def _():
 
 @app.cell(hide_code=True)
 def _(varying_intercept_slope_trace):
-    def plot_centered_traces():
-        # Extract posterior samples for chain 0 using polars
-        sigma_b_df = (
-            varying_intercept_slope_trace["posterior"]["sigma_b"]
-            .sel(chain=0)
-            .to_dataframe()
-            .reset_index()
-        )
-        beta_df = (
-            varying_intercept_slope_trace["posterior"]["beta"]
-            .sel(chain=0)
-            .to_dataframe()
-            .reset_index()
-        )
-        fig, axs = plt.subplots(nrows=2)
-        axs[0].plot(sigma_b_df["sigma_b"].to_numpy(), alpha=0.5)
-        axs[0].set(ylabel="sigma_b")
-        axs[1].plot(beta_df["beta"].to_numpy(), alpha=0.5)
-        axs[1].set(ylabel="beta")
-        return fig
-
-    _output = plot_centered_traces()
+    aitkin_trace = varying_intercept_slope_trace.sel(county="AITKIN")
+    _output = az.plot_trace(
+        aitkin_trace,
+        var_names=["beta", "sigma_b"],
+        sample_dims=["draw"],
+    )
     _output
     return
 
@@ -1126,7 +1110,7 @@ def _():
     mo.md(r"""
     When the group variance is small, this implies that the individual random slopes are themselves close to the group mean. This results in a _funnel_-shaped relationship between the samples of group variance and any of the slopes (particularly those with a smaller sample size).
 
-    In itself, this is not a problem, since this is the behavior we expect. However, if the sampler is tuned for the wider (unconstrained) part of the parameter space, it has trouble in the areas of higher curvature. The consequence of this is that the neighborhood close to the lower bound of $\sigma_b$ is sampled poorly; indeed, in our chain it is not sampled at all below 0.1. In addtion, the sampler generates a lot of divergent samples. The result of this will be biased inference.
+    In itself, this is not a problem, since this is the behavior we expect. However, if the sampler is tuned for the wider (unconstrained) part of the parameter space, it has trouble in the areas of higher curvature. The consequence of this is that the neighborhood close to the lower bound of $\sigma_b$ is sampled poorly; indeed, in our chain it is not sampled at all below 0.1. In addition, the sampler generates a lot of divergent samples. The result of this will be biased inference.
 
     Now that we've spotted the problem, what can we do about it? Before we rewrite the model, it's worth trying a smaller change first.
     """)
@@ -1964,7 +1948,7 @@ def _():
     1. a new individual within an existing group
     2. a new individual within a new group
 
-    For example, if we wanted to make a prediction for a new house with no basement in St. Louis and Kanabec counties, we just need to sample from the radon model with the appropriate intercept.
+    For a new house with no basement in St. Louis or Kanabec county, the fitted trace already contains the posterior arrays for the appropriate county intercept, common floor effect, and residual scale.
     """)
     return
 
@@ -1974,9 +1958,9 @@ def _():
     mo.md(r"""
     That is,
 
-    $$\tilde{y}_i \sim N(\alpha_{69} + \beta (x_i=1), \sigma_y^2)$$
+    $$\tilde{y}_i \sim N(\alpha_j + \beta (x_i=1), \sigma_y^2)$$
 
-    Because we judiciously set the county index and floor values as shared variables earlier, we can modify them directly to the desired values (69 and 1 respectively) and sample corresponding posterior predictions, without having to redefine and recompile our model. Using the model just above:
+    We only need these two predicted quantities, so the next cell selects the St. Louis and Kanabec posterior arrays and uses NumPy to draw from the corresponding Normal distributions. It does not use `pm.set_data` or `pm.sample_posterior_predictive`.
     """)
     return
 
@@ -2072,13 +2056,13 @@ def _():
 
     - Accounting for natural hierarchical structure of observational data.
 
-    - Estimation of coefficients for (under-represented) groups.
+    - Estimation of coefficients for under-represented groups.
 
     - Incorporating individual- and group-level information when estimating group-level coefficients.
 
     - Allowing for variation among individual-level coefficients across groups.
 
-    As an alternative approach to hierarchical modeling for this problem, radon levels can also be modeled spatially with Gaussian processes, which we cover in Session 5.2.
+    Next, Session 5.1 moves from group structure to time-dependent latent states with state-space and time-series models. Session 5.2 later returns to nonlinear latent functions with Gaussian processes.
     """)
     return
 

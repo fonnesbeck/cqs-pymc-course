@@ -417,7 +417,7 @@ def _():
 
     Real datasets often contain observations that don't fit the bulk of the data: measurement errors, data-entry mistakes, or genuine extreme events. A Normal likelihood penalises these outliers heavily, which can distort the entire fit.
 
-    To see this in action, we deliberately add a handful of synthetic outliers to our training data (very small or very large weights that do not follow the species-specific dimensional relationships) and re-fit the unpooled Normal model.
+    To see this in action, we sample five training rows uniformly without replacement using a fixed seed, so the selected indices are deterministic but do not guarantee one row per species. We keep each selected row's species and dimensions, replace its weight with a very small or very large synthetic value that does not follow the species-specific dimensional relationships, and re-fit the unpooled Normal model.
     """)
     return
 
@@ -426,25 +426,15 @@ def _():
 def _(fish_train, train_mean_log_height, train_mean_log_length, train_mean_log_width):
     rng_st = np.random.default_rng(RANDOM_SEED + 99)
     n_outliers = 5
-    st_outlier_species = rng_st.choice(
-        fish_train["Species"].unique(maintain_order=True).to_list(), n_outliers
-    )
+    outlier_idx = rng_st.choice(fish_train.height, size=n_outliers, replace=False)
     st_outlier_weights = rng_st.choice([0.5, 0.8, 2000.0, 2500.0], n_outliers)
-    st_outlier_df = pl.DataFrame(
-        {
-            "Species": st_outlier_species,
-            "Weight": st_outlier_weights,
-            "Length": rng_st.uniform(15.0, 35.0, n_outliers),
-            "Height": rng_st.uniform(4.0, 12.0, n_outliers),
-            "Width": rng_st.uniform(2.0, 6.0, n_outliers),
-        }
-    ).with_columns(
-        [
-            pl.col("Width").log().alias("log_width"),
-            pl.col("Height").log().alias("log_height"),
-            pl.col("Length").log().alias("log_length"),
-            pl.col("Weight").log().alias("log_weight"),
-        ]
+    st_outlier_df = (
+        fish_train.with_row_index("_training_row")
+        .filter(pl.col("_training_row").is_in(outlier_idx))
+        .sort("_training_row")
+        .drop("_training_row")
+        .with_columns(pl.Series("Weight", st_outlier_weights))
+        .with_columns(pl.col("Weight").log().alias("log_weight"))
     )
 
     st_fish_train_aug = pl.concat([fish_train, st_outlier_df], how="vertical")
@@ -656,18 +646,20 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(unpooled_trace):
-    _output = az.plot_dist(
+def _(fish_test, unpooled_trace):
+    plots = az.plot_dist(
         unpooled_trace["predictions"].dataset.map(np.exp),
     )
-    _output
+    for obs_idx, observed_weight in enumerate(fish_test["Weight"].to_numpy()):
+        ax = plots.get_target("log_obs", {"obs_idx": obs_idx})
+        ax.axvline(observed_weight, color="tab:red", linestyle="--", linewidth=1.5)
     return
 
 
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The reference values (true observed weights, shown as vertical lines) all fall within the posterior predictive distributions; the model produces well-calibrated predictions.
+    The reference values (true observed weights, shown as dashed vertical lines) all fall within the posterior predictive distributions; the held-out values are covered in this split.
 
     ### Business Insight: Weight-Tier Probabilities
 
@@ -1307,23 +1299,9 @@ def _():
     mo.md(r"""
     ---
 
-    ## Why Linear Regression Isn't Enough
+    ## Regression Recap and Next Steps
 
-    Our fish weight model worked well because (after log-transformation) the response was approximately continuous and symmetric. But many real-world outcomes don't fit this mold:
-
-    - **Counts** (number of events, page views, defects): non-negative integers
-    - **Proportions** (approval rates, conversion rates): bounded between 0 and 1
-    - **Skewed continuous data** (insurance claims, reaction times): non-negative with long tails
-
-    A Normal likelihood with an identity link can predict negative values, fractional counts, or probabilities outside [0, 1]. **Generalized Linear Models (GLMs)** solve this by combining three components:
-
-    1. **A distribution family** appropriate for the data type (Poisson for counts, Binomial for proportions, etc.)
-    2. **A link function** that maps the linear predictor to the distribution's natural parameter space
-    3. **A linear predictor** $\eta = \alpha + \beta_1 x_1 + \cdots + \beta_p x_p$, same as before
-
-    $$g(\mu) = \eta = X\beta$$
-
-    where $g$ is the link function and $\mu = E[y]$.
+    Our fish weight model worked well because, after log-transformation, the response was approximately continuous and symmetric. The table below recaps how regression models pair an outcome's support with an appropriate likelihood and, when needed, a transformation from the linear predictor to that likelihood's parameter space.
 
     | Data type | Distribution | Link function | $g(\mu)$ |
     |-----------|-------------|---------------|----------|
@@ -1333,7 +1311,7 @@ def _():
     | Binary / proportions | Binomial | Logit | $\log\frac{\mu}{1-\mu}$ |
     | Proportions with overdispersion | Beta-Binomial | Logit | $\log\frac{\mu}{1-\mu}$ |
 
-    We won't treat GLMs as a separate session in this course, but the ingredients are all ones you now know: a likelihood chosen to match the support of the data, a linear predictor, and a transformation linking the two. They will reappear in the hierarchical, time-series, and Gaussian-process models ahead.
+    Next, Session 4.2 applies this regression workflow to grouped data with hierarchical models. Rather than estimating each county independently, partial pooling lets related groups share information while retaining group-specific estimates.
     """)
     return
 

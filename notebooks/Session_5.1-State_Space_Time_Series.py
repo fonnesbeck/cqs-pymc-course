@@ -23,7 +23,6 @@ with app.setup:
     IMAGE_DIR = _pathlib.Path(__file__).parent / "images"
     RANDOM_SEED = 42
     SEED = sum(map(ord, "Layoff Revenue ITS"))
-    rng = np.random.default_rng(SEED)
     plt.rcParams["figure.figsize"] = (10, 4)
     data_path = DATA_DIR
     warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -53,7 +52,7 @@ def _():
     |---|
     | Motivation: what state-space models are, what they cost, what you get |
     | Position & velocity: the smallest non-trivial SSM |
-    | Structural "lego blocks": the components you'll actually use |
+    | Structural LEGO blocks: the components you'll actually use |
     | Case study: load the layoff series, build the structural model |
     | **Exercise**: wire up priors and sample |
     | Latent-state flavors and decomposition |
@@ -105,103 +104,6 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
-def _():
-    def _plot_tunnel(flavor="filtered"):
-        # Synthetic 1D position+velocity trajectory with a "tunnel" gap
-        # in observations. Forward Kalman gives predicted + filtered;
-        # backward RTS pass gives smoothed.
-        rng_local = np.random.default_rng(7)
-        n = 100
-        tunnel = (40, 65)
-        sigma_v, sigma_obs = 0.05, 0.8
-
-        true_v = np.zeros(n)
-        true_x = np.zeros(n)
-        true_v[0] = 0.5
-        for tt in range(1, n):
-            true_v[tt] = true_v[tt - 1] + sigma_v * rng_local.standard_normal()
-            true_x[tt] = true_x[tt - 1] + true_v[tt - 1]
-
-        obs = true_x + sigma_obs * rng_local.standard_normal(n)
-        observed = np.ones(n, dtype=bool)
-        observed[tunnel[0] : tunnel[1]] = False
-
-        T = np.array([[1.0, 1.0], [0.0, 1.0]])
-        Q = np.array([[0.0, 0.0], [0.0, sigma_v**2]])
-        Z = np.array([[1.0, 0.0]])
-        H = np.array([[sigma_obs**2]])
-
-        # Forward pass: predicted (before update) and filtered (after update)
-        x_pred = np.zeros((n, 2))
-        P_pred = np.zeros((n, 2, 2))
-        x_filt = np.zeros((n, 2))
-        P_filt = np.zeros((n, 2, 2))
-        x_filt[0] = [0.0, 0.5]
-        P_filt[0] = np.diag([1.0, 0.25])
-        x_pred[0] = x_filt[0]
-        P_pred[0] = P_filt[0]
-
-        for tt in range(1, n):
-            x_pred[tt] = T @ x_filt[tt - 1]
-            P_pred[tt] = T @ P_filt[tt - 1] @ T.T + Q
-            if observed[tt]:
-                innov = obs[tt] - (Z @ x_pred[tt])[0]
-                S = (Z @ P_pred[tt] @ Z.T + H)[0, 0]
-                K = (P_pred[tt] @ Z.T / S).flatten()
-                x_filt[tt] = x_pred[tt] + K * innov
-                P_filt[tt] = P_pred[tt] - np.outer(K, Z @ P_pred[tt])
-            else:
-                x_filt[tt], P_filt[tt] = x_pred[tt], P_pred[tt]
-
-        # Backward RTS smoother
-        x_smooth = x_filt.copy()
-        P_smooth = P_filt.copy()
-        for tt in range(n - 2, -1, -1):
-            C = P_filt[tt] @ T.T @ np.linalg.inv(P_pred[tt + 1])
-            x_smooth[tt] = x_filt[tt] + C @ (x_smooth[tt + 1] - x_pred[tt + 1])
-            P_smooth[tt] = P_filt[tt] + C @ (P_smooth[tt + 1] - P_pred[tt + 1]) @ C.T
-
-        flavors = {
-            "predicted": (x_pred, P_pred, "C3"),
-            "filtered": (x_filt, P_filt, "C0"),
-            "smoothed": (x_smooth, P_smooth, "C2"),
-        }
-        x_arr, P_arr, color = flavors[flavor]
-        std = np.sqrt(P_arr[:, 0, 0])
-        ts = np.arange(n)
-
-        fig, ax = plt.subplots(figsize=(11, 4))
-        ax.axvspan(
-            tunnel[0], tunnel[1], color="gray", alpha=0.2, label="tunnel (no GPS)"
-        )
-        ax.plot(ts, true_x, color="black", lw=1, label="true position")
-        ax.scatter(
-            ts[observed],
-            obs[observed],
-            s=12,
-            color="C3",
-            alpha=0.6,
-            label="noisy GPS",
-        )
-        ax.plot(ts, x_arr[:, 0], color=color, lw=1.2, label=f"{flavor} estimate")
-        ax.fill_between(
-            ts,
-            x_arr[:, 0] - 2 * std,
-            x_arr[:, 0] + 2 * std,
-            alpha=0.25,
-            color=color,
-            label=f"{flavor} ±2σ",
-        )
-        ax.set_xlabel("time")
-        ax.set_ylabel("position")
-        ax.set_title(f"Tunnel example — {flavor} estimate")
-        ax.legend(loc="upper left")
-        fig.tight_layout()
-        return fig
-
-    _plot_tunnel()
-    return
 
 
 @app.cell(hide_code=True)
@@ -292,16 +194,17 @@ def _():
 @app.cell
 def _():
     def _simulate(T=200, start="2024-01-01", obs_sigma=1.0):
+        rng_local = np.random.default_rng(SEED)
         dates = pd.date_range(start, periods=T, freq="D")
         v = np.zeros(T)
         x = np.zeros(T)
         v[0] = 0.5
         for tt in range(1, T):
-            v[tt] = v[tt - 1] + 0.05 * rng.standard_normal()
+            v[tt] = v[tt - 1] + 0.05 * rng_local.standard_normal()
             x[tt] = x[tt - 1] + v[tt - 1]
         truth = pd.DataFrame({"position": x, "velocity": v}, index=dates)
         obs = pd.Series(
-            x + obs_sigma * rng.standard_normal(T),
+            x + obs_sigma * rng_local.standard_normal(T),
             index=dates,
             name="position_obs",
         )
@@ -420,7 +323,7 @@ def _(pv_trace, pv_ss):
         pv_trace,
         compile_kwargs={"mode": "NUMBA"},
     )
-    comp_pv = pv_ss.extract_components_from_trace(cond_pv)
+    comp_pv = pv_ss.extract_components_from_idata(cond_pv)
     comp_pv
     return (comp_pv,)
 
@@ -496,7 +399,7 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## Structural components — the lego blocks
+    ## Structural components — the LEGO blocks
 
     `pymc_extras.statespace.structural` exposes a handful of components
     you'll reach for almost always. Each is a tiny SSM on its own; you
@@ -628,8 +531,9 @@ def _(weekly_innovations):
 def _(weekly):
     def _plot_weekly(component):
         L = component.season_length
+        rng_local = np.random.default_rng(SEED + 1)
         f = compile_component(component)
-        kwargs = {"params_weekly": rng.normal(size=L - 1), "steps": 60}
+        kwargs = {"params_weekly": rng_local.normal(size=L - 1), "steps": 60}
         # Add the innovation sigma only when the component was created with
         # innovations=True (otherwise the compiled fn doesn't accept it).
         if getattr(component, "innovations", False):
@@ -674,7 +578,7 @@ def _():
     pattern in the frequency domain with `2n` states: `n` pairs of Fourier
     coefficients (a sine and cosine amplitude per harmonic). With `n=1` the
     pattern is a pure sine wave; at `n = season_length // 2` it can represent any
-    periodic shape. Two things you buy with it: a compact state space for long
+    periodic shape. Two things you buy with it: a compact state-space for long
     seasonal periods, and support for non-integer season lengths (e.g. 365.25).
     The price is interpretability: the states are Fourier coefficients, so there
     is no isolable "January effect". The layoff case study below uses
@@ -746,6 +650,7 @@ def _(cyc_dampen, cyc_estimate_length, cyc_innovations):
 @app.cell(hide_code=True)
 def _(cyc):
     def _plot_cycle(component):
+        rng_local = np.random.default_rng(SEED + 2)
         f = compile_component(component)
         fig, ax = plt.subplots(figsize=(10, 3.5))
         # Multiple curves only make sense when something varies across them.
@@ -758,7 +663,7 @@ def _(cyc):
         for _ in range(n_draws):
             kwargs = {"params_cyc": np.array([1.0, 0.0]), "steps": 200}
             if getattr(component, "estimate_cycle_length", False):
-                kwargs["length_cyc"] = rng.uniform(20, 60)
+                kwargs["length_cyc"] = rng_local.uniform(20, 60)
             if getattr(component, "dampen", False):
                 kwargs["dampening_factor_cyc"] = 0.97
             if getattr(component, "innovations", False):
@@ -920,7 +825,7 @@ def _():
     The resulting `ss_mod` object exposes `coords` (for your
     `pm.Model`) and `param_dims` (for sizing priors), and the methods
     `build_statespace_graph`, `sample_conditional_posterior`,
-    `forecast`, and `extract_components_from_trace`. That's the whole
+    `forecast`, and `extract_components_from_idata`. That's the whole
     API. Everything in the case study onward is one specific instance of this
     recipe with `Regression(state_names=["active", "decay"])`.
     """)
@@ -1290,7 +1195,7 @@ def _():
     observation.
 
     `sample_conditional_posterior` produces all three;
-    `extract_components_from_trace` then decomposes the smoothed
+    `extract_components_from_idata` then decomposes the smoothed
     posterior into per-component trajectories.
     """)
     return
@@ -1457,7 +1362,7 @@ def _():
     mo.md(r"""
     ## Decomposition
 
-    `extract_components_from_trace` splits the smoothed posterior into the
+    `extract_components_from_idata` splits the smoothed posterior into the
     per-component contributions (in observed-space for the `Regression`,
     latent-space for the `LevelTrend`). Summed back together they
     reconstruct the observed series; separately, they tell us where the
@@ -1468,7 +1373,7 @@ def _():
 
 @app.cell
 def _(cond, ss):
-    comp = ss.extract_components_from_trace(cond)
+    comp = ss.extract_components_from_idata(cond)
     return (comp,)
 
 
@@ -2249,6 +2154,8 @@ def _():
 def _():
     mo.md(r"""
     ## Where to next
+
+    State-space models express time dependence through latent states that evolve step by step. Session 5.2 moves to latent functions: Gaussian processes place a distribution over smooth nonlinear relationships rather than a fixed transition equation.
     """)
     return
 
@@ -2256,16 +2163,16 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Statespace modeling is an extremely rich area with tons of resources and active research. If you're interested in learning more, here are some resources:
+    State-space modeling is an extremely rich area with extensive resources and active research. If you're interested in learning more, here are some resources:
 
-    - [Forecasting: Principals and Practice (3rd Edition)](https://otexts.com/fpp3/) is the go-to practitioner's reference text for time-series modeling. It's not specifically statespace, but basically everything here has an analogue in there, and the theory is the same
-    - [Time Series Analysis by Statespace Methods](https://academic.oup.com/book/16563?login=false) is the go-to academic reference for the specific class of models we saw in this workshop. This is a theory-first book, so expect a lot of math. Useful if you want to deeply understand what is going on under the hood, but less useful for a practitioner.
-    - [Bayesian Filtering and Smoothing](https://users.aalto.fi/~ssarkka/pub/cup_book_online_20131111.pdf) is also a reference that gets recommended a lot, but I haven't read it
-    - [Kalman and Bayesian Filters in Python](https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python) is, for my money, the best reference out there for Kalman filtering. It's extremely approachable and the code is written in a hackable way to help build intuition about how these methods work. There are nice sections at the end on advanced topics related to non-linear and non-Guassian systems as well.
+    - [Forecasting: Principles and Practice (3rd Edition)](https://otexts.com/fpp3/) is a widely used practitioner's reference text for time-series modeling. It is not specifically about state-space models, but the techniques here have close analogues there.
+    - [Time Series Analysis by State Space Methods](https://academic.oup.com/book/16563?login=false) is a theory-first academic reference for the class of models used in this workshop.
+    - [Bayesian Filtering and Smoothing](https://users.aalto.fi/~ssarkka/pub/cup_book_online_20131111.pdf) develops Bayesian filtering and smoothing methods in depth.
+    - [Kalman and Bayesian Filters in Python](https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python) is an approachable, code-focused reference for Kalman filtering, with sections on nonlinear and non-Gaussian systems.
 
     For more PyMC specific resources:
-    - The [pymc-extras repo has several example notebooks](https://github.com/pymc-devs/pymc-extras/tree/main/notebooks) about statespace models that build on the content we saw here
-    - This [presentation](https://www.youtube.com/watch?v=G9VWXZdbtKQ) of the PyMC Statspace functionality, and the associated [github resources ](https://github.com/jessegrabowski/statespace-presentation)
+    - The [pymc-extras repo has several example notebooks](https://github.com/pymc-devs/pymc-extras/tree/main/notebooks) about state-space models that build on the content we saw here.
+    - This [presentation](https://www.youtube.com/watch?v=G9VWXZdbtKQ) covers the PyMC StateSpace functionality, with [associated resources](https://github.com/jessegrabowski/statespace-presentation).
     - [This talk at PyData Berlin 2025 ](https://www.youtube.com/watch?v=lXU5dr6Lmgo), and the [associated notebooks](https://github.com/AlexAndorra/pydata-berlin-statespace-models)
     """)
     return
