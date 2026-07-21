@@ -66,3 +66,7 @@ Source searches over both target notebooks found:
 ## Concerns
 
 - The five `marimo check` warnings were intentionally retained: removing the three empty cells would alter learner scaffolds, and indentation formatting was outside this task’s requested scope.
+
+## Commit
+
+`e0937ec` — `Clarify sampling diagnostics notebooks`
