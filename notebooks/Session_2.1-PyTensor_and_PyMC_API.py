@@ -850,7 +850,9 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    `initval`
+    Back to the `Distribution` constructor arguments, one remains: `initval`.
+
+        `initval`
     : Numeric or symbolic untransformed initial value of matching shape, or one of the following initial value strategies: "moment", "prior". Depending on the sampler's settings, a random jitter may be added to numeric, symbolic or moment-based initial values in the transformed space.
     """)
     return
@@ -1052,38 +1054,35 @@ def _():
     mo.md(r"""
     ### Exercise: Fix the Broken Model
 
-    The model below fits penguin body mass with a Normal likelihood. It builds without error and every line looks reasonable at a glance, but sampling would fail immediately: its initial log-probability is `-inf`.
+    The model below fits daily sneeze counts with a LogNormal likelihood, a tempting choice for skewed, positive-looking data. It builds without error, but sampling genuinely fails: try `pm.sample()` and every attempt ends with `RuntimeError: All initialization points failed`.
 
-    The cell underneath the model runs the diagnostics exactly as you would in the real world: `initial_point()`, `debug()`, and `point_logps()`. Read their output: note *which* variable the `-inf` lands on, and compare that with where the actual mistake is.
+    The diagnostics cell underneath runs `initial_point()`, `debug()`, and `point_logps()`, exactly what you would reach for in the real world. Read the output carefully: *which* variable is `-inf`, and what precisely does `debug()` blame? Notice that the parameters all evaluate to perfectly valid values.
 
-    Once you have found the culprit, **edit the model cell** to fix the offending line. The diagnostics re-run automatically; you are done when `debug()` reports no problems and every log-probability is finite.
+    Once you have found the culprit, **edit the model cell** to fix it. The diagnostics re-run automatically; when `debug()` reports no problems, sampling will work.
     """)
     return
 
 
 @app.cell
 def _():
-    mass = (
-        pl.read_csv(data_path / "penguins.csv", null_values="NA")
-        .drop_nulls(subset=["body_mass_g"])["body_mass_g"]
-        .to_numpy()
-    )
+    nsneeze = pl.read_csv(data_path / "poisson_sneeze.csv")["nsneeze"].to_numpy()
 
-    with pm.Model() as mass_model:
-        ex_mu = pm.Normal("mu", 4000, 1000)
-        ex_sigma = pm.Normal("sigma", 0, 500)
-        ex_y = pm.Normal("y", mu=ex_mu, sigma=ex_sigma, observed=mass)
+    with pm.Model() as sneeze_model:
+        ex_log_mu = pm.Normal("log_mu", 0, 2)
+        ex_sigma = pm.HalfNormal("sigma", 1)
+        ex_y = pm.LogNormal("y", mu=ex_log_mu, sigma=ex_sigma, observed=nsneeze)
 
-    mass_model
-    return (mass_model,)
+    sneeze_model
+    return (sneeze_model,)
 
 
 @app.cell
-def _(mass_model):
-    print("initial_point:", mass_model.initial_point())
+def _(sneeze_model):
+    print("initial_point:", sneeze_model.initial_point())
     print()
+    sneeze_model.debug()
 
-    # WRITE YOUR DEBUG CODE HERE
+    sneeze_model.point_logps()
     return
 
 
@@ -1092,11 +1091,12 @@ def _():
     mo.accordion(
         {
             "Hint": mo.md(
-                "`point_logps()` blames `y`, but the line defining `y` is fine. "
-                "Look at `mass_model.initial_point()`: each variable starts at its "
-                "prior's mode. What value does `sigma` start at, and what does a "
-                "Normal likelihood do with that scale? Which distribution from "
-                "Session 1.2 is designed for scale parameters?"
+                "Both diagnostics point at `y`, and `debug()` is explicit: it "
+                "lists offending *observed values*, not parameters. What is the "
+                "support of a LogNormal distribution, and what is "
+                "`nsneeze.min()`? Which distribution from Session 1.2 is the "
+                "natural first choice for count data? (`pm.math.exp` turns "
+                "`log_mu` into a positive rate.)"
             ),
         }
     )
@@ -1105,42 +1105,33 @@ def _():
 
 @app.cell(hide_code=True)
 def _():
-    def solution_debug_model():
-        mass = (
-            pl.read_csv(data_path / "penguins.csv", null_values="NA")
-            .drop_nulls(subset=["body_mass_g"])["body_mass_g"]
-            .to_numpy()
-        )
-
-        with pm.Model() as model:
-            mu = pm.Normal("mu", 4000, 1000)
-            sigma = pm.HalfNormal("sigma", 500)
-            y = pm.Normal("y", mu=mu, sigma=sigma, observed=mass)
-        return model.point_logps()
-
-
     mo.accordion(
         {
-            "Solution": mo.vstack(
-                [
-                    mo.md(
-                        "`point_logps()` reports the `-inf` on `y`, but the definition "
-                        "of `y` is fine; that is the key lesson. Each variable starts "
-                        "at its prior's mode, and the `Normal(0, 500)` prior on `sigma` "
-                        "puts that starting point at exactly 0, an invalid scale for "
-                        "the likelihood. `mass_model.debug()` says so directly: the "
-                        "parameters of `y` evaluate to `sigma = 0`, violating the "
-                        "constraint `sigma > 0`. The fix is one line: give `sigma` a "
-                        "prior with positive support, such as `HalfNormal(500)`. "
-                        "Remember this pattern: a `-inf` often surfaces far from the "
-                        "line that causes it."
-                    ),
-                    mo.md(f"```python\n{inspect.getsource(solution_debug_model)}\n```"),
-                    mo.lazy(
-                        lambda: mo.md(f"Result: `{solution_debug_model()}`"),
-                        show_loading_indicator=True,
-                    ),
-                ]
+            "Solution": mo.md(
+                r"""
+        `point_logps()` puts the `-inf` on `y`, and `debug()` shows why, over and
+        over: `value = 0.0 -> logp = -inf`. The data are daily *counts*, and 467
+        of them are zero, but a LogNormal only has support on $x > 0$. Every zero
+        contributes `-inf` to the likelihood **regardless of the parameter
+        values**, so no valid starting point exists; that is why `pm.sample`
+        reports `All initialization points failed`. Unlike a bad initial value, a
+        data/support mismatch cannot be jittered away.
+
+        The fix is a likelihood whose support matches the data, a count
+        distribution:
+
+        ```python
+        with pm.Model() as sneeze_model:
+            ex_log_mu = pm.Normal("log_mu", 0, 2)
+            ex_y = pm.Poisson("y", mu=pm.math.exp(ex_log_mu), observed=nsneeze)
+        ```
+
+        `sigma` disappears: a Poisson has a single rate parameter, and
+        `pm.math.exp` maps `log_mu` to a positive rate. After the edit, `debug()`
+        reports no problems and sampling runs. (If the counts later turn out
+        overdispersed, `NegativeBinomial` is the natural upgrade, the progression
+        Session 1.2 sketched.)
+        """
             ),
         }
     )
@@ -1201,44 +1192,6 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    #### Generative `CustomDist`
-
-    Writing a log-density by hand is one option; often there is a better one. If your distribution can be *constructed* from existing distributions and PyTensor operations, pass a generative function via `dist=` instead of `logp=`. PyMC traces the function into a graph and, when that graph is invertible, derives the log-probability for you. Random draws come along for free, since the function *is* the simulator.
-
-    Here is an exponential waiting time with a guaranteed minimum delay:
-    """)
-    return
-
-
-@app.cell
-def _():
-    def shifted_exponential(lam, shift, size):
-        return shift + pm.Exponential.dist(lam, size=size)
-
-    with pm.Model():
-        wait_time = pm.CustomDist("wait_time", 2.0, 1.0, dist=shifted_exponential)
-
-    pm.draw(wait_time, draws=5, random_seed=RANDOM_SEED)
-    return (wait_time,)
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    That single definition also yields the correct log-probability, including `-inf` below the minimum delay, with no hand-written density in sight:
-    """)
-    return
-
-
-@app.cell
-def _(wait_time):
-    pm.logp(wait_time, 1.5).eval(), pm.logp(wait_time, 0.5).eval()
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
     ### Exercise: A Triangular Distribution
 
     Build a **triangular distribution** with `pm.CustomDist`. The triangular
@@ -1251,6 +1204,19 @@ def _():
     3. Check your work with `pm.logp`: the log-density at the mode should be $\log(2/(u-l)) = \log(0.4)$, and any value outside $[0, 5]$ should give `-inf`.
     """)
     return
+
+
+@app.function
+def exercise_triangular():
+    def triangular_logp(value, lower, mode, upper):
+        # YOUR CODE HERE — nested pm.math.switch: the outer switch handles
+        # out-of-support values (-np.inf), the inner one picks the rising
+        # or falling branch. Return the *log* of the density.
+        ...
+
+    with pm.Model():
+        tri = ...
+    return pm.logp(tri, 2).eval(), pm.logp(tri, -1).eval()
 
 
 @app.cell(hide_code=True)
@@ -1266,19 +1232,6 @@ def _():
         }
     )
     return
-
-
-@app.function
-def exercise_triangular():
-    def triangular_logp(value, lower, mode, upper):
-        # YOUR CODE HERE — nested pm.math.switch: the outer switch handles
-        # out-of-support values (-np.inf), the inner one picks the rising
-        # or falling branch. Return the *log* of the density.
-        ...
-
-    with pm.Model():
-        tri = ...
-    return pm.logp(tri, 2).eval(), pm.logp(tri, -1).eval()
 
 
 @app.cell(hide_code=True)
@@ -1331,6 +1284,56 @@ def _():
             ),
         }
     )
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    #### Generative `CustomDist`
+
+    You have now written two log-densities by hand. Often there is a better way. If your distribution can be *constructed* from existing distributions and PyTensor operations, pass a generative function via `dist=` instead of `logp=`. PyMC traces the function into a graph and, when that graph is invertible, derives the log-probability for you. Random draws come along for free, since the function *is* the simulator.
+
+    Here is an exponential waiting time with a guaranteed minimum delay:
+    """)
+    return
+
+
+@app.cell
+def _():
+    def shifted_exponential(lam, shift, size):
+        return shift + pm.Exponential.dist(lam, size=size)
+
+    with pm.Model():
+        wait_time = pm.CustomDist("wait_time", 2.0, 1.0, dist=shifted_exponential)
+
+    pm.draw(wait_time, draws=5, random_seed=RANDOM_SEED)
+    return (wait_time,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    That single definition also yields the correct log-probability, including `-inf` below the minimum delay, with no hand-written density in sight:
+    """)
+    return
+
+
+@app.cell
+def _(wait_time):
+    pm.logp(wait_time, 1.5).eval(), pm.logp(wait_time, 0.5).eval()
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ## Wrapping Up
+
+    You can now read what PyMC builds: a model is a PyTensor graph of `RandomVariable` operations, from which PyMC derives log-probability graphs, gradients, and samplers' inputs, all compiled on demand. You have toured the `Distribution` API (names, shapes, dims, and initial values), the `logp`/`draw`/`logcdf` machinery, `pm.math`, the debugging toolkit, and two ways to define custom distributions.
+
+    Session 2.2 puts these pieces to work: observed data and likelihoods, Deterministic variables, Potentials, and the workflow for building and checking real models.
+    """)
     return
 
 

@@ -831,6 +831,17 @@ def _():
     return
 
 
+@app.cell
+def exercise_2():
+    ex2_rng = np.random.default_rng(seed=1)
+    diameters = ...
+    rejected = ...
+    mc_rejection_rate = ...
+    # Step 3: the exact answer, using the normal CDF from scipy.stats
+    exact_rejection_rate = ...
+    return
+
+
 @app.cell(hide_code=True)
 def _():
     mo.accordion(
@@ -841,17 +852,6 @@ def _():
     """)
         }
     )
-    return
-
-
-@app.cell
-def exercise_2():
-    ex2_rng = np.random.default_rng(seed=1)
-    diameters = ...
-    rejected = ...
-    mc_rejection_rate = ...
-    # Step 3: the exact answer, using the normal CDF from scipy.stats
-    exact_rejection_rate = ...
     return
 
 

@@ -1,8 +1,7 @@
 import marimo
 
-__generated_with = "0.23.5"
+__generated_with = "0.23.14"
 app = marimo.App(width="medium")
-
 
 with app.setup:
     import marimo as mo
@@ -66,7 +65,6 @@ def _():
     dose_1 = np.array([-0.86, -0.3, -0.05, 0.73])
     n_1 = 5
     deaths_1 = np.array([0, 1, 3, 5])
-    mo.show_code(position="above")
     return deaths_1, dose_1, n_1
 
 
@@ -129,7 +127,7 @@ def _():
         return model
 
     dose_model = build_dose_scalar_model()
-    mo.show_code(dose_model, position="above")
+    dose_model
     return
 
 
@@ -145,7 +143,7 @@ def _():
 def _():
     with pm.Model() as dose_model_1:
         beta_1 = pm.Normal("beta", mu=0, sigma=10, shape=2)
-    mo.show_code(dose_model_1, position="above")
+    dose_model_1
     return
 
 
@@ -161,7 +159,7 @@ def _():
 def _():
     with pm.Model(coords=dict(coeffs=["intercept", "slope"])) as dose_model_2:
         beta_2 = pm.Normal("beta", mu=0, sigma=10, dims="coeffs")
-    mo.show_code(dose_model_2, position="above")
+    dose_model_2
     return beta_2, dose_model_2
 
 
@@ -181,7 +179,6 @@ def _():
 def _(beta_2, dose_1, dose_model_2):
     with dose_model_2:
         p = pm.math.invlogit(beta_2[0] + beta_2[1] * dose_1)
-    mo.show_code(position="above")
     return (p,)
 
 
@@ -217,7 +214,6 @@ def _():
 def _(beta_2, dose_model_2):
     with dose_model_2:
         pm.Deterministic("ld50", -beta_2[0] / beta_2[1])
-    mo.show_code(position="above")
     return
 
 
@@ -237,7 +233,7 @@ def _():
 def _(deaths_1, dose_model_2, n_1, p):
     with dose_model_2:
         y_2 = pm.Binomial("y", n=n_1, p=p, observed=deaths_1)
-    mo.show_code(dose_model_2, position="above")
+    dose_model_2
     return
 
 
@@ -264,7 +260,6 @@ def _():
 def _(beta_2, dose_model_2):
     with dose_model_2:
         pm.Potential("slope_constraint", pm.math.switch(beta_2[1] < 0, -np.inf, 0))
-    mo.show_code(position="above")
     return
 
 
@@ -292,11 +287,10 @@ def _():
 def _():
     y_vals = np.array([15, 10, 16, 11, 9, 11, 10, 18, 11])
     x_vals = np.array([1, 2, 4, 5, 6, 8, 19, 18, 12])
-    mo.show_code(position="above")
     return x_vals, y_vals
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(x_vals, y_vals):
     def demo_observed_error():
         err_msg = None
@@ -317,7 +311,7 @@ def _(x_vals, y_vals):
         if err_msg
         else None
     )
-    mo.show_code(_output, position="above")
+    _output
     return
 
 
@@ -341,7 +335,7 @@ def _(x_vals, y_vals):
         return model
 
     _potential_model = build_potential_model()
-    mo.show_code(_potential_model, position="above")
+    _potential_model
     return
 
 
@@ -353,9 +347,9 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(dose_model_2):
-    mo.show_code(dose_model_2, position="above")
+    dose_model_2
     return
 
 
@@ -368,18 +362,6 @@ def _():
 
     Try re-specifying the model using this strategy.
     """)
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.accordion(
-        {
-            "Hint": mo.md(
-                "Positive-valued distributions include `HalfNormal`, `LogNormal`, and `Gamma`."
-            ),
-        }
-    )
     return
 
 
@@ -397,6 +379,18 @@ def _(deaths_1, dose_1, n_1):
         return model
 
     return (exercise_positive_slope_model,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.accordion(
+        {
+            "Hint": mo.md(
+                "Positive-valued distributions include `HalfNormal`, `LogNormal`, and `Gamma`."
+            ),
+        }
+    )
+    return
 
 
 @app.cell(hide_code=True)
@@ -459,12 +453,12 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(dose_model_4):
     _output = mo.md(f"""
     `{dose_model_4.value_vars}`
     """)
-    mo.show_code(_output, position="above")
+    _output
     return
 
 
@@ -494,7 +488,7 @@ def _():
 def _(dose_model_4):
     with dose_model_4:
         prior_sample = pm.sample_prior_predictive(1000)
-    mo.show_code(prior_sample, position="above")
+    prior_sample
     return (prior_sample,)
 
 
@@ -508,10 +502,7 @@ def _():
 
 @app.cell
 def _(prior_sample):
-    mo.show_code(
-        azp.plot_dist(prior_sample, group="prior_predictive", var_names=["y"]),
-        position="above",
-    )
+    azp.plot_dist(prior_sample, group="prior_predictive", var_names=["y"])
     return
 
 
@@ -537,19 +528,17 @@ def _():
 def _(dose_model_4):
     with dose_model_4:
         trace = pm.sample(nuts_sampler="nutpie", random_seed=RANDOM_SEED)
-    mo.show_code(trace, position="above")
+    trace
     return (trace,)
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(trace):
-    mo.show_code(
-        azp.plot_dist(trace, var_names=["beta0", "beta1", "ld50"]), position="above"
-    )
+    azp.plot_dist(trace, var_names=["beta0", "beta1", "ld50"])
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(deaths_1, dose_1, n_1, trace):
     def plot_dose_response_posterior():
         empirical_p = deaths_1 / n_1
@@ -589,7 +578,7 @@ def _(deaths_1, dose_1, n_1, trace):
         )
         return fig
 
-    mo.show_code(plot_dose_response_posterior(), position="above")
+    plot_dose_response_posterior()
     return
 
 
@@ -614,7 +603,6 @@ def _(deaths_1, dose_1):
     ) as dose_model_5:
         dose_data = pm.Data("dose_data", dose_1, dims="dosis")
         deaths_data = pm.Data("deaths_data", deaths_1, dims="dosis")
-    mo.show_code(position="above")
     return deaths_data, dose_data, dose_model_5
 
 
@@ -632,7 +620,6 @@ def _():
 def _(dose_model_5):
     with dose_model_5:
         beta_6 = pm.Normal("beta", 0, sigma=2, dims="coeffs")
-    mo.show_code(position="above")
     return (beta_6,)
 
 
@@ -652,13 +639,12 @@ def _(beta_6, deaths_data, dose_data, dose_model_5, n_1):
         )
         pm.Deterministic("ld50", -beta_6[0] / beta_6[1])
         pm.Binomial("y", n=n_1, p=p_4, observed=deaths_data, dims="dosis")
-    mo.show_code(position="above")
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(dose_model_5):
-    mo.show_code(dose_model_5, position="above")
+    dose_model_5
     return
 
 
@@ -674,7 +660,7 @@ def _():
 def _(dose_model_5):
     with dose_model_5:
         trace_1 = pm.sample(nuts_sampler="nutpie", random_seed=RANDOM_SEED)
-    mo.show_code(trace_1, position="above")
+    trace_1
     return (trace_1,)
 
 
@@ -688,7 +674,7 @@ def _():
 
 @app.cell
 def _(trace_1):
-    mo.show_code(trace_1.posterior["ld50"].values.mean(), position="above")
+    trace_1.posterior["ld50"].values.mean()
     return
 
 
@@ -713,11 +699,11 @@ def _(dose_model_5, trace_1):
             coords={"dosis": ["ld50"]},
         )
         predictive_samples = pm.sample_posterior_predictive(trace_1)
-    mo.show_code(predictive_samples, position="above")
+    predictive_samples
     return (predictive_samples,)
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(n_1, predictive_samples):
     def plot_ld50_predictive():
         predicted_deaths = predictive_samples.posterior_predictive["y"].values.flatten()
@@ -732,7 +718,7 @@ def _(n_1, predictive_samples):
         )
         return fig
 
-    mo.show_code(plot_ld50_predictive(), position="above")
+    plot_ld50_predictive()
     return
 
 
@@ -754,11 +740,11 @@ def _(dose_model_5, trace_1):
         predictive_samples_1 = pm.sample_posterior_predictive(
             trace_1, var_names=["y", "p"]
         )
-    mo.show_code(predictive_samples_1, position="above")
+    predictive_samples_1
     return (predictive_samples_1,)
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(deaths_1, dose_1, n_1, predictive_samples_1):
     def plot_predictive_dose_response():
         p_samples = predictive_samples_1.posterior_predictive["p"].values
@@ -801,7 +787,7 @@ def _(deaths_1, dose_1, n_1, predictive_samples_1):
         fig.update_layout(xaxis_title="Log Dose", yaxis_title="Probability of Death")
         return fig
 
-    mo.show_code(plot_predictive_dose_response(), position="above")
+    plot_predictive_dose_response()
     return
 
 
@@ -823,123 +809,25 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _():
-    mo.accordion(
-        {
-            "Hint": mo.md(
-                "We are interested in the expected difference in IQ between the treatment and control groups."
-            ),
-        }
+    # fmt: off
+    drug_iq_scores = (
+        101, 100, 102, 104, 102, 97, 105, 105, 98, 101, 100, 123, 105,
+        103, 100, 95, 102, 106, 109, 102, 82, 102, 100, 102, 102, 101,
+        102, 102, 103, 103, 97, 97, 103, 101, 97, 104, 96, 103, 124, 101,
+        101, 100, 101, 101, 104, 100, 101
     )
-    return
+    placebo_iq_scores = (
+        99, 101, 100, 101, 102, 100, 97, 101, 104, 101, 102, 102, 100,
+        105, 88, 101, 100, 104, 100, 100, 100, 101, 102, 103, 97, 101,
+        101, 100, 101, 99, 101, 100, 100, 101, 100, 99, 101, 100, 102,
+        99, 100, 99
+    )
+    # fmt: on
 
-
-@app.cell(hide_code=True)
-def _():
-    drug = pl.DataFrame(
-        dict(
-            iq=(
-                101,
-                100,
-                102,
-                104,
-                102,
-                97,
-                105,
-                105,
-                98,
-                101,
-                100,
-                123,
-                105,
-                103,
-                100,
-                95,
-                102,
-                106,
-                109,
-                102,
-                82,
-                102,
-                100,
-                102,
-                102,
-                101,
-                102,
-                102,
-                103,
-                103,
-                97,
-                97,
-                103,
-                101,
-                97,
-                104,
-                96,
-                103,
-                124,
-                101,
-                101,
-                100,
-                101,
-                101,
-                104,
-                100,
-                101,
-            ),
-            group="drug",
-        )
-    )
-    placebo = pl.DataFrame(
-        dict(
-            iq=(
-                99,
-                101,
-                100,
-                101,
-                102,
-                100,
-                97,
-                101,
-                104,
-                101,
-                102,
-                102,
-                100,
-                105,
-                88,
-                101,
-                100,
-                104,
-                100,
-                100,
-                100,
-                101,
-                102,
-                103,
-                97,
-                101,
-                101,
-                100,
-                101,
-                99,
-                101,
-                100,
-                100,
-                101,
-                100,
-                99,
-                101,
-                100,
-                102,
-                99,
-                100,
-                99,
-            ),
-            group="placebo",
-        )
-    )
+    drug = pl.DataFrame(dict(iq=drug_iq_scores, group="drug"))
+    placebo = pl.DataFrame(dict(iq=placebo_iq_scores, group="placebo"))
     n1 = len(drug)
     n0 = len(placebo)
     trial_data = pl.concat([drug, placebo])
@@ -969,7 +857,7 @@ def _():
     group_id = (
         trial_data["group"].cast(pl.Categorical).to_physical().to_numpy().squeeze()
     )
-    mo.show_code(plot_iq_histogram(), position="above")
+    plot_iq_histogram()
     return group_id, iq
 
 
@@ -987,6 +875,18 @@ def _(group_id, iq):
         return model
 
     return (exercise_drug_model,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.accordion(
+        {
+            "Hint": mo.md(
+                "We are interested in the expected difference in IQ between the treatment and control groups."
+            ),
+        }
+    )
+    return
 
 
 @app.cell(hide_code=True)

@@ -1864,28 +1864,6 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
-def _():
-    mo.accordion(
-        {
-            "Hint": mo.md(r"""
-    The full `find_constrained_prior` call for the lengthscale:
-
-    ```python
-    ell_params = pm.find_constrained_prior(
-        pm.Gamma,
-        lower=2,
-        upper=10,
-        init_guess={"alpha": 2, "beta": 0.5},
-        mass=0.94,
-    )
-    ```
-    """)
-        }
-    )
-    return
-
-
 @app.cell
 def _(disaster_years, disasters_array):
     def exercise_disaster_gp():
@@ -1906,6 +1884,28 @@ def _(disaster_years, disasters_array):
         return az.summary(disaster_trace, var_names=["ell", "eta"])
 
     return (exercise_disaster_gp,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.accordion(
+        {
+            "Hint": mo.md(r"""
+    The full `find_constrained_prior` call for the lengthscale:
+
+    ```python
+    ell_params = pm.find_constrained_prior(
+        pm.Gamma,
+        lower=2,
+        upper=10,
+        init_guess={"alpha": 2, "beta": 0.5},
+        mass=0.94,
+    )
+    ```
+    """)
+        }
+    )
+    return
 
 
 @app.cell(hide_code=True)

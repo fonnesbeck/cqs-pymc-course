@@ -754,24 +754,6 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
-def _():
-    mo.accordion(
-        {
-            "Hint": mo.md(r"""
-        See Session 1.2's PreliZ section for `pz.maxent` and the `.to_pymc("name")` pattern for dropping an elicited prior into a model. Elicit each prior from a range rather than setting `mu`/`sigma` directly:
-
-        - **Intercept** (average-dimension log-weight): ~5 g to ~1600 g is log-weight ~1.6 to ~7.4, so `pz.maxent(pz.Normal(), lower=1.6, upper=7.4, mass=0.9)` returns a Normal centred near 4.5. Convert with `.to_pymc("mu", dims="species")`.
-        - **Slopes** (log-log allometric coefficients, typically ~1-3): `pz.maxent(pz.Normal(), lower=0.0, upper=3.0, mass=0.9)`.
-        - **Residual sd** (log scale): `pz.maxent(pz.HalfNormal(), lower=0.0, upper=1.0, mass=0.9)`.
-
-        Pass `plot=False` to keep the elicitation quiet inside the model-building cell.
-        """)
-        }
-    )
-    return
-
-
 @app.cell
 def _(
     fish_train,
@@ -834,6 +816,24 @@ def _(
         )
 
     return (exercise_preliz_priors,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.accordion(
+        {
+            "Hint": mo.md(r"""
+        See Session 1.2's PreliZ section for `pz.maxent` and the `.to_pymc("name")` pattern for dropping an elicited prior into a model. Elicit each prior from a range rather than setting `mu`/`sigma` directly:
+
+        - **Intercept** (average-dimension log-weight): ~5 g to ~1600 g is log-weight ~1.6 to ~7.4, so `pz.maxent(pz.Normal(), lower=1.6, upper=7.4, mass=0.9)` returns a Normal centred near 4.5. Convert with `.to_pymc("mu", dims="species")`.
+        - **Slopes** (log-log allometric coefficients, typically ~1-3): `pz.maxent(pz.Normal(), lower=0.0, upper=3.0, mass=0.9)`.
+        - **Residual sd** (log scale): `pz.maxent(pz.HalfNormal(), lower=0.0, upper=1.0, mass=0.9)`.
+
+        Pass `plot=False` to keep the elicitation quiet inside the model-building cell.
+        """)
+        }
+    )
+    return
 
 
 @app.cell(hide_code=True)
@@ -1195,18 +1195,6 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
-def _():
-    mo.accordion(
-        {
-            "Hint": mo.md(r"""
-        Only the off-diagonal entries with `declared < actual` need to change. Multiply that branch by 5, keep `declared > actual` as-is, leave the diagonal at zero. The expected-cost computation `tier_probs @ new_cost_matrix.T` and the argmin step are unchanged. Use `(new_optimal_tier != optimal_tier).sum()` to count switches and `(new_optimal_tier > optimal_tier).sum()` to confirm switches go upward (toward higher declared tiers).
-        """)
-        }
-    )
-    return
-
-
 @app.cell
 def _(cost_matrix, optimal_tier, tier_probs):
     def exercise_harsh_costs():
@@ -1226,6 +1214,18 @@ def _(cost_matrix, optimal_tier, tier_probs):
         )
 
     return (exercise_harsh_costs,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.accordion(
+        {
+            "Hint": mo.md(r"""
+        Only the off-diagonal entries with `declared < actual` need to change. Multiply that branch by 5, keep `declared > actual` as-is, leave the diagonal at zero. The expected-cost computation `tier_probs @ new_cost_matrix.T` and the argmin step are unchanged. Use `(new_optimal_tier != optimal_tier).sum()` to count switches and `(new_optimal_tier > optimal_tier).sum()` to confirm switches go upward (toward higher declared tiers).
+        """)
+        }
+    )
+    return
 
 
 @app.cell(hide_code=True)
