@@ -1052,13 +1052,38 @@ def _():
     mo.md(r"""
     ### Exercise: Fix the Broken Model
 
-    The model below builds without error, but sampling would fail immediately: its initial log-probability is `-inf`.
+    The model below fits penguin body mass with a Normal likelihood. It builds without error and every line looks reasonable at a glance, but sampling would fail immediately: its initial log-probability is `-inf`.
 
-    1. Use `model.point_logps()` (and `model.debug()` if you like) to find which variable is broken, and why.
-    2. Fix the model definition so that every value in `point_logps()` is finite.
+    The cell underneath the model runs the diagnostics exactly as you would in the real world: `initial_point()`, `debug()`, and `point_logps()`. Read their output: note *which* variable the `-inf` lands on, and compare that with where the actual mistake is.
 
-    The function should still define a variable named `"y"` and return `model.point_logps()`.
+    Once you have found the culprit, **edit the model cell** to fix the offending line. The diagnostics re-run automatically; you are done when `debug()` reports no problems and every log-probability is finite.
     """)
+    return
+
+
+@app.cell
+def _():
+    mass = (
+        pl.read_csv(data_path / "penguins.csv", null_values="NA")
+        .drop_nulls(subset=["body_mass_g"])["body_mass_g"]
+        .to_numpy()
+    )
+
+    with pm.Model() as mass_model:
+        ex_mu = pm.Normal("mu", 4000, 1000)
+        ex_sigma = pm.Normal("sigma", 0, 500)
+        ex_y = pm.Normal("y", mu=ex_mu, sigma=ex_sigma, observed=mass)
+
+    mass_model
+    return (mass_model,)
+
+
+@app.cell
+def _(mass_model):
+    print("initial_point:", mass_model.initial_point())
+    print()
+
+    # WRITE YOUR DEBUG CODE HERE
     return
 
 
@@ -1067,49 +1092,13 @@ def _():
     mo.accordion(
         {
             "Hint": mo.md(
-                "A `Binomial` with `n=5` can only take the values 0 through 5. "
-                "Where does the model's starting value for `y` come from? "
-                "Check `model.initial_point()`."
+                "`point_logps()` blames `y`, but the line defining `y` is fine. "
+                "Look at `mass_model.initial_point()`: each variable starts at its "
+                "prior's mode. What value does `sigma` start at, and what does a "
+                "Normal likelihood do with that scale? Which distribution from "
+                "Session 1.2 is designed for scale parameters?"
             ),
         }
-    )
-    return
-
-
-@app.function
-def exercise_debug_model():
-    with pm.Model() as model:
-        y = pm.Binomial("y", n=5, p=0.5, initval=6)
-
-    # YOUR CODE HERE — inspect model.point_logps() (and model.debug())
-    # to find the problem, then fix the model definition above so the
-    # log-probability is finite.
-    return model.point_logps()
-
-
-@app.cell(hide_code=True)
-def _():
-    run_debug = mo.ui.run_button(label="▶ Run exercise")
-    run_debug
-    return (run_debug,)
-
-
-@app.cell(hide_code=True)
-def _(run_debug):
-    mo.stop(
-        not run_debug.value,
-        mo.md("*Click ▶ Run exercise once your code is ready.*"),
-    )
-    _logps = exercise_debug_model()
-    _passed = set(_logps) == {"y"} and all(np.isfinite(_v) for _v in _logps.values())
-    mo.md(
-        f"`point_logps()` = `{_logps}`: "
-        + (
-            "**passed** ✅"
-            if _passed
-            else "**not yet** ❌: the model must keep a variable named `y`, "
-            "and every log-probability must be finite."
-        )
     )
     return
 
@@ -1117,20 +1106,34 @@ def _(run_debug):
 @app.cell(hide_code=True)
 def _():
     def solution_debug_model():
+        mass = (
+            pl.read_csv(data_path / "penguins.csv", null_values="NA")
+            .drop_nulls(subset=["body_mass_g"])["body_mass_g"]
+            .to_numpy()
+        )
+
         with pm.Model() as model:
-            y = pm.Binomial("y", n=5, p=0.5, initval=2)
+            mu = pm.Normal("mu", 4000, 1000)
+            sigma = pm.HalfNormal("sigma", 500)
+            y = pm.Normal("y", mu=mu, sigma=sigma, observed=mass)
         return model.point_logps()
+
 
     mo.accordion(
         {
             "Solution": mo.vstack(
                 [
                     mo.md(
-                        "The bug is the `initval`: 6 is outside the support of "
-                        "`Binomial(n=5, p=0.5)`, which only admits values 0–5, so the "
-                        "starting log-probability is `-inf`. The fix is a valid initial "
-                        "value (or simply deleting `initval`, PyMC then chooses a "
-                        "sensible default)."
+                        "`point_logps()` reports the `-inf` on `y`, but the definition "
+                        "of `y` is fine; that is the key lesson. Each variable starts "
+                        "at its prior's mode, and the `Normal(0, 500)` prior on `sigma` "
+                        "puts that starting point at exactly 0, an invalid scale for "
+                        "the likelihood. `mass_model.debug()` says so directly: the "
+                        "parameters of `y` evaluate to `sigma = 0`, violating the "
+                        "constraint `sigma > 0`. The fix is one line: give `sigma` a "
+                        "prior with positive support, such as `HalfNormal(500)`. "
+                        "Remember this pattern: a `-inf` often surfaces far from the "
+                        "line that causes it."
                     ),
                     mo.md(f"```python\n{inspect.getsource(solution_debug_model)}\n```"),
                     mo.lazy(
