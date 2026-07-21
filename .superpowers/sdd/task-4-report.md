@@ -20,7 +20,7 @@
 
 - Removed the unused setup-level `RNG` generator.
 - Made the Student-t prior explanation explicit and correct: `nu ~ Exponential(lam=1 / 30)` has mean 30.
-- Retained the robust-regression bracket access, the supported `visuals={"divergence": {"color": "red"}}` pair-plot API, and the funnel/prior-repair/non-centering/target-accept sequence.
+- Retained robust-regression bracket access and the supported `visuals={"divergence": {"color": "red"}}` pair-plot API. The user-approved streamlined Session 3.2 baseline retains the Student-t divergence diagnosis and `target_accept=0.95` remediation; no funnel, prior-repair, or non-centering sequence was restored.
 
 ## Test-first source evidence
 
@@ -59,7 +59,7 @@ Source searches over both target notebooks found:
    ```sh
    pixi run python -c 'import arviz as az; import matplotlib; matplotlib.use("Agg"); import numpy as np; rng = np.random.default_rng(42); trace = az.from_dict({"posterior": {"nu": rng.exponential(30, (2, 20)), "sigma": rng.lognormal(0, 0.1, (2, 20))}, "sample_stats": {"diverging": np.zeros((2, 20), dtype=bool)}}); assert trace["sample_stats"]["diverging"].shape == (2, 20); az.plot_pair(trace, var_names=["nu", "sigma"], visuals={"divergence": {"color": "red"}}); print("diagnostic access and divergence visual API passed")'
    ```
-   Result: `Diagnostic bracket access and divergence visual API passed`.
+   Result: `diagnostic access and divergence visual API passed`.
 
    The first verification-only construction used a legacy `az.from_dict(posterior=..., sample_stats=...)` call and failed because installed ArviZ 1.2 accepts a single dictionary payload. Retesting with `az.from_dict({"posterior": ..., "sample_stats": ...})` passed; no notebook source used the failed form or required a repair.
 
