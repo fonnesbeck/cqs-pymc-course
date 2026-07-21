@@ -227,8 +227,6 @@ def _(beta_2, dose_model):
     return
 
 
-
-
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
@@ -239,7 +237,7 @@ def _():
 
 @app.cell
 def _(dose_model):
-    dose_model
+    dose_model.to_graphviz()
     return
 
 
@@ -261,8 +259,8 @@ def _(deaths_1, dose_1, n_1):
         with pm.Model() as model:
             # YOUR CODE HERE — Normal prior for the intercept, and a
             # positive-constrained prior for the slope (no Potential needed)
-            beta0 = ...
-            beta1 = ...
+            beta0 = pm.Normal('beta0', 0, 3)
+            beta1 = pm.HalfNormal('beta1', 1)
             p = pm.math.invlogit(beta0 + beta1 * dose_1)
             pm.Deterministic("ld50", -beta0 / beta1)
             pm.Binomial("y", n=n_1, p=p, observed=deaths_1)
@@ -395,6 +393,7 @@ def _(prior_sample):
     azp.plot_dist(prior_sample, group="prior_predictive", var_names=["y"])
     return
 
+
 @app.cell(hide_code=True)
 def _(dose_1, prior_sample):
     prior_probability_largest_dose = (
@@ -414,7 +413,7 @@ def _(dose_1, prior_sample):
         f"`{prior_probability_largest_dose:.3f}`. This is a **prior** model "
         "implication, not a posterior prediction or an observed death rate."
     )
-    return (prior_probability_largest_dose,)
+    return
 
 
 @app.cell(hide_code=True)
@@ -449,8 +448,6 @@ def _(trace):
     return
 
 
-
-
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
@@ -466,7 +463,8 @@ def _():
 @app.cell
 def _(dose_1):
     with pm.Model(coords={"doses": ["first", "second", "third", "fourth"]}) as dose_model_5:
-        dose_level = pm.Data("dose_level", dose_1, dims="doses")
+
+        dose_level = pm.Data("dose_level", dose_1, dims="doses")  
     return dose_level, dose_model_5
 
 
@@ -485,7 +483,7 @@ def _():
 @app.cell
 def _(dose_model_5):
     with dose_model_5:
-        beta0 = pm.HalfNormal("beta0", sigma=1)
+        beta0 = pm.Normal("beta0", sigma=1)
         beta1 = pm.HalfNormal("beta1", sigma=10)
     return beta0, beta1
 
@@ -503,7 +501,7 @@ def _():
 def _(beta0, beta1, deaths_1, dose_level, dose_model_5, n_1):
     with dose_model_5:
         p_4 = pm.Deterministic(
-            "p", pm.math.invlogit(beta1 * dose_level - beta0), dims="doses"
+            "p", pm.math.invlogit(beta1 * dose_level - beta0), 
         )
         pm.Deterministic("ld50", beta0 / beta1)
         pm.Binomial("y", n=n_1, p=p_4, observed=deaths_1)
@@ -531,13 +529,14 @@ def _(dose_model_5):
     trace_1
     return (trace_1,)
 
+
 @app.cell
-def _(dose_model_5, n_1, p_4, trace_1):
+def _(dose_model_5, n_1, p_4):
     with dose_model_5:
         future_deaths = pm.Binomial(
             "future_deaths", n=n_1, p=p_4, dims="doses"
         )
-    return (future_deaths,)
+    return
 
 
 @app.cell(hide_code=True)
@@ -556,14 +555,16 @@ def _(trace_1):
 
 @app.cell(hide_code=True)
 def _():
-    mo.md("""Swapping data is done with `pm.set_data`. Then, we sample from the
-**posterior predictive distribution** by calling `pm.sample_posterior_predictive`.
-This samples data from the model using the fitted parameters and the new dose values.""")
+    mo.md("""
+    Swapping data is done with `pm.set_data`. Then, we sample from the
+    **posterior predictive distribution** by calling `pm.sample_posterior_predictive`.
+    This samples data from the model using the fitted parameters and the new dose values.
+    """)
     return
 
 
 @app.cell
-def _(dose_model_5, future_deaths, trace_1):
+def _(dose_model_5, trace_1):
     with dose_model_5:
         pm.set_data(
             {"dose_level": [trace_1["posterior"]["ld50"].values.mean()]},
@@ -604,7 +605,7 @@ def _():
 
 
 @app.cell
-def _(dose_model_5, future_deaths, trace_1):
+def _(dose_model_5, trace_1):
     dose_grid = np.linspace(-1, 1, 200)
     with dose_model_5:
         pm.set_data(
@@ -723,6 +724,12 @@ def _():
     return group_id, iq, trial_data
 
 
+@app.cell
+def _(trial_data):
+    trial_data.filter(trial_data['group']=='drug').select(pl.col('iq'))
+    return
+
+
 @app.cell(hide_code=True)
 def _(trial_data):
     def plot_iq_histogram():
@@ -753,16 +760,49 @@ def _(trial_data):
 
 @app.cell
 def _(group_id, iq):
+    drug_iq = iq[group_id == 0]
+    placebo_iq = iq[group_id == 1]
+
+    with pm.Model() as model:
+        drug_y = pm.Data('drug_y', drug_iq)
+        placebo_y = pm.Data('placebo_y', placebo_iq)
+
+        mu = pm.Normal('mu', mu=100, sigma=25)
+        delta = pm.Normal('delta')
+
+        sigma = pm.HalfCauchy('sigma', 3)
+
+        nu = pm.Exponential('nu', 0.2)
+        pm.StudentT('placebo_obs', mu=mu, sigma=sigma, nu=nu, observed=placebo_iq)
+        pm.StudentT('drug_obs', mu=mu + delta, sigma=sigma, nu=nu, observed=drug_iq)
+
+        drug_samples = pm.sample()
+    azp.plot_dist(drug_samples, var_names='delta')
+    return (drug_samples,)
+
+
+@app.cell
+def _(group_id, iq):
     def exercise_drug_model():
         drug_iq = iq[group_id == 0]
         placebo_iq = iq[group_id == 1]
 
         with pm.Model() as model:
-            # YOUR CODE HERE — priors for each group's mean and a shared sigma
-            # YOUR CODE HERE — likelihoods for drug_iq and placebo_iq
-            # YOUR CODE HERE — an effect_size Deterministic (difference of means)
-            ...
-        return model
+            drug_y = pm.Data('drug_y', drug_iq)
+            placebo_y = pm.Data('placebo_y', placebo_iq)
+
+            mu = pm.Normal('mu', mu=100, sigma=25)
+            delta = pm.Normal('delta')
+
+            sigma = pm.HalfCauchy('sigma', 3)
+
+            nu = pm.Exponential('nu', 0.2)
+            pm.StudentT('placebo_obs', mu=mu, sigma=sigma, nu=nu, observed=placebo_iq)
+            pm.StudentT('drug_obs', mu=mu + delta, sigma=sigma, nu=nu, observed=drug_iq)
+
+            drug_samples = pm.sample()
+        
+        return drug_samples
 
     return (exercise_drug_model,)
 
@@ -793,6 +833,11 @@ def _(exercise_drug_model, run_drug_model):
         mo.md("*Click ▶ Run exercise once your code is ready.*"),
     )
     exercise_drug_model()
+    return
+
+
+@app.cell
+def _():
     return
 
 
