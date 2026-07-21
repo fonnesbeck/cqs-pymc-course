@@ -395,6 +395,27 @@ def _(prior_sample):
     azp.plot_dist(prior_sample, group="prior_predictive", var_names=["y"])
     return
 
+@app.cell(hide_code=True)
+def _(dose_1, prior_sample):
+    prior_probability_largest_dose = (
+        1
+        / (
+            1
+            + np.exp(
+                -(
+                    prior_sample["prior"]["beta0"].values
+                    + prior_sample["prior"]["beta1"].values * dose_1[-1]
+                )
+            )
+        )
+    ).mean()
+    mo.md(
+        f"At the largest observed dose, the prior mean death probability is "
+        f"`{prior_probability_largest_dose:.3f}`. This is a **prior** model "
+        "implication, not a posterior prediction or an observed death rate."
+    )
+    return (prior_probability_largest_dose,)
+
 
 @app.cell(hide_code=True)
 def _():
@@ -486,7 +507,7 @@ def _(beta0, beta1, deaths_1, dose_level, dose_model_5, n_1):
         )
         pm.Deterministic("ld50", beta0 / beta1)
         pm.Binomial("y", n=n_1, p=p_4, observed=deaths_1)
-    return
+    return (p_4,)
 
 
 @app.cell
@@ -509,6 +530,14 @@ def _(dose_model_5):
         trace_1 = pm.sample(random_seed=RANDOM_SEED)
     trace_1
     return (trace_1,)
+
+@app.cell
+def _(dose_model_5, n_1, p_4, trace_1):
+    with dose_model_5:
+        future_deaths = pm.Binomial(
+            "future_deaths", n=n_1, p=p_4, dims="doses"
+        )
+    return (future_deaths,)
 
 
 @app.cell(hide_code=True)
@@ -534,28 +563,31 @@ This samples data from the model using the fitted parameters and the new dose va
 
 
 @app.cell
-def _(dose_model_5, trace_1):
+def _(dose_model_5, future_deaths, trace_1):
     with dose_model_5:
         pm.set_data(
             {"dose_level": [trace_1["posterior"]["ld50"].values.mean()]},
             coords={"doses": ["ld50"]},
         )
-        predictive_samples = pm.sample_posterior_predictive(trace_1, var_names=["p"])
+        predictive_samples = pm.sample_posterior_predictive(
+            trace_1, var_names=["future_deaths", "p"]
+        )
     predictive_samples
     return (predictive_samples,)
 
 
 @app.cell
-def _(n_1, predictive_samples):
+def _(predictive_samples):
     def plot_ld50_predictive():
-        expected_deaths = (
-            predictive_samples["posterior_predictive"]["p"].values.flatten() * n_1
-        )
-        fig = go.Figure(go.Histogram(x=expected_deaths, histnorm="probability"))
+        future_deaths = predictive_samples["posterior_predictive"][
+            "future_deaths"
+        ].values.flatten()
+        fig = go.Figure(go.Histogram(x=future_deaths, histnorm="probability"))
         fig.update_layout(
-            xaxis_title="Expected Deaths (out of 5)",
+            xaxis_title="Future Deaths (out of 5)",
             yaxis_title="Probability",
-            title="Posterior Prediction: Expected Deaths at LD50 Dose",
+            title="Posterior Predictive: Future Deaths at LD50 Dose",
+            xaxis=dict(dtick=1),
         )
         return fig
 
@@ -572,7 +604,7 @@ def _():
 
 
 @app.cell
-def _(dose_model_5, trace_1):
+def _(dose_model_5, future_deaths, trace_1):
     dose_grid = np.linspace(-1, 1, 200)
     with dose_model_5:
         pm.set_data(
@@ -580,7 +612,7 @@ def _(dose_model_5, trace_1):
             coords={"doses": [f"d{i}" for i in range(1, 201)]},
         )
         predictive_samples_1 = pm.sample_posterior_predictive(
-            trace_1, var_names=["p"]
+            trace_1, var_names=["future_deaths", "p"]
         )
     predictive_samples_1
     return dose_grid, predictive_samples_1
@@ -593,19 +625,28 @@ def _(deaths_1, dose_1, dose_grid, n_1, predictive_samples_1):
         dose_range = dose_grid
         flat_p = p_samples.reshape(-1, p_samples.shape[-1])
 
+        lower_prob, upper_prob = np.quantile(flat_p, [0.055, 0.945], axis=0)
         fig = go.Figure()
-        n_lines = 250
-        idx = np.random.default_rng(42).choice(flat_p.shape[0], n_lines, replace=False)
-        for i in idx:
-            fig.add_trace(
-                go.Scatter(
-                    x=dose_range,
-                    y=flat_p[i],
-                    mode="lines",
-                    line=dict(color="rgba(21, 74, 114, 0.5)", width=0.5),
-                    showlegend=False,
-                )
+        fig.add_trace(
+            go.Scatter(
+                x=dose_range,
+                y=lower_prob,
+                mode="lines",
+                line=dict(width=0),
+                showlegend=False,
             )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=dose_range,
+                y=upper_prob,
+                mode="lines",
+                fill="tonexty",
+                fillcolor="rgba(21, 74, 114, 0.2)",
+                line=dict(width=0),
+                name="89% posterior interval",
+            )
+        )
         mean_prob = flat_p.mean(axis=0)
         fig.add_trace(
             go.Scatter(
