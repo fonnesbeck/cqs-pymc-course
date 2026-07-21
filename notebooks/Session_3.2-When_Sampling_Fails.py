@@ -500,7 +500,7 @@ def _(body_mass_kg):
         return model
 
     with build_mixed_sampler():
-        mixed_trace = pm.sample(2000, random_seed=RANDOM_SEED)
+        mixed_trace = pm.sample(2000, random_seed=RANDOM_SEED, cores=1)
     return (mixed_trace,)
 
 

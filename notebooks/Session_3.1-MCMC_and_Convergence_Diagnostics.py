@@ -1690,6 +1690,7 @@ def _(baseline_model):
         metropolis_trace = pm.sample(
             step=pm.Metropolis(),
             random_seed=RANDOM_SEED,
+            cores=1,
         )
     return (metropolis_trace,)
 
