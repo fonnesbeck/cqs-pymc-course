@@ -527,7 +527,7 @@ def _():
 @app.cell
 def _(dose_model_4):
     with dose_model_4:
-        trace = pm.sample(nuts_sampler="nutpie", random_seed=RANDOM_SEED)
+        trace = pm.sample(random_seed=RANDOM_SEED)
     trace
     return (trace,)
 
@@ -543,8 +543,8 @@ def _(deaths_1, dose_1, n_1, trace):
     def plot_dose_response_posterior():
         empirical_p = deaths_1 / n_1
         dose_range = np.linspace(dose_1.min(), dose_1.max(), 100)
-        beta0_samples = trace.posterior["beta0"].values.flatten()
-        beta1_samples = trace.posterior["beta1"].values.flatten()
+        beta0_samples = trace["posterior"]["beta0"].values.flatten()
+        beta1_samples = trace["posterior"]["beta1"].values.flatten()
 
         def logistic(x):
             return 1 / (1 + np.exp(-x))
@@ -659,7 +659,7 @@ def _():
 @app.cell
 def _(dose_model_5):
     with dose_model_5:
-        trace_1 = pm.sample(nuts_sampler="nutpie", random_seed=RANDOM_SEED)
+        trace_1 = pm.sample(random_seed=RANDOM_SEED)
     trace_1
     return (trace_1,)
 
@@ -674,7 +674,7 @@ def _():
 
 @app.cell
 def _(trace_1):
-    trace_1.posterior["ld50"].values.mean()
+    trace_1["posterior"]["ld50"].values.mean()
     return
 
 
@@ -693,7 +693,7 @@ def _(dose_model_5, trace_1):
     with dose_model_5:
         pm.set_data(
             {
-                "dose_data": [trace_1.posterior["ld50"].values.mean()],
+                "dose_data": [trace_1["posterior"]["ld50"].values.mean()],
                 "deaths_data": [0],
             },
             coords={"dosis": ["ld50"]},
@@ -706,7 +706,7 @@ def _(dose_model_5, trace_1):
 @app.cell
 def _(n_1, predictive_samples):
     def plot_ld50_predictive():
-        predicted_deaths = predictive_samples.posterior_predictive["y"].values.flatten()
+        predicted_deaths = predictive_samples["posterior_predictive"]["y"].values.flatten()
         counts = np.bincount(predicted_deaths.astype(int), minlength=n_1 + 1)
         probs = counts / counts.sum()
         fig = go.Figure(go.Bar(x=list(range(n_1 + 1)), y=probs))
@@ -747,7 +747,7 @@ def _(dose_model_5, trace_1):
 @app.cell(hide_code=True)
 def _(deaths_1, dose_1, n_1, predictive_samples_1):
     def plot_predictive_dose_response():
-        p_samples = predictive_samples_1.posterior_predictive["p"].values
+        p_samples = predictive_samples_1["posterior_predictive"]["p"].values
         dose_range = np.linspace(-1, 1, 200)
         flat_p = p_samples.reshape(-1, p_samples.shape[-1])
 

@@ -658,7 +658,7 @@ def _(
 @app.cell(hide_code=True)
 def _(unpooled_trace):
     _output = az.plot_dist(
-        unpooled_trace.predictions.dataset.map(np.exp),
+        unpooled_trace["predictions"].dataset.map(np.exp),
     )
     _output
     return

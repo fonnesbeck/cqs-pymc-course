@@ -307,7 +307,7 @@ def _():
 
 @app.cell(hide_code=True)
 def _(B, age, knot_list, spline_trace):
-    wp = spline_trace.posterior["w"].mean(("chain", "draw")).values
+    wp = spline_trace["posterior"]["w"].mean(("chain", "draw")).values
 
     spline_weighted_df = (
         pd.DataFrame(B * wp.T)
@@ -1176,7 +1176,7 @@ def _():
 @app.cell
 def _(sim_model):
     with sim_model:
-        sim_post = pm.sample(nuts_sampler="nutpie", chains=2, random_seed=RANDOM_SEED)
+        sim_post = pm.sample(chains=2, random_seed=RANDOM_SEED)
     sim_post
     return (sim_post,)
 
@@ -1412,7 +1412,7 @@ def _(kopech_fb_spin, spin_X_pred, spin_rate_gp, spin_rate_model, spin_rate_trac
         _mu, _var = spin_rate_gp.predict(
             spin_X_pred,
             point=az.extract(
-                spin_rate_trace.posterior.sel(draw=[0], chain=[0])
+                spin_rate_trace["posterior"].sel(draw=[0], chain=[0])
             ).squeeze(),
             diag=True,
         )
@@ -1550,7 +1550,6 @@ def _(get_icm, multi_X, multi_y, n_outputs):
 def _(multi_spin_rate_model):
     with multi_spin_rate_model:
         multi_trace = pm.sample(
-            nuts_sampler="nutpie",
             chains=2,
             target_accept=0.9,
             random_seed=RANDOM_SEED,
@@ -1767,7 +1766,6 @@ def _(robust_X, robust_y):
 def _(robust_model):
     with robust_model:
         robust_trace = pm.sample(
-            nuts_sampler="nutpie",
             chains=2,
             random_seed=RANDOM_SEED,
         )
@@ -1796,7 +1794,7 @@ def _(robust_X, robust_f_true, robust_trace, robust_y):
     _fig = plt.figure(figsize=(12, 5))
     _ax = _fig.gca()
 
-    plot_gp_dist(_ax, robust_trace.posterior["f"].values[0], robust_X)
+    plot_gp_dist(_ax, robust_trace["posterior"]["f"].values[0], robust_X)
 
     _ax.plot(robust_X, robust_f_true, "dodgerblue", lw=3, label="True f")
     _ax.plot(robust_X, robust_y, "ok", ms=3, alpha=0.5, label="Observed data")
@@ -2188,7 +2186,6 @@ def _(dense_X, dense_y):
 def _(sparse_model):
     with sparse_model:
         sparse_trace = pm.sample(
-            nuts_sampler="nutpie",
             chains=2,
             random_seed=RANDOM_SEED,
         )
@@ -2584,7 +2581,6 @@ def _(swing_decision_model):
             draws=2000,
             tune=3000,
             target_accept=0.97,
-            nuts_sampler="nutpie",
             chains=4,
             random_seed=RANDOM_SEED,
         )
@@ -2621,8 +2617,8 @@ def _(ages_unique, swing_decision_trace, swing_decisions):
 
     _f = (
         (
-            swing_decision_trace.posterior["intercept"]
-            + swing_decision_trace.posterior["f"]
+            swing_decision_trace["posterior"]["intercept"]
+            + swing_decision_trace["posterior"]["f"]
         )
         .sel(chain=0)
         .values
@@ -2720,7 +2716,6 @@ def _(strike_X, strike_y):
 def _(called_strike_model):
     with called_strike_model:
         strike_trace = pm.sample(
-            nuts_sampler="nutpie",
             chains=2,
             random_seed=RANDOM_SEED,
         )
@@ -2758,7 +2753,7 @@ def _(X_pred_strike, strike_preds):
         X_pred_strike[:, 0],
         X_pred_strike[:, 1],
         s=30,
-        c=strike_preds.posterior_predictive["p_strike"]
+        c=strike_preds["posterior_predictive"]["p_strike"]
         .mean(dim=("chain", "draw"))
         .to_numpy(),
         marker="s",

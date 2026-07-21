@@ -1596,9 +1596,9 @@ def _(informed_prior, prior_pred_log_toggle, vague_prior):
         use_log = prior_pred_log_toggle.value
 
         # Collect both datasets
-        vague_y = vague_prior.prior["y"].values.flatten()
+        vague_y = vague_prior["prior"]["y"].values.flatten()
         vague_y = vague_y[np.isfinite(vague_y) & (vague_y > 0)]
-        informed_y = informed_prior.prior["y"].values.flatten()
+        informed_y = informed_prior["prior"]["y"].values.flatten()
         informed_y = informed_y[np.isfinite(informed_y) & (informed_y > 0)]
 
         # Reference lines for scale
@@ -1757,9 +1757,9 @@ def _(exercise_uninformative_prior, run_uninformative_prior):
 
 @app.function(hide_code=True)
 def show_prior_predictive_check(prior_trace, n_emails):
-    observed_k = int(prior_trace.observed_data["y"])
-    p = prior_trace.prior["p"].values.flatten()
-    y = prior_trace.prior_predictive["y"].values.flatten()
+    observed_k = int(prior_trace["observed_data"]["y"])
+    p = prior_trace["prior"]["p"].values.flatten()
+    y = prior_trace["prior_predictive"]["y"].values.flatten()
     extreme = float(np.mean((p < 0.02) | (p > 0.98)))
     all_or_nothing = float(np.mean((y == 0) | (y == n_emails)))
 

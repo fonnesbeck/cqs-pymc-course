@@ -119,7 +119,7 @@ def _():
     3. What are the parameter names in each? Which parameters do they share?
     4. Find where the observed penguin mass lives, the same penguin measurements
        you met in Session 1.2, now used in a regression of body mass on flipper length.
-    5. Look at `trace_a.sample_stats` and `trace_b.sample_stats`. List three variables you see in each.
+    5. Look at `trace_a["sample_stats"]` and `trace_b["sample_stats"]`. List three variables you see in each.
     """)
     return
 
@@ -446,9 +446,9 @@ def _(baseline_model):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ### The InferenceData object
+    ### The ArviZ DataTree
 
-    The result of `pm.sample()` is an `InferenceData` object, a container built on top of xarray that holds everything about the sampling run, organized into groups like `posterior`, `sample_stats`, and `observed_data`.
+    The result of `pm.sample()` is an ArviZ `DataTree`, a container built on top of xarray that holds everything about the sampling run, organized into groups like `posterior`, `sample_stats`, and `observed_data`.
     """)
     return
 
@@ -469,7 +469,7 @@ def _():
 
 @app.cell
 def _(nuts_trace):
-    nuts_trace.posterior
+    nuts_trace["posterior"]
     return
 
 
@@ -483,7 +483,7 @@ def _():
 
 @app.cell
 def _(nuts_trace):
-    nuts_trace.sample_stats
+    nuts_trace["sample_stats"]
     return
 
 
@@ -497,7 +497,7 @@ def _():
 
 @app.cell
 def _(nuts_trace):
-    nuts_trace.observed_data
+    nuts_trace["observed_data"]
     return
 
 
@@ -1913,7 +1913,7 @@ def _(nuts_trace):
     _thinned_ess = az.ess(_thinned["beta"]).item()
 
     mo.md(f"""
-    Original draws: {nuts_trace.posterior.sizes["draw"]}
+    Original draws: {nuts_trace["posterior"].sizes["draw"]}
     Thinned draws:  {_thinned.sizes["draw"]}
 
     Original beta ESS: {_original_ess:.0f}
@@ -1945,7 +1945,7 @@ def _(nuts_trace):
     _fig = plt.gcf()
     _bfmi_ax, _energy_ax = _fig.axes[0], _fig.axes[1]
 
-    _n_chains = nuts_trace.posterior.sizes["chain"]
+    _n_chains = nuts_trace["posterior"].sizes["chain"]
     _bfmi_ax.set_yticks(range(_n_chains))
     _bfmi_ax.set_ylim(-0.5, _n_chains - 0.5)
     for _coll in _bfmi_ax.collections:

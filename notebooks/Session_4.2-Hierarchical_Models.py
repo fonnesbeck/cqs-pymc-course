@@ -321,7 +321,7 @@ def _(floor_measure, log_radon):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    You may be wondering why we are using the `pm.Data` container above even though the variable `floor_ind` is not an observed variable nor a parameter of the model. As you'll see, this will make our lives much easier when we'll plot and diagnose our model.ArviZ will thus include `floor_ind` as a variable in the `constant_data` group of the resulting {ref}`InferenceData <xarray_for_arviz>` object. Moreover, including `floor_ind` in the `InferenceData` object makes sharing and reproducing analysis much easier, all the data needed to analyze or rerun the model is stored there.
+    You may be wondering why we are using the `pm.Data` container above even though the variable `floor_ind` is not an observed variable nor a parameter of the model. As you'll see, this will make our lives much easier when we plot and diagnose our model. ArviZ will thus include `floor_ind` as a variable in the `constant_data` group of the resulting `DataTree` object. Moreover, including `floor_ind` in the `DataTree` makes sharing and reproducing analysis much easier: all the data needed to analyze or rerun the model is stored there.
     """)
     return
 
@@ -347,14 +347,14 @@ def _(pooled_model):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ArviZ `InferenceData` uses `xarray.Dataset`s under the hood, which give access to several common plotting functions with `.plot`. In this case, we want scatter plot of the mean log radon level (which is stored in variable `a`) for each of the two levels we are considering. If our desired plot is supported by xarray plotting capabilities, we can take advantage of xarray to automatically generate both plot and labels for us. Notice how everything is directly plotted and annotated, the only change we need to do is renaming the y axis label from `a` to `Mean log radon level`.
+    ArviZ `DataTree` output uses `xarray.Dataset`s under the hood, which give access to several common plotting functions with `.plot`. In this case, we want a scatter plot of the mean log radon level (which is stored in variable `a`) for each of the two levels we are considering. If our desired plot is supported by xarray plotting capabilities, we can take advantage of xarray to automatically generate both plot and labels for us. Notice how everything is directly plotted and annotated; the only change we need to make is renaming the y-axis label from `a` to `Mean log radon level`.
     """)
     return
 
 
 @app.cell(hide_code=True)
 def _(prior_checks):
-    prior = prior_checks.prior.dataset.squeeze(drop=True)
+    prior = prior_checks["prior"].dataset.squeeze(drop=True)
 
     _output = (
         xr.concat((prior["alpha"], prior["alpha"] + prior["beta"]), dim="location")
@@ -425,7 +425,7 @@ def _(pooled_trace, srrs_mn_3):
             name="Posterior Mean",
         )
 
-    post_mean = pooled_trace.posterior.dataset.mean(dim=("chain", "draw"))
+    post_mean = pooled_trace["posterior"].dataset.mean(dim=("chain", "draw"))
     _output = plot_pooled_fit()
     _output
     return (post_mean,)
@@ -499,7 +499,7 @@ def _():
 
 @app.cell(hide_code=True)
 def _(mn_counties, unpooled_trace):
-    unpooled_means = unpooled_trace.posterior.dataset.mean(dim=("chain", "draw"))
+    unpooled_means = unpooled_trace["posterior"].dataset.mean(dim=("chain", "draw"))
     unpooled_eti = az.eti(unpooled_trace).dataset
     unpooled_means_iter = unpooled_means.sortby("alpha")
     unpooled_eti_iter = unpooled_eti.sortby(unpooled_means_iter.alpha)
@@ -695,14 +695,14 @@ def _(partial_pooling_trace, srrs_mn_3, unpooled_trace):
             (unpooled_trace, partial_pooling_trace),
             ("no pooling", "partial pooling"),
         ):
-            post_ds = trace.posterior.dataset.assign_coords(
+            post_ds = trace["posterior"].dataset.assign_coords(
                 {"N_county": ("county", N_county)}
             )
             post_ds.mean(dim=("chain", "draw")).plot.scatter(
                 x="N_county", y="alpha", ax=ax, alpha=0.9
             )
             ax.hlines(
-                partial_pooling_trace.posterior["alpha"].mean(),
+                partial_pooling_trace["posterior"]["alpha"].mean(),
                 0.9,
                 max(N_county) + 1,
                 alpha=0.4,
@@ -833,7 +833,7 @@ def _(varying_intercept_trace):
         xvals = xr.DataArray(
             [0, 1], dims="Level", coords={"Level": ["Basement", "Floor"]}
         )
-        post = varying_intercept_trace.posterior  # alias for readability
+        post = varying_intercept_trace["posterior"]  # alias for readability
         theta = (
             (post.alpha + post.beta * xvals)
             .mean(dim=("chain", "draw"))
@@ -883,8 +883,8 @@ def _(post_mean, srrs_mn_3, unpooled_means, varying_intercept_trace):
             xvals = xr.DataArray(np.linspace(0, 1))
             axes[i].plot(xvals, m.values * xvals + b.values)
             axes[i].plot(xvals, post_mean["beta"] * xvals + post_mean["alpha"], "r--")
-            varying_intercept_trace.posterior.sel(county=c).beta
-            post = varying_intercept_trace.posterior.sel(county=c).mean(
+            varying_intercept_trace["posterior"].sel(county=c).beta
+            post = varying_intercept_trace["posterior"].sel(county=c).mean(
                 dim=("chain", "draw")
             )
             theta = post.alpha.values + post.beta.values * xvals
@@ -1040,13 +1040,13 @@ def _(varying_intercept_slope_trace):
     def plot_centered_traces():
         # Extract posterior samples for chain 0 using polars
         sigma_b_df = (
-            varying_intercept_slope_trace.posterior["sigma_b"]
+            varying_intercept_slope_trace["posterior"]["sigma_b"]
             .sel(chain=0)
             .to_dataframe()
             .reset_index()
         )
         beta_df = (
-            varying_intercept_slope_trace.posterior["beta"]
+            varying_intercept_slope_trace["posterior"]["beta"]
             .sel(chain=0)
             .to_dataframe()
             .reset_index()
@@ -1077,13 +1077,13 @@ def _():
 def _(varying_intercept_slope_trace):
     def plot_centered_funnel():
         x = (
-            varying_intercept_slope_trace.posterior["beta"]
+            varying_intercept_slope_trace["posterior"]["beta"]
             .sel(county="AITKIN")
             .values.flatten()
         )
-        y = varying_intercept_slope_trace.posterior["sigma_b"].values.flatten()
+        y = varying_intercept_slope_trace["posterior"]["sigma_b"].values.flatten()
         diverging_mask = (
-            varying_intercept_slope_trace.sample_stats["diverging"]
+            varying_intercept_slope_trace["sample_stats"]["diverging"]
             .values.flatten()
             .astype(bool)
         )
@@ -1165,10 +1165,10 @@ def _(varying_intercept_slope):
 @app.cell(hide_code=True)
 def _(centered_lowrank_trace, varying_intercept_slope_trace):
     centered_divergences = int(
-        varying_intercept_slope_trace.sample_stats["diverging"].sum().values
+        varying_intercept_slope_trace["sample_stats"]["diverging"].sum().values
     )
     lowrank_divergences = int(
-        centered_lowrank_trace.sample_stats["diverging"].sum().values
+        centered_lowrank_trace["sample_stats"]["diverging"].sum().values
     )
     lowrank_compare = pl.DataFrame(
         {
@@ -1267,13 +1267,13 @@ def _(noncentered_trace):
     def plot_noncentered_traces():
         # Extract posterior samples for chain 0 using polars
         sigma_b_df = (
-            noncentered_trace.posterior["sigma_b"]
+            noncentered_trace["posterior"]["sigma_b"]
             .sel(chain=0)
             .to_dataframe()
             .reset_index()
         )
         beta_df = (
-            noncentered_trace.posterior["beta"]
+            noncentered_trace["posterior"]["beta"]
             .sel(chain=0)
             .to_dataframe()
             .reset_index()
@@ -1301,10 +1301,10 @@ def _():
 @app.cell(hide_code=True)
 def _(noncentered_trace):
     def plot_noncentered_funnel():
-        x = noncentered_trace.posterior["beta"].sel(county="AITKIN").values.flatten()
-        y = noncentered_trace.posterior["sigma_b"].values.flatten()
+        x = noncentered_trace["posterior"]["beta"].sel(county="AITKIN").values.flatten()
+        y = noncentered_trace["posterior"]["sigma_b"].values.flatten()
         diverging_mask = (
-            noncentered_trace.sample_stats["diverging"].values.flatten().astype(bool)
+            noncentered_trace["sample_stats"]["diverging"].values.flatten().astype(bool)
         )
         return (
             go.Figure()
@@ -1398,7 +1398,7 @@ def _(noncentered_trace):
         xvals = xr.DataArray(
             [0, 1], dims="Level", coords={"Level": ["Basement", "Floor"]}
         )
-        post = noncentered_trace.posterior  # alias for readability
+        post = noncentered_trace["posterior"]  # alias for readability
         theta = (
             (post.alpha + post.beta * xvals)
             .mean(dim=("chain", "draw"))
@@ -1646,7 +1646,7 @@ def _(hierarchical_intercept):
 def _(hierarchical_intercept_trace, u):
     def plot_uranium_intercept():
         uranium = u
-        post = hierarchical_intercept_trace.posterior.dataset.assign_coords(
+        post = hierarchical_intercept_trace["posterior"].dataset.assign_coords(
             uranium=uranium
         )
         avg_a = post["mu_a"].mean(dim=("chain", "draw")).values[np.argsort(uranium)]
@@ -1984,7 +1984,7 @@ def _():
 @app.cell
 def _(contextual_effect_trace):
     # Compute posterior predictive for specific houses in ST LOUIS and KANABEC
-    ctx_post = contextual_effect_trace.posterior
+    ctx_post = contextual_effect_trace["posterior"]
     alpha_69 = ctx_post["alpha"].sel(county="ST LOUIS").values
     alpha_31 = ctx_post["alpha"].sel(county="KANABEC").values
     beta_post = ctx_post["beta"].values

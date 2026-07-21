@@ -1548,7 +1548,7 @@ def _():
       scenario={"data_layoff": ndarray}, random_seed=SEED)`. Use the
       *same* `random_seed` for both scenarios so the per-month
       difference is a clean draw-by-draw delta (not noise).
-    - The object returned by `ss.forecast` is an InferenceData with
+    - The object returned by `ss.forecast` is an ArviZ `DataTree` with
       its own groups: print it and dig around to find which one
       holds the predictive samples for the observed series.
     """)
@@ -1726,7 +1726,7 @@ def _(df, fc_baseline, fc_event, n_forecast, second_event_at, ss):
             (fc_baseline, "no further layoffs", "C0"),
             (fc_event, f"new event in {second_event_at} months", "C3"),
         ]:
-            y = fc.forecast_observed.sel(observed_state=obs_label)
+            y = fc["forecast_observed"].sel(observed_state=obs_label)
             ax.plot(
                 future_dates,
                 y.mean(("chain", "draw")),
@@ -1753,8 +1753,8 @@ def _(df, fc_baseline, fc_event, n_forecast, ss):
         # Same random_seed across the two forecasts → draws line up,
         # so we can take a per-draw difference for a clean per-month
         # causal effect.
-        y_baseline = np.exp(fc_baseline.forecast_observed.sel(observed_state=obs_label))
-        y_event = np.exp(fc_event.forecast_observed.sel(observed_state=obs_label))
+        y_baseline = np.exp(fc_baseline["forecast_observed"].sel(observed_state=obs_label))
+        y_event = np.exp(fc_event["forecast_observed"].sel(observed_state=obs_label))
         monthly_loss = y_baseline - y_event
         cumulative_loss = monthly_loss.cumsum("time")
 

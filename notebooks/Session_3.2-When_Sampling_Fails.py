@@ -376,7 +376,7 @@ def _():
 
 @app.cell
 def _(robust_trace):
-    robust_trace.sample_stats["diverging"]
+    robust_trace["sample_stats"]["diverging"]
     return
 
 
@@ -454,7 +454,7 @@ def _(body_mass_kg, flipper_length_std):
 
 @app.cell
 def _(robust_trace_fixed):
-    _divergences_fixed = robust_trace_fixed.sample_stats["diverging"].values.sum()
+    _divergences_fixed = robust_trace_fixed["sample_stats"]["diverging"].values.sum()
     mo.md(f"Divergences with `target_accept=0.95`: **{_divergences_fixed}**")
     az.summary(robust_trace_fixed, var_names=["nu"])
     return

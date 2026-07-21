@@ -774,7 +774,7 @@ def _(radon_trace):
     _ax.axvline(np.log(4), color="C1", linestyle="--", label="log(4 pCi/L)")
     _ax.legend()
 
-    mu_samples = radon_trace.posterior["mu"].values.flatten()
+    mu_samples = radon_trace["posterior"]["mu"].values.flatten()
     prob_above = float((mu_samples > np.log(4)).mean())
 
     mo.vstack(
@@ -1063,7 +1063,7 @@ def _(baseline_trace, batting_df):
     def plot_shrinkage():
         observed_ba = batting_df["BA"].to_numpy()
         at_bats = batting_df["AB"].to_numpy()
-        posterior_ba = baseline_trace.posterior["player_ba"].values
+        posterior_ba = baseline_trace["posterior"]["player_ba"].values
         posterior_mean_ba = np.mean(posterior_ba, axis=(0, 1))
 
         # Bounds: clip extreme observed outliers via percentiles so a 1/1
@@ -1353,8 +1353,8 @@ def _(bandit_state_A1, bandit_state_B1):
 @app.cell(hide_code=True)
 def _(bandit_trace_v1):
     def plot_bandit_posteriors(trace, title):
-        samples_A = trace.posterior["conversion_rate_A"].values.flatten()
-        samples_B = trace.posterior["conversion_rate_B"].values.flatten()
+        samples_A = trace["posterior"]["conversion_rate_A"].values.flatten()
+        samples_B = trace["posterior"]["conversion_rate_B"].values.flatten()
         p_sup_B = float((samples_B > samples_A).mean())
 
         # Overlay both posteriors in one panel, colored by variable
