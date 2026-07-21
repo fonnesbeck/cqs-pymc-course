@@ -744,7 +744,7 @@ def _(dose_model_5, trace_1):
     return (predictive_samples_1,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(deaths_1, dose_1, n_1, predictive_samples_1):
     def plot_predictive_dose_response():
         p_samples = predictive_samples_1.posterior_predictive["p"].values
@@ -832,6 +832,16 @@ def _():
     n0 = len(placebo)
     trial_data = pl.concat([drug, placebo])
 
+    iq = trial_data.select("iq").to_numpy().squeeze()
+    group_id = (
+        trial_data["group"].cast(pl.Categorical).to_physical().to_numpy().squeeze()
+    )
+    trial_data
+    return group_id, iq, trial_data
+
+
+@app.cell(hide_code=True)
+def _(trial_data):
     def plot_iq_histogram():
         fig = px.histogram(
             trial_data,
@@ -853,12 +863,9 @@ def _():
         )
         return fig
 
-    iq = trial_data.select("iq").to_numpy().squeeze()
-    group_id = (
-        trial_data["group"].cast(pl.Categorical).to_physical().to_numpy().squeeze()
-    )
+
     plot_iq_histogram()
-    return group_id, iq
+    return
 
 
 @app.cell
