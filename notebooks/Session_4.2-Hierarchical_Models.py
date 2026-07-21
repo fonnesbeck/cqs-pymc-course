@@ -709,11 +709,11 @@ def _(partial_pooling_trace, srrs_mn_3, unpooled_trace):
                 ls="--",
                 label="Est. population mean",
             )
-            hdi = az.eti(trace).dataset.alpha
+            eti = az.eti(trace).dataset.alpha
             ax.vlines(
                 N_county,
-                hdi.sel(ci_bound="lower"),
-                hdi.sel(ci_bound="upper"),
+                eti.sel(ci_bound="lower"),
+                eti.sel(ci_bound="upper"),
                 color="orange",
                 alpha=0.5,
             )
@@ -1651,10 +1651,10 @@ def _(hierarchical_intercept_trace, u):
         )
         avg_a = post["mu_a"].mean(dim=("chain", "draw")).values[np.argsort(uranium)]
         avg_a_county = post["alpha"].mean(dim=("chain", "draw"))
-        avg_a_county_hdi = az.eti(hierarchical_intercept_trace, var_names=["alpha"])[
+        avg_a_county_eti = az.eti(hierarchical_intercept_trace, var_names=["alpha"])[
             "alpha"
         ]
-        mu_a_hdi = az.eti(hierarchical_intercept_trace, var_names=["mu_a"])["mu_a"]
+        mu_a_eti = az.eti(hierarchical_intercept_trace, var_names=["mu_a"])["mu_a"]
         # Calculate ETI for the trend line (mu_a)
         sorted_indices = np.argsort(uranium)
         fig = (
@@ -1666,8 +1666,8 @@ def _(hierarchical_intercept_trace, u):
                     ),
                     y=np.concatenate(
                         [
-                            mu_a_hdi.sel(ci_bound="lower").values[sorted_indices],
-                            mu_a_hdi.sel(ci_bound="upper").values[sorted_indices][::-1],
+                            mu_a_eti.sel(ci_bound="lower").values[sorted_indices],
+                            mu_a_eti.sel(ci_bound="upper").values[sorted_indices][::-1],
                         ]
                     ),
                     fill="toself",
@@ -1703,8 +1703,8 @@ def _(hierarchical_intercept_trace, u):
                 type="line",
                 x0=u_val,
                 x1=u_val,
-                y0=avg_a_county_hdi.sel(ci_bound="lower").values[i],
-                y1=avg_a_county_hdi.sel(ci_bound="upper").values[i],
+                y0=avg_a_county_eti.sel(ci_bound="lower").values[i],
+                y1=avg_a_county_eti.sel(ci_bound="upper").values[i],
                 line=dict(color="orange", width=1.5),
                 opacity=0.7,
             )

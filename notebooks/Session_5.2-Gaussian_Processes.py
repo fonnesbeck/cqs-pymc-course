@@ -363,8 +363,6 @@ def _(age, knot_list, spline_post_pred, swing_decisions):
     spline_pred_summary = az.summary(
         spline_post_pred,
         group="posterior_predictive",
-        ci_kind="hdi",
-        ci_prob=0.94,
         round_to="none",
     )
     spline_pred_summary["age"] = age
@@ -383,8 +381,8 @@ def _(age, knot_list, spline_post_pred, swing_decisions):
     spline_pred_summary.plot("age", "mean", ax=pred_ax, lw=3, color="firebrick")
     pred_ax.fill_between(
         spline_pred_summary.age,
-        spline_pred_summary["hdi94_lb"],
-        spline_pred_summary["hdi94_ub"],
+        spline_pred_summary["eti89_lb"],
+        spline_pred_summary["eti89_ub"],
         color="firebrick",
         alpha=0.4,
     )
@@ -1858,7 +1856,7 @@ def _():
     1. Build a `pm.gp.Latent` model for `disasters_array` using `disaster_years[:, None]` as the input.
     2. Use `pm.find_constrained_prior` to choose a `Gamma` prior for the Matérn-5/2 lengthscale with 94% mass in `[2, 10]` years. (`pm.find_constrained_prior` is PyMC's analogue of the `pz.maxent` elicitation you used in Session 1.2: it solves for the distribution parameters that put a target probability mass between bounds.)
     3. Put a weakly-informative prior on the GP amplitude, exponentiate the latent GP to get a positive `rate`, and use a `Poisson` likelihood.
-    4. Sample the model and plot the posterior mean disaster rate with a 94% HDI over the observed counts.
+    4. Sample the model and plot the posterior mean disaster rate with an 89% ETI (the ArviZ default credible interval) over the observed counts.
     5. Optional: run a posterior predictive check. Does a Poisson likelihood reproduce the observed count dispersion?
     """),
         kind="info",
@@ -1951,7 +1949,7 @@ def _(disaster_years, disasters_array):
 
         rate_samples = az.extract(disaster_trace, var_names="rate").values
         rate_mean = rate_samples.mean(axis=1)
-        rate_hdi = az.hdi(disaster_trace["posterior"], prob=0.94)["rate"].to_numpy()
+        rate_eti = az.eti(disaster_trace, var_names=["rate"])["rate"]
 
         fig, ax = plt.subplots(figsize=(10, 4))
         ax.bar(disaster_years, disasters_array, color="#154A72", alpha=0.35, width=0.8)
@@ -1963,7 +1961,11 @@ def _(disaster_years, disasters_array):
             label="Posterior mean rate",
         )
         ax.fill_between(
-            disaster_years, rate_hdi[:, 0], rate_hdi[:, 1], color="firebrick", alpha=0.2
+            disaster_years,
+            rate_eti.sel(ci_bound="lower"),
+            rate_eti.sel(ci_bound="upper"),
+            color="firebrick",
+            alpha=0.2,
         )
         ax.set_xlabel("Year")
         ax.set_ylabel("Disaster count / rate")

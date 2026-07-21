@@ -1680,7 +1680,9 @@ def _():
         _ax.text(_v + 1, _i, str(_v), va="center")
     _ax.set_xlabel("Number of recipients")
     _ax.set_xlim(0, n_emails + 8)
-    _ax.set_title(f"Email campaign: {observed_conversions} of {n_emails} recipients converted")
+    _ax.set_title(
+        f"Email campaign: {observed_conversions} of {n_emails} recipients converted"
+    )
     _fig.tight_layout()
 
     mo.vstack(
@@ -1763,7 +1765,9 @@ def show_prior_predictive_check(prior_trace, n_emails):
 
     az.plot_dist(prior_trace, group="prior_predictive", var_names=["y"], kind="hist")
     fig_counts = plt.gcf()
-    fig_counts.axes[0].axvline(observed_k, color="C1", lw=2, label=f"observed = {observed_k}")
+    fig_counts.axes[0].axvline(
+        observed_k, color="C1", lw=2, label=f"observed = {observed_k}"
+    )
     fig_counts.axes[0].set_title(f"Prior predictive conversions (out of {n_emails})")
     fig_counts.axes[0].legend()
 
@@ -1840,7 +1844,7 @@ def _():
     mo.md(r"""
     ### `pz.maxent()`: Maximum Entropy Priors
 
-    If you know that 95% of values should fall between two bounds, `pz.maxent` finds the "least informative" (maximum entropy) distribution consistent with that constraint.
+    If you know that, say, 94% of values should fall between two bounds (PreliZ's default mass), `pz.maxent` finds the "least informative" (maximum entropy) distribution consistent with that constraint.
     """)
     return
 
@@ -1855,7 +1859,7 @@ def _():
 
 @app.cell
 def _():
-    # Example: response time in ms — we think 94% are between 50ms and 2000ms
+    # Example: response time in ms; we think 94% are between 50ms and 2000ms
     maxent_lognormal_dist = pz.LogNormal()
     pz.maxent(maxent_lognormal_dist, lower=50, upper=2000, mass=0.94)
     return

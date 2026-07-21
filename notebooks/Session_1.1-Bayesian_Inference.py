@@ -522,24 +522,18 @@ def _(beta_binom_model):
 
 @app.cell(hide_code=True)
 def _(prior_samples_ab):
-    prior_pred_counts = prior_samples_ab.prior_predictive["obs"].values.flatten()
-
-    fig, ax = plt.subplots(figsize=(7, 3))
-    ax.hist(prior_pred_counts, bins=range(0, 102, 2), alpha=0.7)
-    ax.axvline(8, color="C1", linestyle="--", label="Observed (k = 8)")
-    ax.set_xticks(range(0, 101, 10))
-    ax.set_xlabel("Number of conversions (out of 100)")
-    ax.set_ylabel("Frequency")
-    ax.set_title("Prior Predictive Check")
-    ax.legend()
-    fig.tight_layout()
+    _pc = az.plot_dist(prior_samples_ab, group="prior_predictive", kind="hist")
+    _ax = _pc.viz["plot"]["obs"].item()
+    _ax.axvline(8, color="C1", linestyle="--", label="Observed (k = 8)")
+    _ax.set_xlabel("Number of conversions (out of 100)")
+    _ax.legend()
 
     mo.vstack(
         [
             mo.md(
-                "The histogram shows the distribution of conversion counts implied by the Beta(2, 5) prior, applied to a campaign of n = 100 recipients: for each draw of `conversion_rate` from the prior, simulate one count from `Binomial(100, conversion_rate)`. The dashed line marks the value we actually observed (k = 8). Because the prior is broad, the predictive distribution covers a wide range of plausible counts, but it doesn't put weight on absurd values, so the prior isn't ruling out anything reasonable before we fit."
+                "The histogram, drawn with `az.plot_dist`, shows the distribution of conversion counts implied by the Beta(2, 5) prior, applied to a campaign of n = 100 recipients: for each draw of `conversion_rate` from the prior, simulate one count from `Binomial(100, conversion_rate)`. The dashed line marks the value we actually observed (k = 8). Because the prior is broad, the predictive distribution covers a wide range of plausible counts, but it doesn't put weight on absurd values, so the prior isn't ruling out anything reasonable before we fit."
             ),
-            fig,
+            _pc.viz["figure"].item(),
         ]
     )
     return
@@ -565,27 +559,16 @@ def _(beta_binom_model):
 
 @app.cell(hide_code=True)
 def _(ab_trace):
-    def plot_posterior_conversion_rate():
-        fig, ax = plt.subplots(figsize=(7, 2.5))
-        samples = ab_trace.posterior["conversion_rate"].values.flatten()
-        _grid, _pdf, _ = az.kde(samples)
-        ax.plot(_grid, _pdf)
-        ax.set_xlabel("Conversion rate")
-        ax.set_ylabel("Density")
-        ax.set_title("Posterior: Conversion Rate")
-        fig.tight_layout()
-        return fig
-
-    posterior_cr_fig = plot_posterior_conversion_rate()
+    _pc = az.plot_dist(ab_trace, var_names=["conversion_rate"])
 
     mo.vstack(
         [
             mo.md("""
             The posterior distribution represents what we believe **after seeing the data**. It's centered near the observed conversion rate of 8%, but it's pulled slightly toward the prior mean of 0.29, a small amount of shrinkage, because with only 100 trials the prior still has a little influence.
 
-            The 94% HDI (highest density interval) gives us a direct probability statement: there is a 94% chance that the true conversion rate lies in this range, *subject to the assumptions of the model*: for example, that the conversion rate doesn't change over time, and that recipients respond independently. This is a stronger claim than a frequentist 94% confidence interval, which is a statement about the long-run coverage of an interval procedure rather than about the parameter itself.
+            The bar beneath the density is the 89% ETI (equal-tailed interval), ArviZ's default credible interval. It gives us a direct probability statement: there is an 89% chance that the true conversion rate lies in this range, *subject to the assumptions of the model*: for example, that the conversion rate doesn't change over time, and that recipients respond independently. This is a stronger claim than a frequentist 89% confidence interval, which is a statement about the long-run coverage of an interval procedure rather than about the parameter itself.
             """),
-            posterior_cr_fig,
+            _pc.viz["figure"].item(),
         ]
     )
     return
@@ -619,6 +602,7 @@ def _(ab_data_A, ab_data_B):
     with pm.Model() as ab_model:
         cr_A = pm.Beta("conversion_rate_A", alpha=2, beta=5)
         cr_B = pm.Beta("conversion_rate_B", alpha=2, beta=5)
+        pm.Deterministic("uplift", cr_B - cr_A)
         pm.Binomial("obs_A", p=cr_A, n=ab_data_A["n"], observed=ab_data_A["k"])
         pm.Binomial("obs_B", p=cr_B, n=ab_data_B["n"], observed=ab_data_B["k"])
 
@@ -629,42 +613,19 @@ def _(ab_data_A, ab_data_B):
 
 @app.cell(hide_code=True)
 def _(ab_test_trace):
-    def plot_ab_comparison():
-        posterior = az.extract(ab_test_trace)
-        samples_A = posterior["conversion_rate_A"].values
-        samples_B = posterior["conversion_rate_B"].values
+    _pc = az.plot_dist(ab_test_trace)
+    _pc.viz["plot"]["uplift"].item().axvline(0, color="gray", linestyle="--", alpha=0.5)
 
-        fig, axes = plt.subplots(1, 2, figsize=(12, 3))
-
-        # Plot overlapping posteriors
-        _g_a, _p_a, _ = az.kde(samples_A)
-        axes[0].plot(_g_a, _p_a, label="A")
-        _g_b, _p_b, _ = az.kde(samples_B)
-        axes[0].plot(_g_b, _p_b, color="C1", label="B")
-        axes[0].set_xlabel("Conversion Rate")
-        axes[0].set_title("Posterior Distributions")
-        axes[0].legend()
-
-        # Plot the difference
-        diff = samples_B - samples_A
-        _g_d, _p_d, _ = az.kde(diff)
-        axes[1].plot(_g_d, _p_d)
-        axes[1].axvline(x=0, color="gray", linestyle="--", alpha=0.5)
-        axes[1].set_xlabel("B - A")
-        axes[1].set_title("Posterior Difference (B - A)")
-
-        plt.tight_layout()
-
-        p_B_better = (samples_B > samples_A).mean()
-        return fig, p_B_better
-
-    ab_compare_fig, ab_p_B_better = plot_ab_comparison()
+    ab_uplift = az.extract(ab_test_trace)["uplift"].values
+    ab_p_B_better = float((ab_uplift > 0).mean())
 
     mo.vstack(
         [
-            ab_compare_fig,
+            _pc.viz["figure"].item(),
             mo.md(f"""
             **Probability that B is better than A:** {ab_p_B_better:.1%}
+
+            The `pm.Deterministic` in the model records the uplift (the difference in conversion rates, B − A) in the trace, so `az.plot_dist` summarizes it alongside the two rates themselves.
 
             Rather than a binary hypothesis test, we get the full **distribution** of possible differences. We know *how different* the conversion rates are, not just *whether* they are different.
 
@@ -781,32 +742,16 @@ def _(radon_model):
 
 @app.cell(hide_code=True)
 def _(radon_prior):
-    prior_pred_y = radon_prior.prior_predictive["y"].values.flatten()
-
-    radon_prior_fig = go.Figure()
-    radon_prior_fig.add_trace(
-        go.Histogram(
-            x=np.clip(prior_pred_y, -50, 50),
-            nbinsx=80,
-            histnorm="probability density",
-            marker_color="#154A72",
-            opacity=0.6,
-            name="Prior predictive",
-        )
-    )
-    radon_prior_fig.update_layout(
-        title="Prior Predictive Check: Simulated Radon Measurements",
-        xaxis_title="log(radon)",
-        yaxis_title="Density",
-        width=700,
-        height=350,
-    )
+    _pc = az.plot_ppc_dist(radon_prior, group="prior_predictive")
+    _ax = _pc.viz["plot"]["y"].item()
+    _ax.set_xlim(-50, 50)
+    _ax.set_xlabel("log(radon)")
 
     mo.vstack(
         [
-            radon_prior_fig,
+            _pc.viz["figure"].item(),
             mo.md("""
-        The prior predictive shows what data we'd expect **before** seeing real measurements.
+        The prior predictive shows what data we'd expect **before** seeing real measurements: each light curve in the `az.plot_ppc_dist` output is a simulated dataset from one prior draw (the axis is truncated at ±50 so the bulk is visible).
         With wide priors, the simulated range is enormous, but it includes the plausible range, so the priors aren't ruling out reasonable values.
         """),
         ]
@@ -824,25 +769,17 @@ def _(radon_model):
 
 @app.cell(hide_code=True)
 def _(radon_trace):
-    def plot_radon_posterior():
-        fig, ax = plt.subplots(figsize=(8, 2.5))
-        _mu = radon_trace.posterior["mu"].values.flatten()
-        _grid, _pdf, _ = az.kde(_mu)
-        ax.plot(_grid, _pdf)
-        ax.axvline(np.log(4), color="C1", linestyle="--", label="log(4 pCi/L)")
-        ax.legend()
-        ax.set_title("Posterior: Mean Log-Radon (μ)")
-        fig.tight_layout()
-        return fig
-
-    radon_posterior_fig = plot_radon_posterior()
+    _pc = az.plot_dist(radon_trace, var_names=["mu"])
+    _ax = _pc.viz["plot"]["mu"].item()
+    _ax.axvline(np.log(4), color="C1", linestyle="--", label="log(4 pCi/L)")
+    _ax.legend()
 
     mu_samples = radon_trace.posterior["mu"].values.flatten()
     prob_above = float((mu_samples > np.log(4)).mean())
 
     mo.vstack(
         [
-            radon_posterior_fig,
+            _pc.viz["figure"].item(),
             mo.callout(
                 mo.md(f"""
             **P(μ > log(4)) = {prob_above:.1%}**, the probability that the *average* home in Hennepin County exceeds the EPA action level.
@@ -856,57 +793,26 @@ def _(radon_trace):
     return
 
 
+@app.cell
+def _(radon_model, radon_trace):
+    with radon_model:
+        radon_ppc = pm.sample_posterior_predictive(radon_trace, random_seed=RANDOM_SEED)
+    radon_ppc
+    return (radon_ppc,)
+
+
 @app.cell(hide_code=True)
-def _(radon_trace):
-    def plot_posterior_predictive_check():
-        posterior = az.extract(radon_trace)
-        mus = posterior["mu"].values
-        sigmas = posterior["sigma"].values
-        y_sim = stats.norm(loc=mus, scale=sigmas).rvs()
-
-        observed = radon_trace.observed_data["y"].values
-
-        x_grid = np.linspace(-3, 5, 300)
-        kde_obs = stats.gaussian_kde(observed)(x_grid)
-        kde_sim = stats.gaussian_kde(y_sim)(x_grid)
-
-        fig = go.Figure()
-        fig.add_trace(
-            go.Scatter(
-                x=x_grid,
-                y=kde_obs,
-                mode="lines",
-                name="Observed",
-                line=dict(color="#154A72", width=2.5),
-            )
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=x_grid,
-                y=kde_sim,
-                mode="lines",
-                name="Posterior predictive",
-                line=dict(color="#81C240", width=2.5, dash="dash"),
-            )
-        )
-        fig.update_layout(
-            title="Posterior Predictive Check",
-            xaxis_title="log(radon)",
-            yaxis_title="Density",
-            width=700,
-            height=350,
-        )
-        return fig
-
-    ppc_fig = plot_posterior_predictive_check()
+def _(radon_ppc):
+    _pc = az.plot_ppc_dist(radon_ppc)
+    _pc.viz["plot"]["y"].item().set_xlabel("log(radon)")
 
     mo.vstack(
         [
-            ppc_fig,
+            _pc.viz["figure"].item(),
             mo.md(r"""
-            The **posterior predictive distribution** is a third distribution type, alongside the prior and the posterior. It represents the distribution of new observations we'd expect if we ran the same experiment again, given our current beliefs about the parameters. In code: for each draw of $(\mu, \sigma)$ from the posterior, simulate one new observation from $\text{Normal}(\mu, \sigma)$.
+            The **posterior predictive distribution** is a third distribution type, alongside the prior and the posterior. It represents the distribution of new observations we'd expect if we ran the same experiment again, given our current beliefs about the parameters. `pm.sample_posterior_predictive` does exactly this: for each draw of $(\mu, \sigma)$ from the posterior, it simulates a new dataset from $\text{Normal}(\mu, \sigma)$. `az.plot_ppc_dist` then overlays the simulated datasets (light curves) on the observed data (dark curve).
 
-            It is our main tool for **model checking**: if the simulated data doesn't resemble the observed data, the model is misspecified. Here the two densities overlap closely, so the Normal likelihood is a reasonable fit for these measurements.
+            It is our main tool for **model checking**: if the simulated data doesn't resemble the observed data, the model is misspecified. Here the simulated densities track the observed one closely, so the Normal likelihood is a reasonable fit for these measurements.
 
             The posterior predictive is wider than the posterior on $\mu$ because it combines **two distinct sources of uncertainty**:
 
@@ -955,15 +861,11 @@ def _():
             pm.Binomial("obs", p=p_weak, n=3, observed=3)
             weak_trace = pm.sample(random_seed=RANDOM_SEED)
 
-        fig, ax = plt.subplots(figsize=(7, 2.5))
-        samples = weak_trace.posterior["p"].values.flatten()
-        _grid, _pdf, _ = az.kde(samples)
-        ax.plot(_grid, _pdf)
+        pc = az.plot_dist(weak_trace, var_names=["p"])
+        ax = pc.viz["plot"]["p"].item()
         ax.set_xlabel("Batting average")
-        ax.set_ylabel("Density")
         ax.set_title("Posterior with Weak Prior Beta(2, 5)")
-        fig.tight_layout()
-        return fig
+        return pc.viz["figure"].item()
 
     weak_prior_fig = plot_weak_prior_batting()
 
@@ -1017,15 +919,11 @@ def _():
             pm.Binomial("obs", p=p_info, n=3, observed=3)
             info_trace = pm.sample(random_seed=RANDOM_SEED)
 
-        fig, ax = plt.subplots(figsize=(7, 2.5))
-        samples = info_trace.posterior["p"].values.flatten()
-        _grid, _pdf, _ = az.kde(samples)
-        ax.plot(_grid, _pdf)
+        pc = az.plot_dist(info_trace, var_names=["p"])
+        ax = pc.viz["plot"]["p"].item()
         ax.set_xlabel("Batting average")
-        ax.set_ylabel("Density")
         ax.set_title("Posterior with Informative Prior")
-        fig.tight_layout()
-        return fig
+        return pc.viz["figure"].item()
 
     info_prior_fig = plot_informative_prior_batting()
 
@@ -1142,9 +1040,8 @@ def _():
     Before looking at shrinkage, here is the informative prior implied by the
     fitted hierarchical model. First, the posterior densities of the
     hyperparameters `alpha` and `beta`, which land close to 7.5 and 23; then
-    raw draws from that `Beta(7.5, 23)` distribution itself, the
-    population-level batting-average curve every player's estimate gets
-    shrunk toward below.
+    the `Beta(7.5, 23)` distribution itself, the population-level
+    batting-average curve every player's estimate gets shrunk toward below.
     """)
     return
 
@@ -1157,7 +1054,7 @@ def _(baseline_trace):
 
 @app.cell
 def _():
-    plt.hist(pm.draw(pm.Beta.dist(7.5, 23), 1000), bins=50)
+    pz.Beta(7.5, 23).plot_pdf()
     return
 
 
@@ -1312,7 +1209,7 @@ def _(run_prior_sensitivity):
 @app.cell(hide_code=True)
 def _():
     def solution_prior_sensitivity():
-        results = {}
+        outputs = []
         for label, a, b in [
             ("Uniform Beta(1,1)", 1, 1),
             ("Informed Beta(2,20)", 2, 20),
@@ -1320,25 +1217,20 @@ def _():
             with pm.Model():
                 cr_a = pm.Beta("cr_A", a, b)
                 cr_b = pm.Beta("cr_B", a, b)
+                pm.Deterministic("uplift", cr_b - cr_a)
                 pm.Binomial("obs_A", p=cr_a, n=150, observed=12)
                 pm.Binomial("obs_B", p=cr_b, n=50, observed=8)
                 trace = pm.sample(random_seed=RANDOM_SEED)
-            post = az.extract(trace)
-            p_b_better = float((post["cr_B"].values > post["cr_A"].values).mean())
-            results[label] = (trace, p_b_better)
+            uplift = az.extract(trace)["uplift"].values
+            p_b_better = float((uplift > 0).mean())
 
-        fig, axes = plt.subplots(1, 2, figsize=(12, 3))
-        for idx, (label, (trace, p_win)) in enumerate(results.items()):
-            post = az.extract(trace)
-            grid_a, pdf_a, _ = az.kde(post["cr_A"].values)
-            axes[idx].plot(grid_a, pdf_a, label="A")
-            grid_b, pdf_b, _ = az.kde(post["cr_B"].values)
-            axes[idx].plot(grid_b, pdf_b, color="C1", label="B")
-            axes[idx].set_title(f"{label}\nP(B>A) = {p_win:.1%}")
-            axes[idx].set_xlabel("Conversion Rate")
-            axes[idx].legend()
-        fig.tight_layout()
-        return fig
+            pc = az.plot_dist(trace)
+            pc.viz["plot"]["uplift"].item().axvline(
+                0, color="gray", linestyle="--", alpha=0.5
+            )
+            outputs.append(mo.md(f"**{label}: P(B > A) = {p_b_better:.1%}**"))
+            outputs.append(pc.viz["figure"].item())
+        return mo.vstack(outputs)
 
     mo.accordion(
         {
@@ -1465,40 +1357,18 @@ def _(bandit_trace_v1):
         samples_B = trace.posterior["conversion_rate_B"].values.flatten()
         p_sup_B = float((samples_B > samples_A).mean())
 
-        # Smooth densities via Gaussian KDE
-        grid = np.linspace(0.0, 0.5, 400)
-        kde_A = stats.gaussian_kde(samples_A)(grid)
-        kde_B = stats.gaussian_kde(samples_B)(grid)
-
-        fig = go.Figure()
-        fig.add_trace(
-            go.Scatter(
-                x=grid,
-                y=kde_A,
-                name="A posterior",
-                line=dict(color=PYMC_BLUE, width=2),
-                fill="tozeroy",
-                fillcolor="rgba(21, 74, 114, 0.18)",
-            )
+        # Overlay both posteriors in one panel, colored by variable
+        pc = az.plot_dist(
+            trace,
+            cols=None,
+            aes={"color": ["__variable__"]},
+            visuals={"title": False},
         )
-        fig.add_trace(
-            go.Scatter(
-                x=grid,
-                y=kde_B,
-                name="B posterior",
-                line=dict(color=PYMC_GREEN, width=2),
-                fill="tozeroy",
-                fillcolor="rgba(129, 194, 64, 0.18)",
-            )
-        )
-        fig.update_layout(
-            title=title,
-            xaxis_title="conversion rate θ",
-            yaxis_title="density",
-            height=320,
-            margin=dict(l=40, r=20, t=50, b=40),
-        )
-        return fig, p_sup_B
+        pc.add_legend("__variable__")
+        ax = pc.viz["plot"].item()
+        ax.set_xlabel("conversion rate θ")
+        ax.set_title(title)
+        return pc.viz["figure"].item(), p_sup_B
 
     bandit_post_fig_v1, bandit_p_sup_B_v1 = plot_bandit_posteriors(
         bandit_trace_v1, "Posteriors after first batch (100 emails)"
@@ -1578,7 +1448,7 @@ def _(bandit_trace_v2, plot_bandit_posteriors):
         [
             bandit_post_fig_v2,
             mo.md(
-                f"After the second batch, the green curve has tightened around its true value and the posterior probability that **B converts better than A** has moved to **{bandit_p_sup_B_v2:.1%}**. If we kept looping (fit, re-allocate, send another batch, re-fit) the algorithm would send a larger and larger share of each new batch through B until it was effectively certain."
+                f"After the second batch, the curve for B has tightened around its true value and the posterior probability that **B converts better than A** has moved to **{bandit_p_sup_B_v2:.1%}**. If we kept looping (fit, re-allocate, send another batch, re-fit) the algorithm would send a larger and larger share of each new batch through B until it was effectively certain."
             ),
         ]
     )

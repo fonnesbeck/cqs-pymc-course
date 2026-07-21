@@ -2043,7 +2043,7 @@ def _():
     Kalman smoother handles those NaNs the same way it handles missing
     GPS in the earlier tunnel example: skip the measurement update,
     propagate state via the dynamics, narrow back up when the next
-    observation arrives. The widening of the HDI ribbon during the
+    observation arrives. The widening of the ETI ribbon during the
     gap is the posterior telling you exactly how much it lost from
     those missing observations.
 
