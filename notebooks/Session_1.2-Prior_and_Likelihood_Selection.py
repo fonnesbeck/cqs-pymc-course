@@ -1596,9 +1596,9 @@ def _(informed_prior, prior_pred_log_toggle, vague_prior):
         use_log = prior_pred_log_toggle.value
 
         # Collect both datasets
-        vague_y = vague_prior.prior["y"].values.flatten()
+        vague_y = vague_prior["prior"]["y"].values.flatten()
         vague_y = vague_y[np.isfinite(vague_y) & (vague_y > 0)]
-        informed_y = informed_prior.prior["y"].values.flatten()
+        informed_y = informed_prior["prior"]["y"].values.flatten()
         informed_y = informed_y[np.isfinite(informed_y) & (informed_y > 0)]
 
         # Reference lines for scale
@@ -1757,9 +1757,9 @@ def _(exercise_uninformative_prior, run_uninformative_prior):
 
 @app.function(hide_code=True)
 def show_prior_predictive_check(prior_trace, n_emails):
-    observed_k = int(prior_trace.observed_data["y"])
-    p = prior_trace.prior["p"].values.flatten()
-    y = prior_trace.prior_predictive["y"].values.flatten()
+    observed_k = int(prior_trace["observed_data"]["y"])
+    p = prior_trace["prior"]["p"].values.flatten()
+    y = prior_trace["prior_predictive"]["y"].values.flatten()
     extreme = float(np.mean((p < 0.02) | (p > 0.98)))
     all_or_nothing = float(np.mean((y == 0) | (y == n_emails)))
 
@@ -1789,6 +1789,20 @@ def show_prior_predictive_check(prior_trace, n_emails):
             "conversions over a plausible range that comfortably includes the observed count."
         )
     return mo.vstack([mo.md(verdict), fig_counts, fig_p])
+
+
+@app.cell(hide_code=True)
+def _(n_emails, observed_conversions):
+    def solution_uninformative_prior():
+        with pm.Model():
+            logit_p = pm.Normal("logit_p", mu=0, sigma=1.6)
+            p = pm.Deterministic("p", pm.math.invlogit(logit_p))
+            pm.Binomial("y", n=n_emails, p=p, observed=observed_conversions)
+            prior_trace = pm.sample_prior_predictive(2000, random_seed=42)
+        return prior_trace
+
+    return (solution_uninformative_prior,)
+
 
 
 @app.cell(hide_code=True)
@@ -2183,6 +2197,8 @@ def _():
     - The choice of prior matters most with small data
     - **LKJ distribution** for correlation matrix priors
 
+    Next, in **Session 2.1**, we will turn these choices into computational graphs and learn the PyTensor and PyMC distribution APIs used to express them.
+
     ---
 
     <div style="text-align: center; color: #888; font-size: 0.85rem; padding-top: 1rem;">
@@ -2192,17 +2208,6 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
-def _(n_emails, observed_conversions):
-    def solution_uninformative_prior():
-        with pm.Model():
-            logit_p = pm.Normal("logit_p", mu=0, sigma=1.6)
-            p = pm.Deterministic("p", pm.math.invlogit(logit_p))
-            pm.Binomial("y", n=n_emails, p=p, observed=observed_conversions)
-            prior_trace = pm.sample_prior_predictive(2000, random_seed=42)
-        return prior_trace
-
-    return (solution_uninformative_prior,)
 
 
 if __name__ == "__main__":

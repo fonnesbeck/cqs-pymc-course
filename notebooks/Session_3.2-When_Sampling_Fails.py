@@ -25,7 +25,6 @@ with app.setup:
 
     data_path = Path(__file__).parent / "data"
     RANDOM_SEED = 20090425
-    RNG = np.random.default_rng(RANDOM_SEED)
     warnings.filterwarnings("ignore", module="mkl_fft")
     warnings.filterwarnings("ignore", category=RuntimeWarning)
     warnings.filterwarnings("ignore", category=UserWarning)
@@ -340,7 +339,7 @@ def _():
 
     Divergences are NUTS telling you that the sampler is systematically *under-exploring* some region of the posterior, which potentially **biases your inference**, not just makes it noisier.
 
-    For example: Our baseline model used a Normal likelihood, which assumes symmetric, light-tailed noise. What if the data has outliers? A **Student-t likelihood** (as we saw in our discussion of likelihoods) is more robust, but it introduces a degrees-of-freedom parameter `nu` that can create difficult **posterior geometry**.
+    For example: Our baseline model used a Normal likelihood, which assumes symmetric, light-tailed noise. What if the data has outliers? A **Student-t likelihood** (as we saw in our discussion of likelihoods) is more robust, but it introduces a degrees-of-freedom parameter `nu` that can create difficult **posterior geometry**. We use `nu ~ Exponential(lam=1 / 30)`, whose mean is 30.
     """)
     return
 
@@ -376,7 +375,7 @@ def _():
 
 @app.cell
 def _(robust_trace):
-    robust_trace.sample_stats["diverging"]
+    robust_trace["sample_stats"]["diverging"]
     return
 
 
@@ -454,7 +453,7 @@ def _(body_mass_kg, flipper_length_std):
 
 @app.cell
 def _(robust_trace_fixed):
-    _divergences_fixed = robust_trace_fixed.sample_stats["diverging"].values.sum()
+    _divergences_fixed = robust_trace_fixed["sample_stats"]["diverging"].values.sum()
     mo.md(f"Divergences with `target_accept=0.95`: **{_divergences_fixed}**")
     az.summary(robust_trace_fixed, var_names=["nu"])
     return
@@ -501,7 +500,7 @@ def _(body_mass_kg):
         return model
 
     with build_mixed_sampler():
-        mixed_trace = pm.sample(2000, random_seed=RANDOM_SEED)
+        mixed_trace = pm.sample(2000, random_seed=RANDOM_SEED, cores=1)
     return (mixed_trace,)
 
 

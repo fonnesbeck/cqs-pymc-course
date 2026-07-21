@@ -299,7 +299,7 @@ def random_generation():
     rng = np.random.default_rng(seed=42)
     uniform_samples = rng.uniform(0, 1, size=5)
     normal_samples = rng.normal(loc=0, scale=1, size=5)
-    return normal_samples, rng, uniform_samples
+    return normal_samples, uniform_samples
 
 
 @app.cell(hide_code=True)
@@ -402,9 +402,10 @@ def _():
 
 
 @app.cell
-def plotting_plotly(rng):
+def plotting_plotly():
+    plotly_rng = np.random.default_rng(seed=43)
     scatter_x = np.linspace(0, 4 * np.pi, 200)
-    scatter_y = np.sin(scatter_x) + rng.normal(0, 0.2, size=len(scatter_x))
+    scatter_y = np.sin(scatter_x) + plotly_rng.normal(0, 0.2, size=len(scatter_x))
 
     scatter_fig = px.scatter(
         x=scatter_x,
@@ -428,8 +429,9 @@ def plotting_plotly(rng):
 
 
 @app.cell
-def plotting_matplotlib(rng):
-    hist_samples = rng.normal(loc=5, scale=2, size=1000)
+def plotting_matplotlib():
+    matplotlib_rng = np.random.default_rng(seed=44)
+    hist_samples = matplotlib_rng.normal(loc=5, scale=2, size=1000)
 
     hist_fig, hist_ax = plt.subplots(figsize=(7, 3.5))
     hist_ax.hist(
@@ -611,9 +613,10 @@ def _():
 
 
 @app.cell
-def law_of_large_numbers(rng):
+def law_of_large_numbers():
+    lln_rng = np.random.default_rng(seed=45)
     lln_n_rolls = 5000
-    lln_rolls = rng.integers(1, 7, size=lln_n_rolls)
+    lln_rolls = lln_rng.integers(1, 7, size=lln_n_rolls)
     lln_cumulative_mean = np.cumsum(lln_rolls) / np.arange(1, lln_n_rolls + 1)
 
     lln_fig = go.Figure()
@@ -653,11 +656,12 @@ def _():
 
 
 @app.cell
-def central_limit_theorem(rng):
+def central_limit_theorem():
+    clt_rng = np.random.default_rng(seed=46)
     clt_n_per_mean = 30
     clt_n_means = 2000
 
-    clt_exp_samples = rng.exponential(scale=2.0, size=(clt_n_means, clt_n_per_mean))
+    clt_exp_samples = clt_rng.exponential(scale=2.0, size=(clt_n_means, clt_n_per_mean))
     clt_sample_means = clt_exp_samples.mean(axis=1)
 
     clt_fig = px.histogram(
@@ -886,92 +890,12 @@ def solution_2_render(show_solution_2, sol2_exact_rate, sol2_mc_rate):
     return
 
 
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    ### Exercise 3: Explore a Distribution Interactively
-
-    Use the sliders below to explore the Beta distribution: an important distribution in Bayesian inference for modeling probabilities.
-
-    The Beta distribution has two parameters, $\alpha$ and $\beta$:
-
-    - $\alpha = \beta = 1$: uniform on [0, 1]
-    - $\alpha > \beta$: skewed toward 1
-    - $\alpha < \beta$: skewed toward 0
-    - Large $\alpha$ and $\beta$: concentrated around $\frac{\alpha}{\alpha + \beta}$
-    """)
-    return
-
-
-@app.cell
-def _():
-    alpha_slider = mo.ui.slider(0.1, 20, value=2, step=0.1, label="alpha")
-    beta_slider = mo.ui.slider(0.1, 20, value=5, step=0.1, label="beta")
-    mo.hstack([alpha_slider, beta_slider], gap=2)
-    return alpha_slider, beta_slider
-
-
-@app.cell
-def beta_explorer(alpha_slider, beta_slider):
-    beta_alpha = alpha_slider.value
-    beta_beta = beta_slider.value
-
-    beta_x = np.linspace(0, 1, 300)
-    beta_pdf = stats.beta.pdf(beta_x, beta_alpha, beta_beta)
-    beta_mean = beta_alpha / (beta_alpha + beta_beta)
-
-    beta_fig = go.Figure()
-    beta_fig.add_trace(
-        go.Scatter(
-            x=beta_x,
-            y=beta_pdf,
-            mode="lines",
-            fill="tozeroy",
-            line=dict(color=PYMC_BLUE, width=2),
-        )
-    )
-    beta_fig.add_vline(
-        x=beta_mean,
-        line=dict(color=PYMC_GREEN, dash="dash"),
-        annotation_text=f"mean={beta_mean:.3f}",
-    )
-    beta_fig.update_layout(
-        title=f"Beta(alpha={beta_alpha:.1f}, beta={beta_beta:.1f})",
-        xaxis_title="x",
-        yaxis_title="Density",
-        width=700,
-        height=400,
-    )
-    return beta_alpha, beta_beta, beta_fig, beta_mean
-
-
-@app.cell(hide_code=True)
-def beta_explorer_render(beta_alpha, beta_beta, beta_fig, beta_mean):
-    beta_variance = (beta_alpha * beta_beta) / (
-        (beta_alpha + beta_beta) ** 2 * (beta_alpha + beta_beta + 1)
-    )
-    beta_mode = (
-        max(0.0, (beta_alpha - 1) / (beta_alpha + beta_beta - 2))
-        if beta_alpha > 1 and beta_beta > 1
-        else float("nan")
-    )
-    mo.vstack(
-        [
-            beta_fig,
-            mo.md(
-                f"**Mean:** {beta_mean:.4f} &nbsp; | &nbsp; "
-                f"**Variance:** {beta_variance:.4f} &nbsp; | &nbsp; "
-                f"**Mode:** {beta_mode:.4f} (when alpha, beta > 1)"
-            ),
-        ]
-    )
-    return
 
 
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ### Exercise 4: Bayesian Updating by Simulation
+    ### Exercise 3: Bayesian Updating by Simulation
 
     You're testing whether a coin is fair. Your prior belief is that $\theta$ (the probability of heads) follows a $\text{Beta}(2, 2)$ distribution: slightly concentrated around 0.5 but open to other values.
 

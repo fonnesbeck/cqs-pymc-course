@@ -42,7 +42,6 @@ with app.setup:
 
     data_path = Path(__file__).parent / "data"
     RANDOM_SEED = 20090425
-    RNG = np.random.default_rng(RANDOM_SEED)
     warnings.filterwarnings("ignore", module="mkl_fft")
     warnings.filterwarnings("ignore", category=RuntimeWarning)
     warnings.filterwarnings("ignore", category=UserWarning)
@@ -61,9 +60,9 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## 0. Warm-up: two `trace` objects in the wild
+    ## 0. Warm-up: two ArviZ `DataTree` objects in the wild
 
-    Before we build anything, here are two `trace` objects handed to you by a colleague. They came from two different models fit to the penguin data. Your job, working in pairs: figure out **which one you would trust**, and explain why, using only the objects themselves.
+    Before we build anything, here are two ArviZ `DataTree` objects, named `trace_a` and `trace_b`, handed to you by a colleague. They came from two different models fit to the penguin data. Your job, working in pairs: figure out **which one you would trust**, and explain why, using only the objects themselves.
 
     You have not yet been told what to look for. That is the point. Explore.
     """)
@@ -110,16 +109,16 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ### Stage 1 — Meet the objects
+    ### Stage 1 — Meet the DataTrees
 
     Get your bearings. For each prompt, write a one-liner in the empty cell below and look at the output:
 
-    1. Type `trace_a` and `trace_b` on their own lines. What groups does each one contain? Are they the same?
+    1. Type `trace_a` and `trace_b` on their own lines. What groups does each DataTree contain? Are they the same?
     2. How many `chain`s and `draw`s are in each `posterior`?
     3. What are the parameter names in each? Which parameters do they share?
     4. Find where the observed penguin mass lives, the same penguin measurements
        you met in Session 1.2, now used in a regression of body mass on flipper length.
-    5. Look at `trace_a.sample_stats` and `trace_b.sample_stats`. List three variables you see in each.
+    5. Look at `trace_a["sample_stats"]` and `trace_b["sample_stats"]`. List three variables you see in each.
     """)
     return
 
@@ -446,9 +445,9 @@ def _(baseline_model):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ### The InferenceData object
+    ### The ArviZ DataTree
 
-    The result of `pm.sample()` is an `InferenceData` object, a container built on top of xarray that holds everything about the sampling run, organized into groups like `posterior`, `sample_stats`, and `observed_data`.
+    The result of `pm.sample()` is an ArviZ `DataTree`, a container built on top of xarray that holds everything about the sampling run, organized into groups like `posterior`, `sample_stats`, and `observed_data`.
     """)
     return
 
@@ -469,7 +468,7 @@ def _():
 
 @app.cell
 def _(nuts_trace):
-    nuts_trace.posterior
+    nuts_trace["posterior"]
     return
 
 
@@ -483,7 +482,7 @@ def _():
 
 @app.cell
 def _(nuts_trace):
-    nuts_trace.sample_stats
+    nuts_trace["sample_stats"]
     return
 
 
@@ -497,7 +496,7 @@ def _():
 
 @app.cell
 def _(nuts_trace):
-    nuts_trace.observed_data
+    nuts_trace["observed_data"]
     return
 
 
@@ -1691,6 +1690,7 @@ def _(baseline_model):
         metropolis_trace = pm.sample(
             step=pm.Metropolis(),
             random_seed=RANDOM_SEED,
+            cores=1,
         )
     return (metropolis_trace,)
 
@@ -1698,7 +1698,7 @@ def _(baseline_model):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Notice that `pm.sample` drew **multiple chains** by default. MCMC is *embarassingly parallel* so we can easily use several computer cores to sample faster, in parallel.
+    Notice that `pm.sample` drew **multiple chains** by default. MCMC is *embarrassingly parallel*, so we can easily use several computer cores to sample faster in parallel.
     """)
     return
 
@@ -1879,7 +1879,7 @@ def _(metropolis_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Metropolis MCSE values are noticeably larger than NUTS: the same number of draws buys less precision because successive samples are correlated. `plot_mcse` visualises how MCSE changes across quantiles of the posterior.
+    Metropolis MCSE values are noticeably larger than NUTS: the same number of draws buys less precision because successive samples are correlated. `plot_mcse` visualizes how MCSE changes across quantiles of the posterior.
     """)
     return
 
@@ -1913,7 +1913,7 @@ def _(nuts_trace):
     _thinned_ess = az.ess(_thinned["beta"]).item()
 
     mo.md(f"""
-    Original draws: {nuts_trace.posterior.sizes["draw"]}
+    Original draws: {nuts_trace["posterior"].sizes["draw"]}
     Thinned draws:  {_thinned.sizes["draw"]}
 
     Original beta ESS: {_original_ess:.0f}
@@ -1945,7 +1945,7 @@ def _(nuts_trace):
     _fig = plt.gcf()
     _bfmi_ax, _energy_ax = _fig.axes[0], _fig.axes[1]
 
-    _n_chains = nuts_trace.posterior.sizes["chain"]
+    _n_chains = nuts_trace["posterior"].sizes["chain"]
     _bfmi_ax.set_yticks(range(_n_chains))
     _bfmi_ax.set_ylim(-0.5, _n_chains - 0.5)
     for _coll in _bfmi_ax.collections:

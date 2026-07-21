@@ -307,7 +307,7 @@ def _():
 
 @app.cell(hide_code=True)
 def _(B, age, knot_list, spline_trace):
-    wp = spline_trace.posterior["w"].mean(("chain", "draw")).values
+    wp = spline_trace["posterior"]["w"].mean(("chain", "draw")).values
 
     spline_weighted_df = (
         pd.DataFrame(B * wp.T)
@@ -1176,7 +1176,7 @@ def _():
 @app.cell
 def _(sim_model):
     with sim_model:
-        sim_post = pm.sample(nuts_sampler="nutpie", chains=2, random_seed=RANDOM_SEED)
+        sim_post = pm.sample(chains=2, random_seed=RANDOM_SEED)
     sim_post
     return (sim_post,)
 
@@ -1412,7 +1412,7 @@ def _(kopech_fb_spin, spin_X_pred, spin_rate_gp, spin_rate_model, spin_rate_trac
         _mu, _var = spin_rate_gp.predict(
             spin_X_pred,
             point=az.extract(
-                spin_rate_trace.posterior.sel(draw=[0], chain=[0])
+                spin_rate_trace["posterior"].sel(draw=[0], chain=[0])
             ).squeeze(),
             diag=True,
         )
@@ -1550,7 +1550,6 @@ def _(get_icm, multi_X, multi_y, n_outputs):
 def _(multi_spin_rate_model):
     with multi_spin_rate_model:
         multi_trace = pm.sample(
-            nuts_sampler="nutpie",
             chains=2,
             target_accept=0.9,
             random_seed=RANDOM_SEED,
@@ -1767,7 +1766,6 @@ def _(robust_X, robust_y):
 def _(robust_model):
     with robust_model:
         robust_trace = pm.sample(
-            nuts_sampler="nutpie",
             chains=2,
             random_seed=RANDOM_SEED,
         )
@@ -1796,7 +1794,7 @@ def _(robust_X, robust_f_true, robust_trace, robust_y):
     _fig = plt.figure(figsize=(12, 5))
     _ax = _fig.gca()
 
-    plot_gp_dist(_ax, robust_trace.posterior["f"].values[0], robust_X)
+    plot_gp_dist(_ax, robust_trace["posterior"]["f"].values[0], robust_X)
 
     _ax.plot(robust_X, robust_f_true, "dodgerblue", lw=3, label="True f")
     _ax.plot(robust_X, robust_y, "ok", ms=3, alpha=0.5, label="Observed data")
@@ -1814,7 +1812,7 @@ def _():
     mo.md(r"""
     ## Exercise: Latent Poisson GP for the coal-mining disasters
 
-    The exact `gp.Marginal` examples above assume Gaussian observation noise. Counts need a different likelihood: annual disaster totals are non-negative integers, so a Gaussian likelihood can predict impossible negative counts.
+    This dataset returns from Session 3.2, where it supported funnel diagnosis; here the target is a smooth latent log-rate. The exact `gp.Marginal` examples above assume Gaussian observation noise. Counts need a different likelihood: annual disaster totals are non-negative integers, so a Gaussian likelihood can predict impossible negative counts.
 
     For annual UK coal-mining disasters (1851–1961), model the **log disaster rate** with a latent Gaussian process and connect it to the observed counts with a Poisson likelihood:
 
@@ -2188,7 +2186,6 @@ def _(dense_X, dense_y):
 def _(sparse_model):
     with sparse_model:
         sparse_trace = pm.sample(
-            nuts_sampler="nutpie",
             chains=2,
             random_seed=RANDOM_SEED,
         )
@@ -2584,7 +2581,6 @@ def _(swing_decision_model):
             draws=2000,
             tune=3000,
             target_accept=0.97,
-            nuts_sampler="nutpie",
             chains=4,
             random_seed=RANDOM_SEED,
         )
@@ -2621,8 +2617,8 @@ def _(ages_unique, swing_decision_trace, swing_decisions):
 
     _f = (
         (
-            swing_decision_trace.posterior["intercept"]
-            + swing_decision_trace.posterior["f"]
+            swing_decision_trace["posterior"]["intercept"]
+            + swing_decision_trace["posterior"]["f"]
         )
         .sel(chain=0)
         .values
@@ -2720,7 +2716,6 @@ def _(strike_X, strike_y):
 def _(called_strike_model):
     with called_strike_model:
         strike_trace = pm.sample(
-            nuts_sampler="nutpie",
             chains=2,
             random_seed=RANDOM_SEED,
         )
@@ -2758,7 +2753,7 @@ def _(X_pred_strike, strike_preds):
         X_pred_strike[:, 0],
         X_pred_strike[:, 1],
         s=30,
-        c=strike_preds.posterior_predictive["p_strike"]
+        c=strike_preds["posterior_predictive"]["p_strike"]
         .mean(dim=("chain", "draw"))
         .to_numpy(),
         marker="s",
@@ -2771,95 +2766,6 @@ def _(X_pred_strike, strike_preds):
     return
 
 
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    ## Other GP Packages
-
-    There are a variety of Python libraries aside from PyMC that implement Gaussian processes. Here are a few:
-
-    - GPy
-    - GPflow
-    - GPyTorch
-    - scikit-learn
-    - PyStan
-    - Tensorflow Probability
-
-    For example, here is a GPyTorch implementation of a multi-output GP for estimating TrackMan biases in pitch velocity across venues. If you are familiar with Torch, the interface is the same.
-
-    ```python
-    class HadamardRandomEffectsModel(gpytorch.models.ExactGP):
-        def __init__(self, train_time, train_pitcher_indices, train_venue_indices, train_targets,
-                     num_pitchers, num_venues, likelihood):
-
-            super().__init__(
-                train_inputs=(train_time, train_pitcher_indices, train_venue_indices),
-                train_targets=train_targets,
-                likelihood=likelihood
-            )
-
-            # Parameters for pitcher effects
-            self.mu = torch.nn.Parameter(torch.randn(1))
-            self.tau = torch.nn.Parameter(torch.randn(1))
-
-            self.pitcher_effects = gpytorch.distributions.MultivariateNormal(
-                torch.ones(num_pitchers) * self.mu,
-                gpytorch.lazy.DiagLazyTensor(torch.ones(num_pitchers) * self.tau.pow(2.)))
-
-            # Parameters for venue trends
-            self.mean_module = gpytorch.means.ConstantMean()
-            self.covar_module = gpytorch.kernels.GridInterpolationKernel(
-                gpytorch.kernels.MaternKernel(nu=2.5),
-                grid_size=100, num_dims=1)
-            self.venue_covar_module = gpytorch.kernels.IndexKernel(num_tasks=num_venues, rank=1)
-            self.trend_covar_module = gpytorch.kernels.RBFKernel()
-
-        def forward(self, times, pitcher_indices, venue_indices):
-            time_mean = self.mean_module(times)
-            covar_x = self.covar_module(times)
-            covar_v = self.venue_covar_module(venue_indices)
-            covar_t = self.trend_covar_module(times)
-            time_covar = (covar_x.mul(covar_v) + covar_t).evaluate_kernel()
-
-            return gpytorch.distributions.MultivariateNormal(
-                time_mean + self.pitcher_effects[pitcher_indices.squeeze(-1)],
-                time_covar
-            )
-
-    likelihood = gpytorch.likelihoods.GaussianLikelihood()
-    model = HadamardRandomEffectsModel(X, pitcher_ind, venue_ind, y, P, V, likelihood)
-    ```
-
-    Note that here we are not "fully Bayesian", as we are not placing priors on the parameters of the model. This is a common approach in machine learning, where the focus is on predictive performance rather than inference.
-
-    But, the nice thing about using GPyTorch is that it is easy to fit the model using a fast GPU.
-
-    ```python
-    model = model.cuda()
-    likelihood = likelihood.cuda()
-
-    # Find optimal model hyperparameters
-    model.train()
-    likelihood.train()
-
-    # Use the Adam optimizer
-    optimizer = torch.optim.Adam([{'params': model.parameters()}], lr=0.1)
-
-    # "Loss" for GPs - the marginal log likelihood
-    mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
-
-    # Optimize!
-    for i in range(training_iterations):
-        optimizer.zero_grad()
-        output = model(X, pitcher_ind, venue_ind)
-        loss = -mll(output, y)
-        loss.backward()
-        if not i % 10:
-            print(f'Iter {i}/{training_iterations} - Loss: {loss.item()}')
-        optimizer.step()
-    ```
-    """)
-    return
 
 
 @app.cell(hide_code=True)
