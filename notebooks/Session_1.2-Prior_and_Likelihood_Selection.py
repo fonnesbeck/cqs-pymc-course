@@ -2196,6 +2196,7 @@ def _():
     - Use PreliZ (`pz.maxent`, `pz.mle`) for principled prior elicitation
     - The choice of prior matters most with small data
     - **LKJ distribution** for correlation matrix priors
+
     Next, in **Session 2.1**, we will turn these choices into computational graphs and learn the PyTensor and PyMC distribution APIs used to express them.
 
     ---
