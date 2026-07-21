@@ -1792,6 +1792,20 @@ def show_prior_predictive_check(prior_trace, n_emails):
 
 
 @app.cell(hide_code=True)
+def _(n_emails, observed_conversions):
+    def solution_uninformative_prior():
+        with pm.Model():
+            logit_p = pm.Normal("logit_p", mu=0, sigma=1.6)
+            p = pm.Deterministic("p", pm.math.invlogit(logit_p))
+            pm.Binomial("y", n=n_emails, p=p, observed=observed_conversions)
+            prior_trace = pm.sample_prior_predictive(2000, random_seed=42)
+        return prior_trace
+
+    return (solution_uninformative_prior,)
+
+
+
+@app.cell(hide_code=True)
 def _(n_emails, solution_uninformative_prior):
     mo.accordion(
         {
@@ -2182,6 +2196,7 @@ def _():
     - Use PreliZ (`pz.maxent`, `pz.mle`) for principled prior elicitation
     - The choice of prior matters most with small data
     - **LKJ distribution** for correlation matrix priors
+    Next, in **Session 2.1**, we will turn these choices into computational graphs and learn the PyTensor and PyMC distribution APIs used to express them.
 
     ---
 
@@ -2192,17 +2207,6 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
-def _(n_emails, observed_conversions):
-    def solution_uninformative_prior():
-        with pm.Model():
-            logit_p = pm.Normal("logit_p", mu=0, sigma=1.6)
-            p = pm.Deterministic("p", pm.math.invlogit(logit_p))
-            pm.Binomial("y", n=n_emails, p=p, observed=observed_conversions)
-            prior_trace = pm.sample_prior_predictive(2000, random_seed=42)
-        return prior_trace
-
-    return (solution_uninformative_prior,)
 
 
 if __name__ == "__main__":

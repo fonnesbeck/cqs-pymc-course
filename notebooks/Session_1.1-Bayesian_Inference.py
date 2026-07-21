@@ -219,14 +219,14 @@ def _():
 
     In digital marketing, A/B testing is used to evaluate the effect of different versions of an ad, web page, etc. More generally, it has the same structure as tests of medical treatments, public policy interventions, product design, and more.
 
-    As an example, suppose we test an email campaign that includes a promotional offer. We send version A to 100 people, and 8 of them accept the offer. So the observed conversion rate in this sample is 8%.
+    As an example, suppose we test an email campaign that includes a promotional offer. We send version A to 100 people, and 18 of them accept the offer, for an observed conversion rate of 18%. Later we will use a deliberately different campaign with 8 conversions out of 100 (8%); that scenario is not a revision of Campaign A's observations.
     """)
     return
 
 
 @app.cell
 def _():
-    campaign_A = dict(n=100, k=8)
+    campaign_A = dict(n=100, k=18)
     return (campaign_A,)
 
 
@@ -524,14 +524,14 @@ def _(beta_binom_model):
 def _(prior_samples_ab):
     _pc = az.plot_dist(prior_samples_ab, group="prior_predictive", kind="hist")
     _ax = _pc.viz["plot"]["obs"].item()
-    _ax.axvline(8, color="C1", linestyle="--", label="Observed (k = 8)")
+    _ax.axvline(18, color="C1", linestyle="--", label="Observed (k = 18)")
     _ax.set_xlabel("Number of conversions (out of 100)")
     _ax.legend()
 
     mo.vstack(
         [
             mo.md(
-                "The histogram, drawn with `az.plot_dist`, shows the distribution of conversion counts implied by the Beta(2, 5) prior, applied to a campaign of n = 100 recipients: for each draw of `conversion_rate` from the prior, simulate one count from `Binomial(100, conversion_rate)`. The dashed line marks the value we actually observed (k = 8). Because the prior is broad, the predictive distribution covers a wide range of plausible counts, but it doesn't put weight on absurd values, so the prior isn't ruling out anything reasonable before we fit."
+                "The histogram, drawn with `az.plot_dist`, shows the distribution of conversion counts implied by the Beta(2, 5) prior, applied to a campaign of n = 100 recipients: for each draw of `conversion_rate` from the prior, simulate one count from `Binomial(100, conversion_rate)`. The dashed line marks the value we actually observed (k = 18). Because the prior is broad, the predictive distribution covers a wide range of plausible counts, but it doesn't put weight on absurd values, so the prior isn't ruling out anything reasonable before we fit."
             ),
             _pc.viz["figure"].item(),
         ]
@@ -564,7 +564,7 @@ def _(ab_trace):
     mo.vstack(
         [
             mo.md("""
-            The posterior distribution represents what we believe **after seeing the data**. It's centered near the observed conversion rate of 8%, but it's pulled slightly toward the prior mean of 0.29, a small amount of shrinkage, because with only 100 trials the prior still has a little influence.
+            The posterior distribution represents what we believe **after seeing the data**. It's centered near Campaign A's observed conversion rate of 18%, but it is pulled slightly toward the prior mean of 0.29 because, with only 100 trials, the prior still has a little influence.
 
             The bar beneath the density is the 89% ETI (equal-tailed interval), ArviZ's default credible interval. It gives us a direct probability statement: there is an 89% chance that the true conversion rate lies in this range, *subject to the assumptions of the model*: for example, that the conversion rate doesn't change over time, and that recipients respond independently. This is a stronger claim than a frequentist 89% confidence interval, which is a statement about the long-run coverage of an interval procedure rather than about the parameter itself.
             """),
@@ -1282,7 +1282,7 @@ def _():
     mo.md(r"""
     First, a small helper that simulates running a campaign: it draws the number of conversions from a Binomial with the campaign's true rate, then adds the new emails sent and conversions to a running total. Each campaign is just a dictionary with its (unknown to the algorithm) true rate `p`, the cumulative number of emails sent `n`, and the cumulative number of conversions `k`.
 
-    Note that, unlike the original notebook example, `bandit_run_campaign` returns a *new* dictionary rather than mutating the one we pass in. This keeps the function safe to call from marimo's reactive cells, where re-running a cell that mutated state would silently double-count.
+    Returning a *new* dictionary rather than mutating the one we pass in keeps `bandit_run_campaign` safe to call from marimo's reactive cells: re-running a cell produces the same updated state instead of silently double-counting. This makes reruns idempotent.
     """)
     return
 
@@ -1732,6 +1732,22 @@ def _():
     | **Assignment** | 50/50 split of the mailing list | Shifts toward the better campaign |
     | **Regret** | High (many emails sent via the worse campaign) | Low (few wasted on the worse campaign) |
     | **When to use** | Strict statistical protocols | Optimising an ongoing email programme |
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ---
+
+    ## Summary
+
+    - **Sequential updating** carries each campaign's posterior forward as new conversions arrive.
+    - **A/B posterior comparison** quantifies both the likely uplift and the probability that one version converts better.
+    - **Adaptive allocation** uses those posterior beliefs to balance exploration and exploitation as a campaign runs.
+
+    Next, in **Session 1.2**, we will focus on the prior and likelihood choices that make these posterior updates meaningful.
     """)
     return
 
