@@ -86,3 +86,5 @@ Exited successfully after executing the notebook's two model fits and both poste
 - Source inspection finds exactly one `fill="tonexty"` and no `n_lines` or sampled-curve loop.
 - `timeout 180 pixi run marimo check notebooks/Session_2.2-Building_Models_with_PyMC.py` exited successfully, with the same non-fatal `markdown-indentation` warning.
 - `timeout 600 pixi run python notebooks/Session_2.2-Building_Models_with_PyMC.py` exited successfully. Its focused output contains `Sampling: [future_deaths]` twice, covering both the LD50 and dose-grid predictive paths.
+
+Review-fix commit: `30d33933a2eebd8b919c55d30e1b44f37b9bddbd` — `Refine Session 2.2 predictions`
