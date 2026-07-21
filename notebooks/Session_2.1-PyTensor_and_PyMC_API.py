@@ -9,12 +9,14 @@ with app.setup:
     import inspect
     from pathlib import Path
     import numpy as np
+    import polars as pl
     import plotly.express as px
     import plotly.graph_objects as go
     import plotly.io as pio
     import pymc as pm
     import pytensor
     import pytensor.tensor as pt
+    import pytensor.xtensor as ptx
     import arviz_plots as azp
     import io
 
@@ -41,6 +43,8 @@ with app.setup:
     pio.templates["course"] = pymc_template
     pio.templates.default = "plotly_white+course"
 
+    data_path = Path(__file__).parent / "data"
+
 
 @app.cell(hide_code=True)
 def header():
@@ -57,7 +61,7 @@ def header():
     mo.md(f"""
     # Session 2.1: PyTensor and the PyMC API
 
-    In this session we look under PyMC's hood. PyMC is built on **PyTensor**, a library for defining and compiling computational graphs. We'll learn just enough PyTensor to read the graphs PyMC builds, then use that lens to understand what a PyMC model actually *is*, and tour the parts of the PyMC API you'll use in every model: distributions, `logp` and `draw`, `pm.math`, and the model-debugging toolkit.
+    In this session we look under PyMC's hood. PyMC is built on **PyTensor**, a library for defining and compiling computational graphs. We'll learn just enough PyTensor to read the graphs PyMC builds, then use that lens to understand what a PyMC model actually *is*, and tour the parts of the PyMC API you'll use in every model: distributions, shapes and `dims`, `logp` and `draw`, gradients, `pm.math`, and the model-debugging toolkit.
 
     ## PyTensor Basics
 
@@ -166,9 +170,7 @@ def _():
 
 @app.cell(hide_code=True)
 def _(w):
-    buf = io.StringIO()
-    w.dprint(file=buf)
-    mo.md(f"```\n{buf.getvalue()}```")
+    w.dprint()
     return
 
 
@@ -229,6 +231,8 @@ def _():
     mo.callout(
         mo.md(r"""
     **TIP:** Sometimes we just want to debug, we can use `pytensor.graph.basic.Variable.eval` for that:
+
+    `eval` compiles behind the scenes the first time you call it, so it is perfect for spot checks but wasteful in a loop. When you need repeated evaluation, compile once with `pytensor.function` and reuse the result.
     """),
         kind="info",
     )
@@ -316,6 +320,74 @@ def _():
 
     When PyMC compiles your model's log-probability, all of these rewrites are applied automatically; you get the optimized, stabilized graph without asking for it.
     """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    We can watch one of these stability rewrites happen. Build the naive expression `log(1 + p)`; the raw graph faithfully records an `Add` followed by a `Log`:
+    """)
+    return
+
+
+@app.cell
+def _():
+    p = pt.tensor(shape=(), name="p")
+    naive_log = pt.log(1 + p)
+    naive_log.dprint()
+    return naive_log, p
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Compile it, and the rewrite has fired: the addition and logarithm are gone, replaced by a single `Log1p` node.
+    """)
+    return
+
+
+@app.cell
+def _(naive_log, p):
+    log1p_fn = pytensor.function(inputs=[p], outputs=naive_log)
+    log1p_fn.dprint()
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ### Automatic Differentiation
+
+    Here is the real payoff of building graphs instead of computing eagerly: PyTensor can **differentiate** them. `pt.grad` takes the graph of a scalar expression and returns a *new graph* that computes its derivative, exactly (no finite differences), by applying the chain rule node by node.
+
+    This one feature is what makes modern Bayesian inference practical. The NUTS sampler you will meet in Session 3.1 needs the gradient of the model's joint log-probability at every step of every trajectory; PyMC derives those gradients automatically from the graph your model builds.
+    """)
+    return
+
+
+@app.cell
+def _():
+    s = pt.tensor(shape=(), name="s")
+    loss = s**2 + pt.sin(s)
+    dloss = pt.grad(loss, wrt=s)
+
+    dloss_fn = pytensor.function(inputs=[s], outputs=dloss)
+    dloss_fn.dprint()
+    return (dloss_fn,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    The compiled derivative graph is exactly what you would have written by hand, $2s + \cos(s)$, fused into a single `Composite` node. It evaluates like any other compiled function:
+    """)
+    return
+
+
+@app.cell
+def _(dloss_fn):
+    dloss_fn(0.0), dloss_fn(np.pi)
     return
 
 
@@ -450,6 +522,60 @@ def _(model, z_logp):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    And because the joint log-probability is itself a graph, `pt.grad` applies to it too. `model.compile_dlogp()` compiles the gradient of the joint log-density with respect to every free variable. This is precisely the function that gradient-based samplers like NUTS call over and over during sampling; for our $\text{Normal}(0, 5)$ the analytic answer is $-z/\sigma^2 = -2.5/25$:
+    """)
+    return
+
+
+@app.cell
+def _(model):
+    model.compile_dlogp()({"z": 2.5})
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ### The Model's Bookkeeping
+
+    The `Model` context records more than names. Three attributes expose the machinery that inference algorithms rely on:
+
+    - `model.free_RVs`: the unobserved random variables (what a sampler must explore)
+    - `model.value_vars`: the **value variables**, the inputs that compiled `logp`/`dlogp` functions actually accept
+    - `model.rvs_to_values`: the mapping between the two
+
+    For an unbounded variable the value variable is a plain stand-in. But watch what happens to a bounded one:
+    """)
+    return
+
+
+@app.cell
+def _():
+    with pm.Model() as bookkeeping_model:
+        bk_mu = pm.Normal("mu", 0, 1)
+        bk_sigma = pm.HalfNormal("sigma", 1)
+
+    bookkeeping_model.free_RVs, bookkeeping_model.value_vars
+    return (bookkeeping_model,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    The `HalfNormal` variable `sigma` gets a value variable named `sigma_log__`: PyMC samples bounded parameters on an unconstrained (here, logarithmic) scale and transforms back automatically, so the sampler never has to worry about boundaries. You will meet these transformations properly in Session 2.2, but this is why sampler output and error messages sometimes mention variables with `_log__` or `_interval__` suffixes that you never defined.
+    """)
+    return
+
+
+@app.cell
+def _(bookkeeping_model):
+    bookkeeping_model.rvs_to_values
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     ### Core Components
 
     - **Stochastic Random Variables**: Variables whose values are not completely determined by their parents. These represent uncertainty in the model parameters or data generating process.
@@ -465,6 +591,8 @@ def _():
     - **Factor Potentials**: Additional terms that modify the joint log-probability without being variables themselves. This is useful for implementing constraints or complex likelihood terms.
 
         $$| x - y | < 1$$
+
+    You will build Deterministic variables and Potentials hands-on in Session 2.2; for now it is enough to know they exist.
 
     These building blocks connect in a directed acyclic graph (DAG) that completely specifies a joint probability distribution. PyMC leverages this graph structure to efficiently sample from the posterior distribution using its available inference algorithms.
     """)
@@ -534,6 +662,188 @@ def _(model_1):
     with model_1:
         samples = pm.sample_prior_predictive(1000)
     azp.plot_forest(samples, group="prior")
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    #### How Shapes Are Determined
+
+    `shape` and `dims` are two of **three** ways a variable can get its shape, and the interplay between them is the most common source of beginner model bugs. Let's work through all three with a real dataset: the Palmer penguins, which record body mass for three species.
+    """)
+    return
+
+
+@app.cell
+def _():
+    penguins = pl.read_csv(data_path / "penguins.csv", null_values="NA")
+    species_mass = (
+        penguins.drop_nulls(subset=["body_mass_g"])
+        .group_by("species")
+        .agg(pl.col("body_mass_g").mean())
+        .sort("species")
+    )
+    species_mass
+    return (species_mass,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    **1. Implied shape.** Pass vector-valued parameters and the variable silently inherits their shape. No `shape` argument in sight, yet this is a length-3 random variable, one component per species:
+    """)
+    return
+
+
+@app.cell
+def _(species_mass):
+    species_mu = species_mass["body_mass_g"].to_numpy()
+
+    with pm.Model():
+        mass_implied = pm.Normal("mass", mu=species_mu, sigma=100)
+
+    mass_implied.shape.eval()
+    return mass_implied, species_mu
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    **2. Broadcasting.** Notice that `sigma=100` is a scalar: it was broadcast against the length-3 `mu` exactly as NumPy would broadcast arrays. The result is three independent normals, each with its own mean, sharing one spread. `pm.draw` shapes follow along, with the draws dimension prepended:
+    """)
+    return
+
+
+@app.cell
+def _(mass_implied):
+    pm.draw(mass_implied, draws=1000, random_seed=RANDOM_SEED).shape
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    **3. Explicit `shape=` on top of broadcasting.** An explicit `shape` can *extend* the parameter shapes: ask for `(2, 3)` and the length-3 `mu` broadcasts across the new leading axis. Think of it as a sex × species grid of variables, every row sharing the same species means:
+    """)
+    return
+
+
+@app.cell
+def _(species_mu):
+    with pm.Model():
+        mass_grid = pm.Normal("mass_grid", mu=species_mu, sigma=100, shape=(2, 3))
+
+    pm.draw(mass_grid, random_seed=RANDOM_SEED).round(0)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    But integer axes are anonymous: nothing in `mass_grid` records that row 0 means female, or that column 2 means Gentoo. That bookkeeping burden is exactly what `dims` and `coords` remove. Give the model labeled coordinates and declare the variable's dimensions by name; downstream, every trace, summary table, and plot inherits the labels:
+    """)
+    return
+
+
+@app.cell
+def _(species_mass, species_mu):
+    with pm.Model(
+        coords={
+            "sex": ["female", "male"],
+            "species": species_mass["species"].to_list(),
+        }
+    ) as penguin_model:
+        pm.Normal("mass", mu=species_mu, sigma=100, dims=("sex", "species"))
+
+    with penguin_model:
+        penguin_prior = pm.sample_prior_predictive(500, random_seed=RANDOM_SEED)
+
+    azp.plot_forest(penguin_prior, group="prior")
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Every interval in the forest plot is labeled with its coordinates; no mental bookkeeping about which index is which. This is why the course uses `dims` for any variable with meaningful structure.
+
+    Finally, learn to recognize what happens when shapes *cannot* reconcile. A length-3 `mu` cannot fill a length-4 variable, and the error says so in broadcasting terms:
+    """)
+    return
+
+
+@app.cell
+def _(species_mu):
+    try:
+        pm.draw(pm.Normal.dist(mu=species_mu, shape=(4,)))
+    except ValueError as err:
+        print(f"ValueError: {err}")
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    #### Dims-Aware Math: `pytensor.xtensor`
+
+    Dims do more than label axes in plots. PyTensor has a dims-aware tensor type, `pytensor.xtensor`, where operations align on dimension **names** rather than axis positions. Matrix multiplication is the flagship example: `dot` contracts whichever dimension the two operands share, so you never specify an axis. Build a coefficient matrix and a feature vector that share the `feature` dimension:
+    """)
+    return
+
+
+@app.cell
+def _():
+    coef = ptx.xtensor("coef", dims=("species", "feature"), shape=(3, 2))
+    feats = ptx.xtensor("feats", dims=("feature",), shape=(2,))
+
+    species_score = ptx.dot(feats, coef)
+    species_score.type
+    return coef, feats, species_score
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    No axis argument anywhere: the shared `feature` dimension was contracted *because the names match*, leaving one value per `species`. And since names, not positions, drive the contraction, transposing an operand and reversing the argument order changes nothing:
+    """)
+    return
+
+
+@app.cell
+def _(coef, feats, species_score):
+    species_score_reversed = ptx.dot(feats, coef.transpose("feature", "species"))
+
+    coef_vals = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+    feat_vals = np.array([10.0, 1.0])
+    (
+        species_score.eval({coef: coef_vals, feats: feat_vals}),
+        species_score_reversed.eval({coef: coef_vals, feats: feat_vals}),
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    With two matrices the same rule applies: the shared dimension is contracted and every un-shared dimension survives, labels intact. Compare this with `np.dot`, where you would be juggling transposes and remembering what axis 0 means:
+    """)
+    return
+
+
+@app.cell
+def _(coef):
+    island_effects = ptx.xtensor("island_effects", dims=("feature", "island"), shape=(2, 4))
+
+    ptx.dot(coef, island_effects).type
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    This is the machinery that model `dims` ride on. When a later session multiplies an observations × features design matrix by a feature-length coefficient vector, dimension names keep that bookkeeping straight for you.
+    """)
     return
 
 
@@ -646,8 +956,15 @@ def _(x_city):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Distributions will optionally have `cdf` and `icdf` methods, representing the cumulative distribution function and inverse cumulative distribution functions, respectively.
+    Many distributions also expose their **cumulative distribution function** and its inverse, through `pm.logcdf` and `pm.icdf`. Both follow the same pattern as `pm.logp`: they build a graph that you then evaluate. The inverse CDF of a standard normal at 0.975 returns a familiar number:
     """)
+    return
+
+
+@app.cell
+def _():
+    std_normal = pm.Normal.dist(0, 1)
+    np.exp(pm.logcdf(std_normal, 0).eval()), pm.icdf(std_normal, 0.975).eval()
     return
 
 
@@ -688,7 +1005,7 @@ def _():
 def _():
     grid = np.linspace(-3, 3, 7)
     pm.math.invlogit(grid).eval(), pm.math.switch(grid > 0, 1.0, 0.0).eval()
-    return (grid,)
+    return
 
 
 @app.cell(hide_code=True)
@@ -875,6 +1192,44 @@ def _():
     mo.md(r"""
     To emphasize, the Python function passed to `CustomDist` should compute the *log*-density or *log*-probability of the variable. That is why the return value in the example above is `-log(upper - lower)` rather than `1/(upper - lower)`.
     """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    #### Generative `CustomDist`
+
+    Writing a log-density by hand is one option; often there is a better one. If your distribution can be *constructed* from existing distributions and PyTensor operations, pass a generative function via `dist=` instead of `logp=`. PyMC traces the function into a graph and, when that graph is invertible, derives the log-probability for you. Random draws come along for free, since the function *is* the simulator.
+
+    Here is an exponential waiting time with a guaranteed minimum delay:
+    """)
+    return
+
+
+@app.cell
+def _():
+    def shifted_exponential(lam, shift, size):
+        return shift + pm.Exponential.dist(lam, size=size)
+
+    with pm.Model():
+        wait_time = pm.CustomDist("wait_time", 2.0, 1.0, dist=shifted_exponential)
+
+    pm.draw(wait_time, draws=5, random_seed=RANDOM_SEED)
+    return (wait_time,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    That single definition also yields the correct log-probability, including `-inf` below the minimum delay, with no hand-written density in sight:
+    """)
+    return
+
+
+@app.cell
+def _(wait_time):
+    pm.logp(wait_time, 1.5).eval(), pm.logp(wait_time, 0.5).eval()
     return
 
 
