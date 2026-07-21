@@ -653,6 +653,7 @@ def _(fish_test, unpooled_trace):
     for obs_idx, observed_weight in enumerate(fish_test["Weight"].to_numpy()):
         ax = plots.get_target("log_obs", {"obs_idx": obs_idx})
         ax.axvline(observed_weight, color="tab:red", linestyle="--", linewidth=1.5)
+    plots
     return
 
 
