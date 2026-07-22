@@ -2075,17 +2075,13 @@ def _(trace_a, trace_b):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    This practice combines the sampler diagnostics you have learned. In Session 3.2, you will use them to diagnose and repair models that fail in different ways.
-    """)
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
     ---
 
-    All the diagnostics above look healthy; our baseline model is well-specified and the sampler is working correctly. In **Session 3.2**, we'll see what happens when things go wrong: non-identifiable models, divergences, inefficient sampling, and how to diagnose and fix each problem. We'll also cover posterior predictive checks and model comparison.
+    ### Further reading
+
+    - [Betancourt (2017), *A Conceptual Introduction to Hamiltonian Monte Carlo*](https://arxiv.org/abs/1701.02434) — the geometric intuition behind HMC and when it fails.
+    - [Hoffman and Gelman (2014), *The No-U-Turn Sampler*](https://jmlr.org/papers/v15/hoffman14a.html) — the NUTS algorithm, trajectory doubling, and warmup adaptation.
+    - [Vehtari et al. (2021), *Rank-normalization, folding, and localization*](https://arxiv.org/abs/1903.08008) — the modern split-$\hat R$, rank-plot, ESS, and MCSE diagnostics used in this session.
     """)
     return
 
