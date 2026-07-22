@@ -1,8 +1,7 @@
 import marimo
 
-__generated_with = "0.22.4"
+__generated_with = "0.23.14"
 app = marimo.App(width="medium")
-
 
 with app.setup:
     import marimo as mo
@@ -34,10 +33,9 @@ with app.setup:
 @app.cell(hide_code=True)
 def _():
     mo.md("""
-
     # Session 3.2: When Sampling Fails
 
-    In Session 3.1 we built a well-specified model and confirmed that the sampler worked correctly. Now we'll see what happens when things go wrong (as they do) and learn to recognize, diagnose, and fix the problems. We'll also cover posterior predictive checks and model comparison.
+    In Session 3.1 we built a well-specified model and confirmed that the sampler worked correctly. This session applies those diagnostics to broken models, then uses the posterior predictive checks you learned in Session 1.1 for model criticism and introduces PSIS-LOO for relative predictive comparison.
     """)
     return
 
@@ -64,33 +62,6 @@ def _():
     return body_mass_kg, flipper_length_std, penguins
 
 
-@app.cell
-def _(body_mass_kg, flipper_length_std):
-    def build_baseline():
-        with pm.Model() as model:
-            alpha = pm.Normal("alpha", mu=4, sigma=2)
-            beta = pm.Normal("beta", mu=0, sigma=2)
-            sigma = pm.HalfNormal("sigma", sigma=2)
-            mu = alpha + beta * flipper_length_std
-            pm.Normal("mass", mu=mu, sigma=sigma, observed=body_mass_kg)
-        return model
-
-    baseline_model = build_baseline()
-    with baseline_model:
-        baseline_trace = pm.sample(random_seed=RANDOM_SEED)
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    ## When Sampling Fails
-
-    Session 3.1's baseline model converged cleanly because it was well-specified. Now let's see what happens when it isn't, and learn to recognize and fix the problems.
-    """)
-    return
-
-
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
@@ -98,7 +69,7 @@ def _():
 
     *What happens when the model has redundant parameters?*
 
-    Let's predict penguin body mass using species indicators using an **overparameterized** model.
+    We will deliberately fit an **overparameterized** species-indicator model for penguin body mass.
     """)
     return
 
@@ -143,7 +114,7 @@ def _(adelie, body_mass_kg, chinstrap, gentoo):
     return (overparam_model,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(overparam_model):
     with overparam_model:
         overparam_trace = pm.sample(2000, random_seed=RANDOM_SEED)
@@ -178,7 +149,7 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(overparam_trace):
     az.plot_trace_dist(
         overparam_trace,
@@ -191,20 +162,14 @@ def _(overparam_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The chains are wandering without settling; they explore different regions of parameter space and never agree on where to stop. This is exactly the scenario **R-hat** is designed to detect.
+    Session 3.1 introduced R-hat as agreement between chains. Here it is high because the chains explore different points along the non-identifiable ridge rather than one common posterior region.
 
-    Recall that R-hat compares the variance *between* chains to the variance *within* each chain. When chains are exploring different regions (as here), the between-chain variance is large relative to within-chain variance, and R-hat rises above 1.
-
-    **Split R-hat** goes further by also splitting each chain in half, catching non-stationarity *within* a single chain: if a chain drifts over the course of sampling, the two halves will disagree.
-
-    The rank plot makes this even clearer: well-mixed chains would show flat Δ-ECDF lines near zero within the gray envelope, but here the chains' rank distributions diverge substantially.
-
-    Some of the samples are so extreme, you cannot even see the grey envelope!
+    The rank plot applies the same diagnostic visually: healthy chains would have flat Δ-ECDF lines near zero inside the gray envelope. These chains diverge so strongly that some samples obscure the envelope.
     """)
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(overparam_trace):
     az.plot_rank(
         overparam_trace,
@@ -222,7 +187,7 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(overparam_trace):
     az.plot_pair(
         overparam_trace,
@@ -395,7 +360,7 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(robust_trace):
     az.plot_pair(
         robust_trace,
@@ -533,9 +498,9 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ### Sampler Configuration Tips
+    ### Sampler configuration reference
 
-    Now that you've seen what can go wrong, here are the practical `pm.sample()` settings that help:
+    This consolidates the settings used in the preceding cases. It is a reference for matching a diagnosed symptom to the appropriate sampling change, not a new diagnostic workflow:
 
     - **`target_accept`**: Default 0.8. Increase to 0.95+ when you see divergences. This uses a smaller step size, trading speed for accuracy.
     - **`tune`**: Default 1000. The warmup period where the sampler adapts its step size and mass matrix. Increase for complex models.
@@ -556,7 +521,7 @@ def _():
 
     A perfectly sampled posterior from a bad model is still a bad model. A model can converge beautifully, show healthy R-hat and ESS across the board, and still make terrible predictions. Sampler diagnostics tell you the *computation* worked; they say nothing about whether the *model* is any good.
 
-    Now we ask: **could this model have generated the observed data?**
+    You first used posterior predictive simulation in Session 1.1. Now apply it to a harder question: **could this fitted model have generated the observed data?**
 
     We'll use two complementary approaches:
 
@@ -590,7 +555,7 @@ def _(body_mass_kg, chinstrap, flipper_length_std, gentoo):
     return (species_model,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(species_model):
     with species_model:
         species_trace = pm.sample(random_seed=RANDOM_SEED)
@@ -602,9 +567,9 @@ def _():
     mo.md(r"""
     ### Posterior Predictive Checks
 
-    The idea is simple: for each posterior draw of the *fitted* parameters, simulate a new dataset from the likelihood. This gives a distribution of datasets the model considers plausible. If the real data look nothing like these simulated datasets, the model is missing something important.
+    Session 1.1 introduced posterior predictive simulation. Here we use that familiar procedure for structural model criticism: compare the fitted model's simulated datasets with the observed pattern.
 
-    We already checked the *prior* predictive distribution previously: that demonstrated whether our priors were reasonable. Now we check the *posterior* predictive: whether the fitted model captures the patterns in the data.
+    This differs from the prior predictive check: that checked whether the priors were plausible before fitting; this checks whether the fitted likelihood and predictors reproduce the data.
     """)
     return
 
@@ -628,7 +593,7 @@ def _(body_mass_kg):
     return pooled_model, pooled_trace
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(pooled_trace):
     az.plot_ppc_dist(pooled_trace, num_samples=100, figure_kwargs=fig_kwargs())
     return
@@ -650,14 +615,14 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(species_model, species_trace):
     with species_model:
         pm.sample_posterior_predictive(species_trace, extend_inferencedata=True)
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(species_trace):
     az.plot_ppc_dist(species_trace, num_samples=100, figure_kwargs=fig_kwargs())
     return
@@ -733,9 +698,9 @@ def _(pooled_model, pooled_trace):
 
 @app.cell
 def _(species_trace):
-    species_loo = az.loo(species_trace)
+    species_loo = az.loo(species_trace, pointwise=True)
     species_loo
-    return
+    return (species_loo,)
 
 
 @app.cell(hide_code=True)
@@ -745,6 +710,20 @@ def _():
     - **elpd_loo**: Expected log pointwise predictive density. Higher (less negative) is better.
     - **p_loo**: Effective number of parameters. A rough measure of model complexity.
     - **Pareto k diagnostic**: Values > 0.7 indicate observations where the LOO approximation is unreliable.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(species_loo):
+    az.plot_khat(species_loo, threshold=0.7, figure_kwargs=fig_kwargs())
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Each point is one penguin. Values above 0.7 identify observations for which the PSIS-LOO approximation is unreliable. A low value does not mean the observation is unimportant; it means the approximation is stable for that observation.
     """)
     return
 
@@ -765,7 +744,7 @@ def _():
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(species_trace):
     az.plot_loo_pit(species_trace, var_names=["mass"], figure_kwargs=fig_kwargs())
     return
@@ -817,7 +796,7 @@ def _(pooled_trace, species_trace):
     return (model_comparison,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(model_comparison):
     az.plot_compare(model_comparison, figure_kwargs=fig_kwargs())
     return
@@ -828,9 +807,9 @@ def _():
     mo.md(r"""
     ---
 
-    ## The Evaluation Workflow
+    ## Reference: evaluation workflow
 
-    Here's a systematic workflow you can follow for every model you build:
+    This is a reference card for the workflow assembled across Sessions 1–3. Keep it open for the exercise rather than treating the following steps as new material:
 
     ### Step 0: Check Priors
     ```python
@@ -997,6 +976,20 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    Because `disasters` is count data, also use a rootogram:
+
+    ```python
+    az.plot_ppc_rootogram(single_cp_trace, var_names=["disasters"])
+    ```
+
+    A rootogram compares the observed frequency of each count with its posterior predictive frequency. The frequency axis is on a square-root scale, so a mismatch among rare counts remains visible.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     **Step 4:** Build an improved model with **two change points** (allowing for an intermediate-rate period between two change points), and compare against the single-change-point model using LOO:
 
     ```python
@@ -1086,6 +1079,12 @@ def _(disasters_array, years):
                 exercise_trace_fixed, extend_inferencedata=True, random_seed=RANDOM_SEED
             )
         ppc_plot = az.plot_ppc_dist(exercise_trace_fixed)
+        rootogram_plot = az.plot_ppc_rootogram(
+            exercise_trace_fixed,
+            var_names=["disasters"],
+            backend="matplotlib",
+            figure_kwargs=fig_kwargs(),
+        )
 
         # Step 4: two change-point model and LOO comparison.
         with pm.Model() as two_cp_model:
@@ -1122,6 +1121,8 @@ def _(disasters_array, years):
                     "**Posterior predictive check (fixed single change-point model):**"
                 ),
                 ppc_plot,
+                mo.md("**Rootogram (fixed single change-point model):"),
+                rootogram_plot,
                 mo.md("**LOO comparison:**"),
                 comparison,
             ]

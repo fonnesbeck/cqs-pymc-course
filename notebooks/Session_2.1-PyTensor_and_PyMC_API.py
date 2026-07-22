@@ -17,7 +17,7 @@ with app.setup:
     import pytensor
     import pytensor.tensor as pt
     import pytensor.xtensor as ptx
-    import arviz_plots as azp
+    import arviz as az
     import io
 
     RANDOM_SEED = 42
@@ -661,7 +661,7 @@ def _():
 def _(model_1):
     with model_1:
         samples = pm.sample_prior_predictive(1000)
-    azp.plot_forest(samples, group="prior")
+    az.plot_forest(samples, group="prior")
     return
 
 
@@ -759,7 +759,7 @@ def _(species_mass, species_mu):
     with penguin_model:
         penguin_prior = pm.sample_prior_predictive(500, random_seed=RANDOM_SEED)
 
-    azp.plot_forest(penguin_prior, group="prior")
+    az.plot_forest(penguin_prior, group="prior")
     return
 
 
@@ -776,7 +776,7 @@ def _():
 @app.cell
 def _(species_mu):
     try:
-        pm.draw(pm.Normal.dist(mu=species_mu, shape=(4,)))
+        pm.draw(pm.Normal.dist(mu=species_mu, shape=(6,)))
     except ValueError as err:
         print(f"ValueError: {err}")
     return
@@ -797,7 +797,7 @@ def _():
     coef = ptx.xtensor("coef", dims=("species", "feature"), shape=(3, 2))
     feats = ptx.xtensor("feats", dims=("feature",), shape=(2,))
 
-    species_score = ptx.dot(feats, coef)
+    species_score = ptx.dot(coef, feats)
     species_score.type
     return coef, feats, species_score
 
@@ -1006,7 +1006,7 @@ def _():
 @app.cell
 def _():
     grid = np.linspace(-3, 3, 7)
-    pm.math.invlogit(grid).eval(), pm.math.switch(grid > 0, 1.0, 0.0).eval()
+    pm.math.invlogit(grid).eval(), pt.switch(grid > 0, 1.0, 0.0).eval()
     return
 
 
@@ -1029,7 +1029,7 @@ def _():
 @app.cell
 def _():
     with pm.Model() as broken_model:
-        count = pm.Poisson("count", mu=2.0, initval=-1)
+        count = pm.Poisson("count", mu=2.0, initval=-10)
 
     broken_model.initial_point(), broken_model.point_logps()
     return (broken_model,)
@@ -1068,9 +1068,9 @@ def _():
     nsneeze = pl.read_csv(data_path / "poisson_sneeze.csv")["nsneeze"].to_numpy()
 
     with pm.Model() as sneeze_model:
-        ex_log_mu = pm.Normal("log_mu", 0, 2)
-        ex_sigma = pm.HalfNormal("sigma", 1)
-        ex_y = pm.LogNormal("y", mu=ex_log_mu, sigma=ex_sigma, observed=nsneeze)
+        ex_log_mu = pm.Exponential("log_mu", 2)
+        # ex_sigma = pm.HalfNormal("sigma", 1)
+        ex_y = pm.Poisson("y", ex_log_mu, observed=nsneeze)
 
     sneeze_model
     return (sneeze_model,)
@@ -1082,7 +1082,7 @@ def _(sneeze_model):
     print()
     sneeze_model.debug()
 
-    sneeze_model.point_logps()
+    # sneeze_model.point_logps()
     return
 
 
@@ -1157,13 +1157,19 @@ def _():
         )
 
     with pm.Model():
-        u = pm.CustomDist("u", 0, 10, logp=uniform_logp, dtype="float32")
+        u = pm.CustomDist("u", 0, 10, logp=uniform_logp, dtype="float64")
     return (u,)
 
 
 @app.cell
 def _(u):
-    pm.logp(u, 1).eval()
+    u.dtype
+    return
+
+
+@app.cell
+def _(u):
+    pm.logp(u, 5).eval()
     return
 
 
@@ -1209,13 +1215,17 @@ def _():
 @app.function
 def exercise_triangular():
     def triangular_logp(value, lower, mode, upper):
-        # YOUR CODE HERE — nested pm.math.switch: the outer switch handles
-        # out-of-support values (-np.inf), the inner one picks the rising
-        # or falling branch. Return the *log* of the density.
-        ...
+        return pm.math.switch(
+            (lower <= value) | (value < mode), 
+            pt.log(2*(value - lower) )- pt.log(upper - lower) - pt.log(mode - lower),
+            pm.math.switch(
+                (mode <= value) | (value <= upper), 
+                pt.log(2*(upper - value)) - pt.log(upper - lower) - pt.log(upper - mode),
+            -np.inf)
+        )
 
     with pm.Model():
-        tri = ...
+        tri = pm.CustomDist('tri', 0, 2, 5, logp=triangular_logp)
     return pm.logp(tri, 2).eval(), pm.logp(tri, -1).eval()
 
 

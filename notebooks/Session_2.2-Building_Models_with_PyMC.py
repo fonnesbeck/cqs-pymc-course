@@ -12,7 +12,7 @@ with app.setup:
     import plotly.io as pio
     import polars as pl
     import pymc as pm
-    import arviz_plots as azp
+    import arviz as az
 
     RANDOM_SEED = 42
     PYMC_BLUE = "#154A72"
@@ -390,7 +390,7 @@ def _():
 
 @app.cell
 def _(prior_sample):
-    azp.plot_dist(prior_sample, group="prior_predictive", var_names=["y"])
+    az.plot_dist(prior_sample, group="prior_predictive", var_names=["y"])
     return
 
 
@@ -444,7 +444,7 @@ def _(dose_model_4):
 
 @app.cell
 def _(trace):
-    azp.plot_dist(trace, var_names=["beta0", "beta1", "ld50"])
+    az.plot_dist(trace, var_names=["beta0", "beta1", "ld50"])
     return
 
 
@@ -777,7 +777,7 @@ def _(group_id, iq):
         pm.StudentT('drug_obs', mu=mu + delta, sigma=sigma, nu=nu, observed=drug_iq)
 
         drug_samples = pm.sample()
-    azp.plot_dist(drug_samples, var_names='delta')
+    az.plot_dist(drug_samples, var_names="delta")
     return (drug_samples,)
 
 
