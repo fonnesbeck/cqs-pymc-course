@@ -1470,65 +1470,56 @@ def _():
 
     HMC follows a leapfrog trajectory, but chooses its length $L$ in advance. Too few steps stop early; too many retrace a path it has already explored. NUTS keeps HMC's gradient-guided dynamics but chooses $L$ on every iteration.
 
-    NUTS randomly extends one end of the trajectory by $2^j$ leapfrog steps: 1, then 2, then 4, and so on. These expansions form a binary tree of candidate states. After each doubling, it stops when the endpoints are turning back toward one another—the intuitive **U-turn**, checked using their displacement and momenta. It then selects a valid state from the tree. Warmup still learns the step size and mass matrix; NUTS removes only the fixed trajectory-length choice.
+    The left panel shows HMC states along a curved trajectory. NUTS builds a binary tree of those states: at depth $j$, choose a direction and add a subtree of $2^j$ leapfrog steps: 1, then 2, then 4, and so on. Each new subtree is attached to one endpoint of the existing trajectory, not a competing proposal. After each doubling, NUTS checks for a **U-turn**—whether the endpoints are heading back toward one another—and stops if it finds one. It then selects a valid state from the completed tree. Warmup still learns the step size and mass matrix; NUTS removes only the fixed trajectory-length choice.
     """)
     return
 
 
 @app.cell(hide_code=True)
 def _():
-    def _draw_nuts_doubling():
-        fig, ax = plt.subplots(figsize=(7, 2.8))
-        ax.axhline(0, color="0.75", lw=1, zorder=0)
-
-        segments = [
-            (0, 1, "#1f77b4", "depth 0: 1 step"),
-            (0, -2, "#2ca02c", "depth 1: 2 steps"),
-            (1, 5, "#9467bd", "depth 2: 4 steps"),
-        ]
-        for start, stop, color, label in segments:
-            ax.annotate(
-                "",
-                xy=(stop, 0),
-                xytext=(start, 0),
-                arrowprops=dict(arrowstyle="->", color=color, lw=2.5),
-            )
-            ax.text((start + stop) / 2, 0.18, label, color=color, ha="center", fontsize=9)
-
-        for x, label in [(-2, r"$\theta^-$"), (0, r"$\theta_0$"), (1, ""), (5, r"$\theta^+$")]:
-            ax.scatter(x, 0, color="black", s=28, zorder=3)
-            if label:
-                ax.text(x, -0.23, label, ha="center", va="top", fontsize=10)
-
-        ax.annotate(
-            "endpoint momentum points back",
-            xy=(-2, 0),
-            xytext=(-3.1, -0.65),
-            ha="center",
-            arrowprops=dict(arrowstyle="->", color="#d62728"),
-            color="#d62728",
-            fontsize=9,
+    def _draw_nuts_tree():
+        fig, (ax_trajectory, ax_tree) = plt.subplots(
+            1, 2, figsize=(7.5, 3.35), gridspec_kw={"width_ratios": [1, 1.1]}
         )
-        ax.annotate(
-            "endpoint momentum points back",
-            xy=(5, 0),
-            xytext=(5.9, -0.65),
-            ha="center",
-            arrowprops=dict(arrowstyle="->", color="#d62728"),
-            color="#d62728",
-            fontsize=9,
-        )
-        ax.text(1.5, -1.0, "U-turn detected → stop growing", color="#d62728", ha="center", fontsize=10, weight="bold")
-        ax.set_xlim(-4.2, 7.2)
-        ax.set_ylim(-1.2, 0.65)
-        ax.set_yticks([])
-        ax.set_xticks([])
-        ax.set_xlabel("Position along the simulated HMC trajectory")
-        ax.set_title("How NUTS grows an HMC trajectory")
+
+        nuts_image = plt.imread(Path(__file__).parent / "images" / "nuts.png")
+        ax_trajectory.imshow(nuts_image)
+        ax_trajectory.set_title("HMC states along one trajectory", fontsize=10)
+        ax_trajectory.axis("off")
+
+        nodes = {
+            3: [(0.50, 0.90)],
+            2: [(0.25, 0.68), (0.75, 0.68)],
+            1: [(0.125, 0.46), (0.375, 0.46), (0.625, 0.46), (0.875, 0.46)],
+            0: [(0.0625 + 0.125 * i, 0.22) for i in range(8)],
+        }
+        for depth in range(3, 0, -1):
+            for parent_index, (parent_x, parent_y) in enumerate(nodes[depth]):
+                for child_x, child_y in nodes[depth - 1][2 * parent_index : 2 * parent_index + 2]:
+                    ax_tree.plot([parent_x, child_x], [parent_y, child_y], color="0.55", lw=1)
+
+        for depth, positions in nodes.items():
+            for x, y in positions:
+                ax_tree.scatter(x, y, color="#1f77b4", s=30, zorder=2)
+            if depth == 3:
+                label = "8 leapfrog\nstates"
+            elif depth == 0:
+                label = "1"
+            else:
+                label = str(2**depth)
+            ax_tree.text(0.98, positions[0][1], label, ha="left", va="center", fontsize=8)
+
+        ax_tree.text(0.50, 1.03, "NUTS builds a binary tree", ha="center", fontsize=10, weight="bold")
+        ax_tree.text(0.50, 0.04, "Each leaf: one leapfrog state", ha="center", fontsize=8)
+        ax_tree.text(0.50, -0.07, "Each parent joins two equal subtrees", ha="center", fontsize=8)
+        ax_tree.set_xlim(0, 1.22)
+        ax_tree.set_ylim(-0.13, 1.12)
+        ax_tree.axis("off")
+
         fig.tight_layout()
         return fig
 
-    _draw_nuts_doubling()
+    _draw_nuts_tree()
     return
 
 
