@@ -1466,6 +1466,75 @@ def _(
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    #### From HMC to NUTS: grow, then stop
+
+    HMC follows a leapfrog trajectory, but chooses its length $L$ in advance. Too few steps stop early; too many retrace a path it has already explored. NUTS keeps HMC's gradient-guided dynamics but chooses $L$ on every iteration.
+
+    NUTS randomly extends one end of the trajectory by $2^j$ leapfrog steps: 1, then 2, then 4, and so on. These expansions form a binary tree of candidate states. After each doubling, it stops when the endpoints are turning back toward one another—the intuitive **U-turn**, checked using their displacement and momenta. It then selects a valid state from the tree. Warmup still learns the step size and mass matrix; NUTS removes only the fixed trajectory-length choice.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    def _draw_nuts_doubling():
+        fig, ax = plt.subplots(figsize=(7, 2.8))
+        ax.axhline(0, color="0.75", lw=1, zorder=0)
+
+        segments = [
+            (0, 1, "#1f77b4", "depth 0: 1 step"),
+            (0, -2, "#2ca02c", "depth 1: 2 steps"),
+            (1, 5, "#9467bd", "depth 2: 4 steps"),
+        ]
+        for start, stop, color, label in segments:
+            ax.annotate(
+                "",
+                xy=(stop, 0),
+                xytext=(start, 0),
+                arrowprops=dict(arrowstyle="->", color=color, lw=2.5),
+            )
+            ax.text((start + stop) / 2, 0.18, label, color=color, ha="center", fontsize=9)
+
+        for x, label in [(-2, r"$\theta^-$"), (0, r"$\theta_0$"), (1, ""), (5, r"$\theta^+$")]:
+            ax.scatter(x, 0, color="black", s=28, zorder=3)
+            if label:
+                ax.text(x, -0.23, label, ha="center", va="top", fontsize=10)
+
+        ax.annotate(
+            "endpoint momentum points back",
+            xy=(-2, 0),
+            xytext=(-3.1, -0.65),
+            ha="center",
+            arrowprops=dict(arrowstyle="->", color="#d62728"),
+            color="#d62728",
+            fontsize=9,
+        )
+        ax.annotate(
+            "endpoint momentum points back",
+            xy=(5, 0),
+            xytext=(5.9, -0.65),
+            ha="center",
+            arrowprops=dict(arrowstyle="->", color="#d62728"),
+            color="#d62728",
+            fontsize=9,
+        )
+        ax.text(1.5, -1.0, "U-turn detected → stop growing", color="#d62728", ha="center", fontsize=10, weight="bold")
+        ax.set_xlim(-4.2, 7.2)
+        ax.set_ylim(-1.2, 0.65)
+        ax.set_yticks([])
+        ax.set_xticks([])
+        ax.set_xlabel("Position along the simulated HMC trajectory")
+        ax.set_title("How NUTS grows an HMC trajectory")
+        fig.tight_layout()
+        return fig
+
+    _draw_nuts_doubling()
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     This contrast explains why PyMC defaults to NUTS for continuous parameters. Let's verify this on our penguin model by running the same model with Metropolis and comparing directly.
     """)
     return
