@@ -1271,6 +1271,24 @@ def _():
 
     **Hamiltonian Monte Carlo (HMC)** solves this by using the *gradient* of the log-posterior to make informed proposals. Instead of random steps, HMC simulates a physical system: imagine placing a ball on a surface shaped like the posterior density and giving it a random push. The ball rolls along the surface following Hamiltonian dynamics, naturally staying in high-density regions while covering large distances.
 
+    HMC augments the parameter position $q$ with an auxiliary momentum $p$. Its Hamiltonian is
+
+    $$
+    H(q, p) = U(q) + K(p), \qquad
+    U(q) = -\log p(q \mid y), \qquad
+    K(p) = \tfrac{1}{2}p^\mathsf{T}M^{-1}p.
+    $$
+
+    The coupled Hamiltonian equations are
+
+    $$
+    \frac{dq}{dt} = \frac{\partial H}{\partial p} = M^{-1}p,
+    \qquad
+    \frac{dp}{dt} = -\frac{\partial H}{\partial q} = \nabla_q \log p(q \mid y).
+    $$
+
+    A leapfrog integrator approximates this trajectory while nearly conserving $H$; a final Metropolis acceptance step corrects the remaining numerical error.
+
     **NUTS** (the No-U-Turn Sampler) extends HMC by automatically choosing how far to "roll" — it stops the trajectory when it starts doubling back, which is the "no U-turn" criterion. This eliminates HMC's most sensitive tuning parameter (trajectory length).
 
     NUTS adapts two things during warmup:
