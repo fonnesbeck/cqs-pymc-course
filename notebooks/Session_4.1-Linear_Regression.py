@@ -49,11 +49,6 @@ with app.setup:
     warnings.filterwarnings("ignore", category=FutureWarning)
 
 
-@app.cell(hide_code=True)
-def header():
-    mo.md("""
-    """)
-    return
 
 
 @app.cell(hide_code=True)
@@ -157,7 +152,7 @@ def _(fish_market):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Weight increases **exponentially** with the size variables. A **log transformation** will linearize these relationships, making them more appropriate for linear regression.
+    Fish weight and dimensions often follow a **power-law relationship**: weight changes approximately as a dimension raised to a power. Taking logs makes that relationship linear, which is appropriate for linear regression.
 
     There are also clear species-level differences; any model we build must account for these.
     """)
@@ -235,7 +230,7 @@ def _():
     We start with the simplest possible model: just a global mean with **no predictors**.
 
     $$
-    \log(\text{weight}) \sim \text{Normal}(\mu, \sigma), \quad \mu \sim \text{Normal}(0, 1), \quad \sigma \sim \text{HalfNormal}(1)
+    \log(\text{weight}) \sim \text{Normal}(\mu, \sigma), \quad \mu \sim \text{Normal}(5.5, 2), \quad \sigma \sim \text{HalfNormal}(1)
     $$
 
     This corresponds to `log(weight) ~ 1` in Wilkinson notation. It will not fit well, but it gives us a baseline for comparison.
@@ -247,7 +242,7 @@ def _():
 def _(fish_train):
     def build_baseline():
         with pm.Model() as model:
-            mu = pm.Normal("mu")
+            mu = pm.Normal("mu", mu=5.5, sigma=2.0)
             sigma = pm.HalfNormal("sigma", 1.0)
             pm.Normal(
                 "log_obs",
@@ -256,6 +251,7 @@ def _(fish_train):
                 observed=fish_train["log_weight"].to_numpy(),
             )
 
+            prior_trace = pm.sample_prior_predictive(random_seed=RANDOM_SEED)
             trace = pm.sample(random_seed=RANDOM_SEED)
             pm.compute_log_likelihood(trace)
             pm.sample_posterior_predictive(
@@ -263,12 +259,19 @@ def _(fish_train):
                 extend_inferencedata=True,
                 random_seed=RANDOM_SEED,
             )
-        return model, trace
+        return model, prior_trace, trace
 
-    baseline_model, baseline_trace = build_baseline()
+    baseline_model, baseline_prior, baseline_trace = build_baseline()
     baseline_model
-    return (baseline_trace,)
+    return baseline_prior, baseline_trace
 
+
+
+@app.cell(hide_code=True)
+def _(baseline_prior):
+    _output = az.plot_dist(baseline_prior, group="prior_predictive")
+    _output
+    return
 
 @app.cell(hide_code=True)
 def _(baseline_trace):
@@ -349,7 +352,7 @@ def _(fish_train, train_mean_log_height, train_mean_log_length, train_mean_log_w
             )
             s = pm.Data("species_idx", species_idx_train, dims="obs_idx")
 
-            mu = pm.Normal("mu", sigma=1.0, dims="species")
+            mu = pm.Normal("mu", mu=5.5, sigma=2.0, dims="species")
             beta = pm.Normal("beta", sigma=0.5, dims=("slopes", "species"))
             expected = mu[s] + beta[0, s] * lw + beta[1, s] * lh + beta[2, s] * ll
             sigma = pm.HalfNormal("sigma", 1.0)
@@ -439,14 +442,15 @@ def _(fish_train, train_mean_log_height, train_mean_log_length, train_mean_log_w
 
     st_fish_train_aug = pl.concat([fish_train, st_outlier_df], how="vertical")
 
-    st_species_idx_aug = (
-        pl.Series(st_fish_train_aug["Species"])
-        .cast(pl.Categorical)
-        .to_physical()
-        .to_numpy()
-    )
     st_species_names_aug = (
         st_fish_train_aug["Species"].unique(maintain_order=True).sort().to_list()
+    )
+    st_species_to_idx = {
+        species: idx for idx, species in enumerate(st_species_names_aug)
+    }
+    st_species_idx_aug = np.array(
+        [st_species_to_idx[species] for species in st_fish_train_aug["Species"].to_list()],
+        dtype="int64",
     )
     st_aug_coords = {
         "slopes": ["width_effect", "height_effect", "length_effect"],
@@ -476,7 +480,7 @@ def _(fish_train, train_mean_log_height, train_mean_log_length, train_mean_log_w
             )
             s = pm.Data("species_idx", st_species_idx_aug, dims="obs_idx")
 
-            mu = pm.Normal("mu", sigma=1.0, dims="species")
+            mu = pm.Normal("mu", mu=5.5, sigma=2.0, dims="species")
             beta = pm.Normal("beta", sigma=0.5, dims=("slopes", "species"))
             expected = mu[s] + beta[0, s] * lw + beta[1, s] * lh + beta[2, s] * ll
             sigma = pm.HalfNormal("sigma", 1.0)
@@ -551,7 +555,7 @@ def _(
             )
             s = pm.Data("species_idx", st_species_idx_aug, dims="obs_idx")
 
-            mu = pm.Normal("mu", sigma=1.0, dims="species")
+            mu = pm.Normal("mu", mu=5.5, sigma=2.0, dims="species")
             beta = pm.Normal("beta", sigma=0.5, dims=("slopes", "species"))
             expected = mu[s] + beta[0, s] * lw + beta[1, s] * lh + beta[2, s] * ll
             sigma = pm.HalfNormal("sigma", 1.0)
@@ -660,7 +664,7 @@ def _(fish_test, unpooled_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The reference values (true observed weights, shown as dashed vertical lines) all fall within the posterior predictive distributions; the held-out values are covered in this split.
+    Each dashed line is the matching held-out fish's observed weight. Use the plot to inspect how plausible those values are under the posterior predictions for this split; it is not an estimate of predictive calibration.
 
     ### Business Insight: Weight-Tier Probabilities
 

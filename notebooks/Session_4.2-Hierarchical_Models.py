@@ -1,8 +1,7 @@
 import marimo
 
-__generated_with = "0.23.9"
+__generated_with = "0.23.14"
 app = marimo.App(width="medium")
-
 
 with app.setup:
     import marimo as mo
@@ -52,7 +51,6 @@ with app.setup:
 @app.cell(hide_code=True)
 def header():
     mo.md("""
-
     # Session 4.2: Hierarchical Models
     """)
     return
@@ -273,9 +271,9 @@ def _():
 
     $$y_i = \alpha + \beta x_i + \epsilon_i$$
 
-    **_No pooling_**:
+    **_Unpooled county intercepts_**:
 
-    Model radon in each county independently.
+    Model county intercepts separately while estimating one floor effect from all counties.
 
     $$y_i = \alpha_{j[i]} + \beta x_i + \epsilon_i$$
 
@@ -436,7 +434,7 @@ def _():
     mo.md(r"""
     This looks reasonable, though notice that there is a great deal of residual variability in the data.
 
-    Let's now turn our attention to the unpooled model, and see how it fares in comparison.
+    Let's now turn our attention to the unpooled county-intercept model, and see how it fares in comparison.
     """)
     return
 
@@ -477,7 +475,7 @@ def _(unpooled_model):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The sampling was clean here too; Let's look at the expected values for both basement (dimension 0) and floor (dimension 1) in each county:
+    The sampling was clean here too; let's look at the county intercepts. The common floor effect is estimated from all counties:
     """)
     return
 
@@ -550,10 +548,11 @@ def _(post_mean, srrs_mn_3, unpooled_means):
         fig, axes = plt.subplots(2, 4, figsize=(12, 6), sharey=True, sharex=True)
         axes = axes.ravel()
         m = unpooled_means["beta"]
+        rng = np.random.default_rng(RANDOM_SEED)
         for i, c in enumerate(sample_counties):
             y = srrs_mn_3.filter(pl.col("county") == c)["log_radon"].to_numpy()
             x = srrs_mn_3.filter(pl.col("county") == c)["floor"].to_numpy()
-            axes[i].scatter(x + np.random.randn(len(x)) * 0.01, y, alpha=0.4)
+            axes[i].scatter(x + rng.normal(scale=0.01, size=len(x)), y, alpha=0.4)
             b = unpooled_means["alpha"].sel(county=c)
             xvals = xr.DataArray(np.linspace(0, 1))
             axes[i].plot(xvals, m * xvals + b)
@@ -576,12 +575,10 @@ def _():
     mo.md(r"""
     Neither of these models are satisfactory:
 
-    - If we are trying to identify high-radon counties, pooling is useless -- because, by definition, the pooled model estimates radon at the state-level. In other words, pooling leads to maximal _underfitting_: the variation across counties is not taken into account and only the overall population is estimated.
-    - We do not trust extreme unpooled estimates produced by models using few observations. This leads to maximal _overfitting_: only the within-county variations are taken into account and the overall population (i.e the state-level, which tells us about similarities across counties) is not estimated.
+    - If we are trying to identify high-radon counties, complete pooling is too restrictive: it estimates one state-level baseline and ignores variation among counties.
+    - The unpooled county-intercept model can produce extreme baseline estimates for counties with little data. Its common floor effect still uses information from every county, but the county baselines do not share information with one another.
 
-    This issue is acute for small sample sizes, as seen above: in counties where we have few floor measurements, if radon levels are higher for those data points than for basement ones (Aitkin, Koochiching, Ramsey), the model will estimate that radon levels are higher in floors than basements for these counties. But we shouldn't trust this conclusion, because both scientific knowledge and the situation in other counties tell us that it is usually the reverse (basement radon > floor radon). So unless we have a lot of observations telling us otherwise for a given county, we should be skeptical and shrink our county-estimates to the state-estimates -- in other words, we should balance between cluster-level and population-level information, and the amount of shrinkage will depend on how extreme and how numerous the data in each cluster are.
-
-    Here is where hierarchical models come into play.
+    This issue is acute for small sample sizes: we should be skeptical of extreme county intercepts based on sparse data and shrink them toward a state-level distribution. In other words, we should balance county-level and population-level information. Here is where hierarchical models come into play.
     """)
     return
 
@@ -875,15 +872,15 @@ def _(post_mean, srrs_mn_3, unpooled_means, varying_intercept_trace):
         fig, axes = plt.subplots(2, 4, figsize=(12, 6), sharey=True, sharex=True)
         axes = axes.ravel()
         m = unpooled_means["beta"]
+        rng = np.random.default_rng(RANDOM_SEED + 1)
         for i, c in enumerate(sample_counties):
             y = srrs_mn_3.filter(pl.col("county") == c)["log_radon"].to_numpy()
             x = srrs_mn_3.filter(pl.col("county") == c)["floor"].to_numpy()
-            axes[i].scatter(x + np.random.randn(len(x)) * 0.01, y, alpha=0.4)
+            axes[i].scatter(x + rng.normal(scale=0.01, size=len(x)), y, alpha=0.4)
             b = unpooled_means["alpha"].sel(county=c)
             xvals = xr.DataArray(np.linspace(0, 1))
             axes[i].plot(xvals, m.values * xvals + b.values)
             axes[i].plot(xvals, post_mean["beta"] * xvals + post_mean["alpha"], "r--")
-            varying_intercept_trace["posterior"].sel(county=c).beta
             post = varying_intercept_trace["posterior"].sel(county=c).mean(
                 dim=("chain", "draw")
             )
@@ -1016,21 +1013,36 @@ def _(varying_intercept_slope):
 
 
 @app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    Notice that the trace of this model includes divergences, which can be problematic depending on where and how frequently they occur. These can occur in some hierarchical models, and they can be avoided by using the **non-centered parametrization**.
-    """)
+def _(varying_intercept_slope_trace):
+    centered_divergence_summary = pl.DataFrame(
+        {
+            "model": ["centered varying intercept and slope"],
+            "divergences": [
+                int(
+                    varying_intercept_slope_trace["sample_stats"]["diverging"]
+                    .sum()
+                    .values
+                )
+            ],
+        }
+    )
+    mo.vstack(
+        [
+            mo.md("**Check divergent transitions before interpreting this fit.**"),
+            centered_divergence_summary,
+        ]
+    )
     return
 
 
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## Non-centered Parameterization
+    ## Centered and Non-centered Parameterizations
 
-    The partial pooling models specified above use a **centered** parameterization of the slope random effect. That is, the individual county effects are distributed around a county mean, with a spread controlled by the hierarchical standard deviation parameter. As the preceding plot reveals, this constraint serves to **shrink** county estimates toward the overall mean, to a degree proportional to the county sample size. This is exactly what we want, and the model appears to fit well--the Gelman-Rubin statistics are close to 1.
+    The varying-intercept-and-slope model above uses a **centered** parameterization: each county-level effect is drawn around a group mean with a spread controlled by its hierarchical standard deviation. This pooling produces the desired shrinkage, but the divergence count above shows that the sampler still has trouble with this geometry.
 
-    But, on closer inspection, there are signs of trouble. Specifically, let's look at the trace of the random effects, and their corresponding standard deviation:
+    Inspect one county's slope and the corresponding group-level standard deviation:
     """)
     return
 
@@ -1325,25 +1337,23 @@ def _(noncentered_trace):
 
 
 @app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    As a result, we are now fully exploring the support of the posterior. This results in less bias in these parameters.
-    """)
-    return
-
-
-@app.cell(hide_code=True)
-def _(varying_intercept_slope_trace):
-    # Compare sigma_b posteriors for centered vs non-centered parameterizations
-    _output = az.plot_dist(varying_intercept_slope_trace, var_names=["sigma_b"])
-    _output
-    return
-
-
-@app.cell(hide_code=True)
-def _(noncentered_trace):
-    _output = az.plot_dist(noncentered_trace, var_names=["sigma_b"])
-    _output
+def _(noncentered_trace, varying_intercept_slope_trace):
+    invariant = mo.md(
+        "Reparameterization changes sampler geometry, not the posterior target. "
+        "When both samplers explore the posterior adequately, their `sigma_b` "
+        "distributions should agree."
+    )
+    sigma_b_comparison = xr.Dataset(
+        {
+            "centered": varying_intercept_slope_trace["posterior"]["sigma_b"],
+            "noncentered": noncentered_trace["posterior"]["sigma_b"],
+        }
+    )
+    comparison_plot = az.plot_dist(
+        sigma_b_comparison,
+        sample_dims=("chain", "draw"),
+    )
+    mo.vstack([invariant, comparison_plot])
     return
 
 
@@ -1360,10 +1370,8 @@ def _():
 
 
 @app.cell
-def _(varying_intercept_slope_trace):
-    _output = az.summary(
-        varying_intercept_slope_trace, var_names=["sigma_a", "sigma_b"]
-    )
+def _(noncentered_trace):
+    _output = az.summary(noncentered_trace, var_names=["sigma_a", "sigma_b"])
     _output
     return
 
@@ -1403,7 +1411,7 @@ def _(noncentered_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    This, while both the intercept and the slope vary by county, there is far less variation in the slope.
+    Although both the intercept and slope vary by county, the posterior shows far less variation in the slope.
     """)
     return
 
@@ -1710,20 +1718,10 @@ def _(hierarchical_intercept_trace, u):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Uranium is indeed strongly associated with baseline radon levels in each county. The graph above shows the average relationship and its uncertainty: the baseline radon level in an average county as a function of uranium, as well as the 89% ETI of this radon level (dashed line and envelope). The blue points and orange bars represent the relationship between baseline radon and uranium, but now for each county. As you see, the uncertainty is bigger now, because it adds on top of the average uncertainty -- each county has its idyosyncracies after all.
+    Uranium is strongly associated with baseline radon levels in this fitted model. The graph above shows the average relationship and its uncertainty: the baseline radon level in an average county as a function of uranium, together with its 89% ETI. The blue points and orange bars show the corresponding county-specific intercept estimates and uncertainty.
 
-    If we compare the county-intercepts for this model with those of the partial-pooling model without a county-level covariate:The standard errors on the intercepts are narrower than for the partial-pooling model without a county-level covariate.
+    The next forest plot revisits those county intercepts after adding uranium, so compare it with the earlier varying-intercept forest plot rather than treating it as a separate diagnostic.
     """)
-    return
-
-
-@app.cell(hide_code=True)
-def _(varying_intercept_trace):
-    # Plot forest for both models side by side
-    _output = az.plot_forest(
-        varying_intercept_trace, var_names=["alpha"], combined=True
-    )
-    _output
     return
 
 
@@ -1873,7 +1871,7 @@ def _():
 
     However, the posterior is likely to have a *smaller variance and thinner tails* than the LOO posteriors, so this approximation induces instability due to the fact that the importance ratios can have high or infinite variance.
 
-    To deal with this instability, a generalized **Pareto distribution** fit to the upper tail of the distribution of the importance ratios can be used to construct a test for a finite importance ratio variance. If the test suggests the variance is infinite then importance sampling is halted.
+    A generalized **Pareto distribution** fit to the upper tail of the importance ratios provides the Pareto-$k$ reliability diagnostic. PSIS does not halt automatically: inspect warnings or Pareto-$k$ values, use moment matching when appropriate, and use $k$-fold cross-validation when the approximation is unreliable.
 
     Let's compare our pooled, unpooled, and contextual effect models:
     """)
