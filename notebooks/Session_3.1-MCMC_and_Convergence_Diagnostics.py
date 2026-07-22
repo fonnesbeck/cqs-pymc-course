@@ -385,10 +385,37 @@ def _():
 
 @app.cell(hide_code=True)
 def _():
+    mo.callout(
+        mo.md(r"""
+    #### Why Metropolis preserves the target: detailed balance
+
+    Suppose the chain has reached its target distribution $\pi$. The probability mass moving from $x$ to $x'$ in one transition is $\pi(x)T(x, x')$. **Detailed balance** matches that flow to its reverse:
+
+    $$
+    \pi(x)T(x, x') = \pi(x')T(x', x).
+    $$
+
+    When every pair matches, there is **no net probability flow**, so one transition leaves $\pi$ unchanged. Detailed balance is stronger than strictly necessary for stationarity, but it gives a checkable recipe for constructing a correct sampler.
+
+    For our symmetric random-walk proposal, $q(x'\mid x)=q(x\mid x')$, so Metropolis uses
+
+    $$
+    a(x, x') = \min\left(1, \frac{\pi(x')}{\pi(x)}\right).
+    $$
+
+    If $\pi(x')\leq\pi(x)$, the forward flow is $\pi(x)q(x'\mid x)\,\pi(x')/\pi(x)=\pi(x')q(x'\mid x)$—the same as the always-accepted reverse flow. Downhill moves are therefore essential: without them, the chain would pile up at a mode instead of representing the full target.
+    """),
+        kind="info",
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _():
     mo.md(r"""
     #### Metropolis from scratch, in 1D
 
-    Before watching an animation of it, let's build it. We'll target a **Beta(3, 2)** distribution — a nice 1D example with bounded support on $[0, 1]$ and a closed-form pdf we can plot for comparison. Here's the target:
+    Let's try building a simple Metropolis sampler to estimate a probability density. We'll target a **Beta(3, 2)** distribution — a nice 1D example with bounded support on $[0, 1]$ and a closed-form pdf we can plot for comparison.
     """)
     return
 
@@ -422,6 +449,7 @@ def _():
 def metropolis(pdf, x0, rng=None, n_draws=1000, step_size=0.5):
     rng = np.random.default_rng(rng)
 
+    # Initialize
     x_old = x0
     p_old = pdf(x_old)
     assert p_old > 0
@@ -430,12 +458,18 @@ def metropolis(pdf, x0, rng=None, n_draws=1000, step_size=0.5):
     accepted_draws = 0
     p_0_draws = 0
     for _ in range(n_draws):
+
+        # Take a step
         x_new = rng.normal(scale=step_size) + x_old
         p_new = pdf(x_new)
+        # Really bad proposals!
         if p_new == 0:
             p_0_draws += 1
 
+        # Acceptance ratio
         p_ratio = p_new / p_old
+
+        # Evaluate proposal
         if p_ratio > 1:
             accept = True
         else:
@@ -1233,7 +1267,7 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    #### Hamiltonian Monte Carlo and NUTS
+    ### Hamiltonian Monte Carlo and NUTS
 
     **Hamiltonian Monte Carlo (HMC)** solves this by using the *gradient* of the log-posterior to make informed proposals. Instead of random steps, HMC simulates a physical system: imagine placing a ball on a surface shaped like the posterior density and giving it a random push. The ball rolls along the surface following Hamiltonian dynamics, naturally staying in high-density regions while covering large distances.
 
@@ -1597,9 +1631,23 @@ def _():
 
     *How do we know the chains have converged to the same distribution?*
 
-    We ran 4 independent chains. If they've all found the posterior, they should agree. R-hat quantifies this by comparing variance *between* chains to variance *within* chains. Values near 1.0 mean agreement. **Threshold: R-hat < 1.01.**
+    For $m$ independent chains with $n$ post-warmup draws each, let $W$ be the average within-chain variance and
 
-    We'll see exactly what high R-hat looks like — and why it happens — in Session 3.2.
+    $$
+    B = \frac{n}{m - 1}\sum_{j=1}^{m}(\bar{\theta}_{\cdot j} - \bar{\theta}_{\cdot\cdot})^2
+    $$
+
+    be the between-chain variance estimate. R-hat compares their pooled estimate with $W$:
+
+    $$
+    \widehat{\operatorname{var}}^{+} = \frac{n - 1}{n}W + \frac{1}{n}B,
+    \qquad
+    \hat{R} = \sqrt{\frac{\widehat{\operatorname{var}}^{+}}{W}}.
+    $$
+
+    When chains agree, $B$ and $W$ are similar, so $\hat{R}$ is near 1. Different chain means make $B$ larger and raise $\hat{R}$; **use R-hat < 1.01**. ArviZ's default is the more robust **rank-normalized split R-hat**, which splits chains, rank-normalizes draws, and checks scale differences. The formula gives its variance-ratio intuition.
+
+    We'll see exactly what high R-hat looks like in Session 3.2.
     """)
     return
 
