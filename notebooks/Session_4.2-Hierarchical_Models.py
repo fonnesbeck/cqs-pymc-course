@@ -136,7 +136,7 @@ def _():
     return (data_path,)
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(data_path):
     srrs2 = pl.read_csv(data_path / "srrs2.dat")
 
@@ -155,7 +155,7 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(data_path, srrs_mn):
     cty = pl.read_csv(data_path / "cty.dat")
     srrs_mn_1 = srrs_mn.with_columns(
@@ -178,7 +178,7 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(cty_mn, srrs_mn_1):
     srrs_mn_2 = srrs_mn_1.join(cty_mn.select(["fips", "Uppm"]), on="fips")
     srrs_mn_2 = srrs_mn_2.unique(subset=["idnum"], maintain_order=True)
@@ -194,7 +194,7 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(srrs_mn_2):
     srrs_mn_3 = srrs_mn_2.with_columns(
         pl.col("county").map_elements(str.strip, return_dtype=pl.Utf8).alias("county")
@@ -232,7 +232,7 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(srrs_mn_3):
     _output = px.histogram(
         srrs_mn_3,
@@ -287,8 +287,6 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    > **A note on the model API used here.** PyMC v6 ships a dim-first construction API at `pymc.dims` (commonly imported as `pmd`). Distributions take `dims=...` directly, broadcasting through named dimensions automatically. We use it for the hierarchical models in this notebook because that's where dim-first construction pays off most. The classic `pm.Normal(..., dims=...)` API you may see online still works and is fully supported; the two APIs interoperate within the same `pm.Model` block. We mix them later when we get to LKJ correlated effects (the LKJ prior currently lives only in the classic namespace).
-
     Here are the point estimates of the slope and intercept for the complete pooling model:
     """)
     return
@@ -407,7 +405,7 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(pooled_trace, srrs_mn_3):
     def plot_pooled_fit():
         xvals = np.linspace(-0.2, 1.2, 100)
@@ -480,7 +478,7 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(unpooled_trace):
     _output = az.plot_forest(unpooled_trace, var_names=["alpha"], combined=True)
     _output
@@ -532,7 +530,7 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(post_mean, srrs_mn_3, unpooled_means):
     def plot_county_comparison():
         sample_counties = (
@@ -610,10 +608,23 @@ def _():
 
     {pooled_img}
 
+    """)
+    return partial_img, unpooled_img
+
+
+@app.cell(hide_code=True)
+def _(unpooled_img):
+    mo.md(f"""
     When we analyze data unpooled, we imply that they are sampled independently from separate models. At the opposite extreme from the pooled case, this approach claims that differences between sampling units are too large to combine them -- we assume that counties have no similarity whatsoever:
 
     {unpooled_img}
+    """)
+    return
 
+
+@app.cell(hide_code=True)
+def _(partial_img):
+    mo.md(f"""
     In a hierarchical model, parameters are viewed as a sample from a population distribution of parameters. Thus, we view them as being neither entirely different or exactly the same. This is **_partial pooling_**:
 
     {partial_img}
@@ -856,7 +867,7 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(post_mean, srrs_mn_3, unpooled_means, varying_intercept_trace):
     def plot_partial_pooling_comparison():
         sample_counties = (
@@ -902,20 +913,33 @@ def _(post_mean, srrs_mn_3, unpooled_means, varying_intercept_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## Exercise: Varying intercept and slope model
+    ## Exercise: build and diagnose a county-level model
 
-    The most general model allows both the intercept and slope to vary by county:
+    The pooled model ignores counties; the unpooled model estimates each county separately. Build a third model that allows counties to share information while retaining county-specific baseline radon levels and county-specific floor effects.
 
-    $$y_i = \alpha_{j[i]} + \beta_{j[i]} x_{i} + \epsilon_i$$
+    1. Identify the observation-level inputs, county index, and county-level parameters your model needs.
+    2. Specify population distributions that let the county effects partially pool, then write the expected log-radon level for each home.
+    3. Render the model graph before sampling. Fit the model and inspect its divergent-transition diagnostic before interpreting it.
 
-    Complete the model inside the `exercise_varying_intercept_slope` scaffold
-    below, then click ▶ Run exercise. The notebook continues with a reference
-    implementation named `varying_intercept_slope` (from the Solution), so the
-    rest of the notebook works whether or not you complete the exercise.
-
-    Plot the model DAG to check your structure; the scaffold already returns
-    the model object, which marimo renders as the model graph.
+    The reference implementation below powers the remaining notebook, so that path stays available whether or not you complete the exercise.
     """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    county_model_hints = mo.accordion(
+        {
+            "Hints": mo.md(r"""
+            1. Use `pmd.Data` for the floor measurement and county index, with one observation dimension; the county coordinate is already present in `coords`.
+            2. Give the county intercepts and floor effects separate population means and scales, then draw one value of each for every county.
+            3. The expected value indexes the county-specific intercept and slope with `county_idx`; the observed log-radon values follow a Normal likelihood with a residual scale.
+            4. Keep this first version centred. The next section uses its divergences to motivate the non-centred parameterization.
+            """)
+        }
+    )
+    county_model_hints
+
     return
 
 
@@ -927,15 +951,15 @@ def _(coords, county, floor_measure, log_radon):
             floor_idx = pmd.Data("floor_idx", floor_measure, dims="obs_id")
             county_idx = pmd.Data("county_idx", county, dims="obs_id")
             obs = pmd.as_xtensor(log_radon, dims=("obs_id",))
-            # YOUR CODE HERE — hyperpriors for the intercept and slope
-            # YOUR CODE HERE — county-level alpha and beta (dims="county")
-            # YOUR CODE HERE — sigma_y, the expected value
-            #   alpha[county_idx] + beta[county_idx] * floor_idx,
-            #   and the Normal likelihood (observed=obs, dims="obs_id")
+            # YOUR CODE HERE — specify a partially pooled county model, its
+            # expected log-radon value, and an observation model for `obs`.
             ...
 
         model = my_varying_model()
         return model
+
+
+    exercise_varying_intercept_slope
 
     return (exercise_varying_intercept_slope,)
 
@@ -1005,33 +1029,28 @@ def _(coords, county, floor_measure, log_radon):
 @app.cell
 def _(varying_intercept_slope):
     with varying_intercept_slope:
-        varying_intercept_slope_trace = pm.sample(
-            tune=2000, target_accept=0.95, random_seed=RANDOM_SEED
-        )
+        varying_intercept_slope_trace = pm.sample(random_seed=RANDOM_SEED)
     varying_intercept_slope_trace
     return (varying_intercept_slope_trace,)
 
 
 @app.cell(hide_code=True)
 def _(varying_intercept_slope_trace):
-    centered_divergence_summary = pl.DataFrame(
-        {
-            "model": ["centered varying intercept and slope"],
-            "divergences": [
-                int(
-                    varying_intercept_slope_trace["sample_stats"]["diverging"]
-                    .sum()
-                    .values
-                )
-            ],
-        }
+    n_divergences = int(
+        varying_intercept_slope_trace["sample_stats"]["diverging"].sum().item()
     )
-    mo.vstack(
-        [
-            mo.md("**Check divergent transitions before interpreting this fit.**"),
-            centered_divergence_summary,
-        ]
+    transition_word = "transition" if n_divergences == 1 else "transitions"
+
+    mo.md(
+        f"""
+        **Divergent-transition check**
+
+        The centred model produced **{n_divergences} divergent {transition_word}**.
+        Do not interpret its parameter estimates until you compare it with the
+        non-centred parameterization below.
+        """
     )
+
     return
 
 
@@ -1047,15 +1066,15 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(varying_intercept_slope_trace):
-    aitkin_trace = varying_intercept_slope_trace.sel(county="AITKIN")
+    aitkin_posterior = varying_intercept_slope_trace["posterior"].sel(county="AITKIN")
     _output = az.plot_trace(
-        aitkin_trace,
+        aitkin_posterior,
         var_names=["beta", "sigma_b"],
-        sample_dims=["draw"],
     )
     _output
+
     return
 
 
@@ -1069,7 +1088,7 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(varying_intercept_slope_trace):
     def plot_centered_funnel():
         x = (
@@ -1154,8 +1173,13 @@ def _(varying_intercept_slope):
             nuts={"adaptation": "low_rank"},
             progressbar=False,
         )
-    centered_lowrank_trace
     return (centered_lowrank_trace,)
+
+
+@app.cell
+def _(centered_lowrank_trace):
+    centered_lowrank_trace
+    return
 
 
 @app.cell(hide_code=True)
@@ -1258,7 +1282,7 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(noncentered_trace):
     def plot_noncentered_traces():
         # Extract posterior samples for chain 0 using polars
@@ -1294,7 +1318,7 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(noncentered_trace):
     def plot_noncentered_funnel():
         x = noncentered_trace["posterior"]["beta"].sel(county="AITKIN").values.flatten()
@@ -1384,7 +1408,7 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(noncentered_trace):
     def plot_noncentered_radon():
         xvals = xr.DataArray(
@@ -1725,7 +1749,7 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(hierarchical_intercept_trace):
     _output = az.plot_forest(
         hierarchical_intercept_trace, var_names=["alpha"], combined=True
@@ -1758,7 +1782,7 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(srrs_mn_3):
     # Create new variable for mean of floor across counties
     avg_floor_data = (
@@ -1929,7 +1953,7 @@ def _():
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(model_comparison):
     _output = az.plot_compare(model_comparison)
     _output
@@ -2059,8 +2083,6 @@ def _():
     - Incorporating individual- and group-level information when estimating group-level coefficients.
 
     - Allowing for variation among individual-level coefficients across groups.
-
-    Next, Session 5.1 moves from group structure to time-dependent latent states with state-space and time-series models. Session 5.2 later returns to nonlinear latent functions with Gaussian processes.
     """)
     return
 
