@@ -443,6 +443,13 @@ def _():
     return
 
 
+@app.cell
+def _():
+    new_fish = pl.read_csv(data_path / "new_fish.csv")
+    new_fish.describe()
+    return (new_fish,)
+
+
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
@@ -451,9 +458,8 @@ def _():
     return
 
 
-@app.cell
-def _():
-    new_fish = pl.read_csv(data_path / "new_fish.csv")
+@app.cell(hide_code=True)
+def _(new_fish):
     new_species_names = new_fish["Species"].unique(maintain_order=True).sort().to_list()
     new_species_to_idx = {species: idx for idx, species in enumerate(new_species_names)}
     new_species_idx = np.array([new_species_to_idx[species] for species in new_fish["Species"].to_list()], dtype="int64")
@@ -472,7 +478,7 @@ def _():
         new_fish_normal_trace = pm.sample(random_seed=RANDOM_SEED)
         pm.sample_posterior_predictive(new_fish_normal_trace, extend_inferencedata=True, random_seed=RANDOM_SEED)
     fish_unpooled_new
-    return new_fish, new_fish_coords, new_fish_normal_trace, new_species_idx
+    return new_fish_coords, new_fish_normal_trace, new_species_idx
 
 
 @app.cell(hide_code=True)
@@ -530,11 +536,6 @@ def _():
 def _(exercise_refit_new_fish, run_refit_new_fish):
     mo.stop(not run_refit_new_fish.value, mo.md("*Click ▶ Run exercise once your code is ready.*"))
     exercise_refit_new_fish()
-    mo.md(r"""
-    ## Out-of-Sample Prediction
-
-    Now let's use the fitted model to predict weights for the **held-out test set**. We update the `Data` containers with test-set values and sample posterior predictions.
-    """)
     return
 
 
@@ -556,6 +557,16 @@ def _(new_fish, new_fish_coords, new_species_idx):
             pm.sample_posterior_predictive(trace, extend_inferencedata=True, random_seed=RANDOM_SEED)
         return az.plot_ppc_dist(trace, var_names=["log_obs"])
     mo.accordion({"Solution": mo.vstack([mo.md(f"```python\n{inspect.getsource(solution_refit_new_fish)}\n```"), mo.lazy(solution_refit_new_fish, show_loading_indicator=True)])})
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ## Out-of-Sample Prediction
+
+    Now let's use the fitted model to predict weights for the **held-out test set**. We update the `Data` containers with test-set values and sample posterior predictions.
+    """)
     return
 
 
@@ -686,7 +697,7 @@ def _():
     mo.md(r"""
     ## Exercise: Improve the Fish Model with `preliz`
 
-    The priors in our unpooled model were generic (`Normal(0, 0.5)` for slopes, `Normal(0, 1)` for intercepts). Use `preliz` to **elicit** more principled priors from domain knowledge instead of hand-picking hyperparameters.
+    The priors in our unpooled model were generic (`Normal(0, 0.5)` for slopes, `Normal(5.5, 2)` for intercepts). Use `preliz` to **elicit** more principled priors from domain knowledge instead of hand-picking hyperparameters.
 
     **Your task:**
 
@@ -1831,24 +1842,20 @@ def _(poll_approve, poll_log_unemployment, poll_n, solution_french_poll_model):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ### Beta-Binomial regression: extra variation in polling
+    ### Beta-Binomial model: extra variation in polling
 
-    A Binomial likelihood fixes its variance once the approval probability and respondent count are known. If polls vary more than that sampling model allows, a Beta-Binomial likelihood gives each poll an approval probability drawn from a common Beta distribution. We retain the logit-linked mean and add a concentration parameter $\kappa$.
+    A Binomial likelihood fixes its variance once the approval probability and respondent count are known. If polls vary more than that sampling model allows, a Beta-Binomial likelihood gives each poll an approval probability drawn from a common Beta distribution. We retain a shared logit-scale mean and add a concentration parameter $\kappa$.
     """)
     return
 
 
 @app.cell
-def _(poll_approve, poll_log_unemployment, poll_n):
+def _(poll_approve, poll_n):
     def build_beta_binomial_poll_model():
         with pm.Model(coords={"obs_idx": np.arange(len(poll_n))}) as model:
-            unemployment = pm.Data("unemployment", poll_log_unemployment, dims="obs_idx")
             baseline = pm.Normal("baseline", mu=-0.7, sigma=0.5)
-            unemployment_effect = pm.Normal("unemployment_effect", mu=0.0, sigma=0.2)
             approval_probability = pm.Deterministic(
-                "approval_probability",
-                pm.math.invlogit(baseline + unemployment_effect * unemployment),
-                dims="obs_idx",
+                "approval_probability", pm.math.invlogit(baseline)
             )
             kappa = pm.Exponential("kappa_offset", lam=1.0) + 10.0
             pm.BetaBinomial(
@@ -1867,9 +1874,7 @@ def _(poll_approve, poll_log_unemployment, poll_n):
             )
         return model, prior, trace
 
-    beta_binomial_poll_model, beta_binomial_poll_prior, beta_binomial_poll_trace = (
-        build_beta_binomial_poll_model()
-    )
+    beta_binomial_poll_model, beta_binomial_poll_prior, beta_binomial_poll_trace = build_beta_binomial_poll_model()
     beta_binomial_poll_model
     return (beta_binomial_poll_trace,)
 
