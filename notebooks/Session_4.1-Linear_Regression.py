@@ -429,211 +429,133 @@ def _(baseline_trace, unpooled_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ---
+    ## Exercise: Refitting the model to new data
 
-    ## Robustness: What Happens with Outliers?
+    Given the success of the model, you go back and try to fit it to data collected by another vendor, only to find that the predictions aren't nearly as good!
 
-    Real datasets often contain observations that don't fit the bulk of the data: measurement errors, data-entry mistakes, or genuine extreme events. A Normal likelihood penalises these outliers heavily, which can distort the entire fit.
+    Frustrated, you go back to the drawing board... they deal with the same type of fish, but what's wrong with their data?
 
-    To see this in action, we sample five training rows uniformly without replacement using a fixed seed, so the selected indices are deterministic but do not guarantee one row per species. We keep each selected row's species and dimensions, replace its weight with a very small or very large synthetic value that does not follow the species-specific dimensional relationships, and re-fit the unpooled Normal model.
+    One of their colleagues mentions something about not having use the same equipment to weight the fish, because the "old manager always tried to cut costs".
+    They used a much cheaper scale ...
+
+    Here is the data:
     """)
-    return
-
-
-@app.cell
-def _(
-    fish_train,
-    train_mean_log_height,
-    train_mean_log_length,
-    train_mean_log_width,
-):
-    rng_st = np.random.default_rng(RANDOM_SEED + 99)
-    n_outliers = 5
-    outlier_idx = rng_st.choice(fish_train.height, size=n_outliers, replace=False)
-    st_outlier_weights = rng_st.choice([0.5, 0.8, 2000.0, 2500.0], n_outliers)
-    st_outlier_df = (
-        fish_train.with_row_index("_training_row")
-        .filter(pl.col("_training_row").is_in(outlier_idx))
-        .sort("_training_row")
-        .drop("_training_row")
-        .with_columns(pl.Series("Weight", st_outlier_weights))
-        .with_columns(pl.col("Weight").log().alias("log_weight"))
-    )
-
-    st_fish_train_aug = pl.concat([fish_train, st_outlier_df], how="vertical")
-
-    st_species_names_aug = (
-        st_fish_train_aug["Species"].unique(maintain_order=True).sort().to_list()
-    )
-    st_species_to_idx = {
-        species: idx for idx, species in enumerate(st_species_names_aug)
-    }
-    st_species_idx_aug = np.array(
-        [st_species_to_idx[species] for species in st_fish_train_aug["Species"].to_list()],
-        dtype="int64",
-    )
-    st_aug_coords = {
-        "slopes": ["width_effect", "height_effect", "length_effect"],
-        "species": st_species_names_aug,
-        "obs_idx": range(st_fish_train_aug.height),
-    }
-
-    def st_build_normal():
-        with pm.Model(coords=st_aug_coords) as model:
-            lw = pm.Data(
-                "log_width",
-                (st_fish_train_aug["log_width"] - train_mean_log_width).to_numpy(),
-                dims="obs_idx",
-            )
-            lh = pm.Data(
-                "log_height",
-                (st_fish_train_aug["log_height"] - train_mean_log_height).to_numpy(),
-                dims="obs_idx",
-            )
-            ll = pm.Data(
-                "log_length",
-                (st_fish_train_aug["log_length"] - train_mean_log_length).to_numpy(),
-                dims="obs_idx",
-            )
-            lweight = pm.Data(
-                "log_weight", st_fish_train_aug["log_weight"].to_numpy(), dims="obs_idx"
-            )
-            s = pm.Data("species_idx", st_species_idx_aug, dims="obs_idx")
-
-            mu = pm.Normal("mu", mu=5.5, sigma=2.0, dims="species")
-            beta = pm.Normal("beta", sigma=0.5, dims=("slopes", "species"))
-            expected = mu[s] + beta[0, s] * lw + beta[1, s] * lh + beta[2, s] * ll
-            sigma = pm.HalfNormal("sigma", 1.0)
-            pm.Normal(
-                "log_obs", mu=expected, sigma=sigma, observed=lweight, dims="obs_idx"
-            )
-
-            trace = pm.sample(random_seed=RANDOM_SEED)
-            pm.compute_log_likelihood(trace)
-            pm.sample_posterior_predictive(
-                trace, extend_inferencedata=True, random_seed=RANDOM_SEED
-            )
-        return model, trace
-
-    st_normal_model, st_normal_trace = st_build_normal()
-    st_normal_model
-    return (
-        st_aug_coords,
-        st_fish_train_aug,
-        st_normal_trace,
-        st_species_idx_aug,
-    )
-
-
-@app.cell(hide_code=True)
-def _(st_normal_trace):
-    _output = az.plot_ppc_dist(st_normal_trace)
-    _output
     return
 
 
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The posterior predictive is pulled toward the outliers, widening `sigma` and shifting the mean. The model is no longer a good representation of the bulk of the data.
-
-    ### Student-T Likelihood
-
-    The **Student-T distribution** has heavier tails, controlled by the degrees-of-freedom parameter $\nu$:
-    - $\nu \to \infty$: Normal distribution
-    - $\nu = 1$: Cauchy (extremely heavy tails)
-    - $\nu \approx 3\text{–}10$: moderate robustness
-
-    By estimating $\nu$ from data, the model adapts its tolerance for outliers.
+    Here is the model, this time fit to the new data.
     """)
     return
 
 
 @app.cell
-def _(
-    st_aug_coords,
-    st_fish_train_aug,
-    st_species_idx_aug,
-    train_mean_log_height,
-    train_mean_log_length,
-    train_mean_log_width,
-):
-    def st_build_studentt():
-        with pm.Model(coords=st_aug_coords) as model:
-            lw = pm.Data(
-                "log_width",
-                (st_fish_train_aug["log_width"] - train_mean_log_width).to_numpy(),
-                dims="obs_idx",
-            )
-            lh = pm.Data(
-                "log_height",
-                (st_fish_train_aug["log_height"] - train_mean_log_height).to_numpy(),
-                dims="obs_idx",
-            )
-            ll = pm.Data(
-                "log_length",
-                (st_fish_train_aug["log_length"] - train_mean_log_length).to_numpy(),
-                dims="obs_idx",
-            )
-            lweight = pm.Data(
-                "log_weight", st_fish_train_aug["log_weight"].to_numpy(), dims="obs_idx"
-            )
-            s = pm.Data("species_idx", st_species_idx_aug, dims="obs_idx")
-
-            mu = pm.Normal("mu", mu=5.5, sigma=2.0, dims="species")
-            beta = pm.Normal("beta", sigma=0.5, dims=("slopes", "species"))
-            expected = mu[s] + beta[0, s] * lw + beta[1, s] * lh + beta[2, s] * ll
-            sigma = pm.HalfNormal("sigma", 1.0)
-            nu = pm.Gamma("nu", alpha=2, beta=0.1)
-            pm.StudentT(
-                "log_obs",
-                nu=nu,
-                mu=expected,
-                sigma=sigma,
-                observed=lweight,
-                dims="obs_idx",
-            )
-
-            trace = pm.sample(random_seed=RANDOM_SEED)
-            pm.compute_log_likelihood(trace)
-            pm.sample_posterior_predictive(
-                trace, extend_inferencedata=True, random_seed=RANDOM_SEED
-            )
-        return model, trace
-
-    st_studentt_model, st_studentt_trace = st_build_studentt()
-    st_studentt_model
-    return (st_studentt_trace,)
+def _():
+    new_fish = pl.read_csv(data_path / "new_fish.csv")
+    new_species_names = new_fish["Species"].unique(maintain_order=True).sort().to_list()
+    new_species_to_idx = {species: idx for idx, species in enumerate(new_species_names)}
+    new_species_idx = np.array([new_species_to_idx[species] for species in new_fish["Species"].to_list()], dtype="int64")
+    new_fish_coords = {"slopes": ["width_effect", "height_effect", "length_effect"], "species": new_species_names, "obs_idx": range(new_fish.height)}
+    with pm.Model(coords=new_fish_coords) as fish_unpooled_new:
+        log_width = pm.Data("log_width", new_fish["log_width"].to_numpy(), dims="obs_idx")
+        log_height = pm.Data("log_height", new_fish["log_height"].to_numpy(), dims="obs_idx")
+        log_length = pm.Data("log_length", new_fish["log_length"].to_numpy(), dims="obs_idx")
+        log_weight = pm.Data("log_weight", new_fish["log_weight"].to_numpy(), dims="obs_idx")
+        species_idx = pm.Data("species_idx", new_species_idx, dims="obs_idx")
+        mu = pm.Normal("mu", mu=5.5, sigma=2.0, dims="species")
+        beta = pm.Normal("beta", sigma=0.5, dims=("slopes", "species"))
+        expected_weight = mu[species_idx] + beta[0, species_idx] * log_width + beta[1, species_idx] * log_height + beta[2, species_idx] * log_length
+        sigma = pm.HalfNormal("sigma", 1.0)
+        pm.Normal("log_obs", mu=expected_weight, sigma=sigma, observed=log_weight, dims="obs_idx")
+        new_fish_normal_trace = pm.sample(random_seed=RANDOM_SEED)
+        pm.sample_posterior_predictive(new_fish_normal_trace, extend_inferencedata=True, random_seed=RANDOM_SEED)
+    fish_unpooled_new
+    return new_fish, new_fish_coords, new_fish_normal_trace, new_species_idx
 
 
 @app.cell(hide_code=True)
-def _(st_studentt_trace):
-    _output = az.plot_ppc_dist(st_studentt_trace)
-    _output
-    return
-
-
-@app.cell
-def _(st_normal_trace, st_studentt_trace):
-    st_comparison = az.compare(
-        {
-            "Normal (augmented)": st_normal_trace,
-            "Student-T (augmented)": st_studentt_trace,
-        }
-    )
-    st_comparison
+def _(new_fish_normal_trace):
+    az.plot_ppc_dist(new_fish_normal_trace, var_names=["log_obs"])
     return
 
 
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    The Student-T likelihood is preferred over the Normal likelihood on the augmented data. The difference in expected log predictive density (ELPD) is large, which tells us the heavier-tailed likelihood handles the synthetic outliers better.
+    Try to diagnose the issue and make the appropriate modifications to the model to accomodate the new data. Since we are trying to make this model more robust, call this new model `fish_unpooled_robust`.
+    """)
+    return
 
+
+@app.cell
+def _(new_fish, new_fish_coords, new_species_idx):
+    def exercise_refit_new_fish():
+        with pm.Model(coords=new_fish_coords) as fish_unpooled_robust:
+            log_width = pm.Data("log_width", new_fish["log_width"].to_numpy(), dims="obs_idx")
+            log_height = pm.Data("log_height", new_fish["log_height"].to_numpy(), dims="obs_idx")
+            log_length = pm.Data("log_length", new_fish["log_length"].to_numpy(), dims="obs_idx")
+            log_weight = pm.Data("log_weight", new_fish["log_weight"].to_numpy(), dims="obs_idx")
+            species_idx = pm.Data("species_idx", new_species_idx, dims="obs_idx")
+            mu = pm.Normal("mu", mu=5.5, sigma=2.0, dims="species")
+            beta = pm.Normal("beta", sigma=0.5, dims=("slopes", "species"))
+            expected_weight = mu[species_idx] + beta[0, species_idx] * log_width + beta[1, species_idx] * log_height + beta[2, species_idx] * log_length
+            sigma = pm.HalfNormal("sigma", 1.0)
+            # YOUR CODE HERE — define the robust likelihood for log_obs.
+            ...
+            trace = pm.sample(random_seed=RANDOM_SEED)
+            pm.sample_posterior_predictive(trace, extend_inferencedata=True, random_seed=RANDOM_SEED)
+        return az.plot_ppc_dist(trace, var_names=["log_obs"])
+
+    return (exercise_refit_new_fish,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Run the new model and plot the posterior predictive checks.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    run_refit_new_fish = mo.ui.run_button(label="▶ Run exercise")
+    run_refit_new_fish
+    return (run_refit_new_fish,)
+
+
+@app.cell(hide_code=True)
+def _(exercise_refit_new_fish, run_refit_new_fish):
+    mo.stop(not run_refit_new_fish.value, mo.md("*Click ▶ Run exercise once your code is ready.*"))
+    exercise_refit_new_fish()
+    mo.md(r"""
     ## Out-of-Sample Prediction
 
     Now let's use the fitted model to predict weights for the **held-out test set**. We update the `Data` containers with test-set values and sample posterior predictions.
     """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(new_fish, new_fish_coords, new_species_idx):
+    def solution_refit_new_fish():
+        with pm.Model(coords=new_fish_coords) as fish_unpooled_robust:
+            log_width = pm.Data("log_width", new_fish["log_width"].to_numpy(), dims="obs_idx")
+            log_height = pm.Data("log_height", new_fish["log_height"].to_numpy(), dims="obs_idx")
+            log_length = pm.Data("log_length", new_fish["log_length"].to_numpy(), dims="obs_idx")
+            log_weight = pm.Data("log_weight", new_fish["log_weight"].to_numpy(), dims="obs_idx")
+            species_idx = pm.Data("species_idx", new_species_idx, dims="obs_idx")
+            mu = pm.Normal("mu", mu=5.5, sigma=2.0, dims="species")
+            beta = pm.Normal("beta", sigma=0.5, dims=("slopes", "species"))
+            expected_weight = mu[species_idx] + beta[0, species_idx] * log_width + beta[1, species_idx] * log_height + beta[2, species_idx] * log_length
+            sigma = pm.HalfNormal("sigma", 1.0)
+            pm.StudentT("log_obs", nu=2, mu=expected_weight, sigma=sigma, observed=log_weight, dims="obs_idx")
+            trace = pm.sample(random_seed=RANDOM_SEED)
+            pm.sample_posterior_predictive(trace, extend_inferencedata=True, random_seed=RANDOM_SEED)
+        return az.plot_ppc_dist(trace, var_names=["log_obs"])
+    mo.accordion({"Solution": mo.vstack([mo.md(f"```python\n{inspect.getsource(solution_refit_new_fish)}\n```"), mo.lazy(solution_refit_new_fish, show_loading_indicator=True)])})
     return
 
 
