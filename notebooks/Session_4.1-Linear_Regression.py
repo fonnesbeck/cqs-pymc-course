@@ -429,140 +429,6 @@ def _(baseline_trace, unpooled_trace):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## Exercise: Refitting the model to new data
-
-    Given the success of the model, you go back and try to fit it to data collected by another vendor, only to find that the predictions aren't nearly as good!
-
-    Frustrated, you go back to the drawing board... they deal with the same type of fish, but what's wrong with their data?
-
-    One of their colleagues mentions something about not having use the same equipment to weight the fish, because the "old manager always tried to cut costs".
-    They used a much cheaper scale ...
-
-    Here is the data:
-    """)
-    return
-
-
-@app.cell
-def _():
-    new_fish = pl.read_csv(data_path / "new_fish.csv")
-    new_fish.describe()
-    return (new_fish,)
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    Here is the model, this time fit to the new data.
-    """)
-    return
-
-
-@app.cell(hide_code=True)
-def _(new_fish):
-    new_species_names = new_fish["Species"].unique(maintain_order=True).sort().to_list()
-    new_species_to_idx = {species: idx for idx, species in enumerate(new_species_names)}
-    new_species_idx = np.array([new_species_to_idx[species] for species in new_fish["Species"].to_list()], dtype="int64")
-    new_fish_coords = {"slopes": ["width_effect", "height_effect", "length_effect"], "species": new_species_names, "obs_idx": range(new_fish.height)}
-    with pm.Model(coords=new_fish_coords) as fish_unpooled_new:
-        log_width = pm.Data("log_width", new_fish["log_width"].to_numpy(), dims="obs_idx")
-        log_height = pm.Data("log_height", new_fish["log_height"].to_numpy(), dims="obs_idx")
-        log_length = pm.Data("log_length", new_fish["log_length"].to_numpy(), dims="obs_idx")
-        log_weight = pm.Data("log_weight", new_fish["log_weight"].to_numpy(), dims="obs_idx")
-        species_idx = pm.Data("species_idx", new_species_idx, dims="obs_idx")
-        mu = pm.Normal("mu", mu=5.5, sigma=2.0, dims="species")
-        beta = pm.Normal("beta", sigma=0.5, dims=("slopes", "species"))
-        expected_weight = mu[species_idx] + beta[0, species_idx] * log_width + beta[1, species_idx] * log_height + beta[2, species_idx] * log_length
-        sigma = pm.HalfNormal("sigma", 1.0)
-        pm.Normal("log_obs", mu=expected_weight, sigma=sigma, observed=log_weight, dims="obs_idx")
-        new_fish_normal_trace = pm.sample(random_seed=RANDOM_SEED)
-        pm.sample_posterior_predictive(new_fish_normal_trace, extend_inferencedata=True, random_seed=RANDOM_SEED)
-    fish_unpooled_new
-    return new_fish_coords, new_fish_normal_trace, new_species_idx
-
-
-@app.cell(hide_code=True)
-def _(new_fish_normal_trace):
-    az.plot_ppc_dist(new_fish_normal_trace, var_names=["log_obs"])
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    Try to diagnose the issue and make the appropriate modifications to the model to accomodate the new data. Since we are trying to make this model more robust, call this new model `fish_unpooled_robust`.
-    """)
-    return
-
-
-@app.cell
-def _(new_fish, new_fish_coords, new_species_idx):
-    def exercise_refit_new_fish():
-        with pm.Model(coords=new_fish_coords) as fish_unpooled_robust:
-            log_width = pm.Data("log_width", new_fish["log_width"].to_numpy(), dims="obs_idx")
-            log_height = pm.Data("log_height", new_fish["log_height"].to_numpy(), dims="obs_idx")
-            log_length = pm.Data("log_length", new_fish["log_length"].to_numpy(), dims="obs_idx")
-            log_weight = pm.Data("log_weight", new_fish["log_weight"].to_numpy(), dims="obs_idx")
-            species_idx = pm.Data("species_idx", new_species_idx, dims="obs_idx")
-            mu = pm.Normal("mu", mu=5.5, sigma=2.0, dims="species")
-            beta = pm.Normal("beta", sigma=0.5, dims=("slopes", "species"))
-            expected_weight = mu[species_idx] + beta[0, species_idx] * log_width + beta[1, species_idx] * log_height + beta[2, species_idx] * log_length
-            sigma = pm.HalfNormal("sigma", 1.0)
-            # YOUR CODE HERE — define the robust likelihood for log_obs.
-            ...
-            trace = pm.sample(random_seed=RANDOM_SEED)
-            pm.sample_posterior_predictive(trace, extend_inferencedata=True, random_seed=RANDOM_SEED)
-        return az.plot_ppc_dist(trace, var_names=["log_obs"])
-
-    return (exercise_refit_new_fish,)
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    Run the new model and plot the posterior predictive checks.
-    """)
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    run_refit_new_fish = mo.ui.run_button(label="▶ Run exercise")
-    run_refit_new_fish
-    return (run_refit_new_fish,)
-
-
-@app.cell(hide_code=True)
-def _(exercise_refit_new_fish, run_refit_new_fish):
-    mo.stop(not run_refit_new_fish.value, mo.md("*Click ▶ Run exercise once your code is ready.*"))
-    exercise_refit_new_fish()
-    return
-
-
-@app.cell(hide_code=True)
-def _(new_fish, new_fish_coords, new_species_idx):
-    def solution_refit_new_fish():
-        with pm.Model(coords=new_fish_coords) as fish_unpooled_robust:
-            log_width = pm.Data("log_width", new_fish["log_width"].to_numpy(), dims="obs_idx")
-            log_height = pm.Data("log_height", new_fish["log_height"].to_numpy(), dims="obs_idx")
-            log_length = pm.Data("log_length", new_fish["log_length"].to_numpy(), dims="obs_idx")
-            log_weight = pm.Data("log_weight", new_fish["log_weight"].to_numpy(), dims="obs_idx")
-            species_idx = pm.Data("species_idx", new_species_idx, dims="obs_idx")
-            mu = pm.Normal("mu", mu=5.5, sigma=2.0, dims="species")
-            beta = pm.Normal("beta", sigma=0.5, dims=("slopes", "species"))
-            expected_weight = mu[species_idx] + beta[0, species_idx] * log_width + beta[1, species_idx] * log_height + beta[2, species_idx] * log_length
-            sigma = pm.HalfNormal("sigma", 1.0)
-            pm.StudentT("log_obs", nu=2, mu=expected_weight, sigma=sigma, observed=log_weight, dims="obs_idx")
-            trace = pm.sample(random_seed=RANDOM_SEED)
-            pm.sample_posterior_predictive(trace, extend_inferencedata=True, random_seed=RANDOM_SEED)
-        return az.plot_ppc_dist(trace, var_names=["log_obs"])
-    mo.accordion({"Solution": mo.vstack([mo.md(f"```python\n{inspect.getsource(solution_refit_new_fish)}\n```"), mo.lazy(solution_refit_new_fish, show_loading_indicator=True)])})
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
     ## Out-of-Sample Prediction
 
     Now let's use the fitted model to predict weights for the **held-out test set**. We update the `Data` containers with test-set values and sample posterior predictions.
@@ -689,6 +555,389 @@ def _(oos_pred_weights):
         return fig
 
     make_threshold_figure()
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ---
+
+    ## Carrier-Tier Recommendation
+
+    The carrier must receive **one declared tier before it re-weighs each fish**. That is the decision; the unknown true weight is not available when we act.
+
+    Bayesian decision analysis makes the path from prediction to action explicit:
+
+    1. Posterior predictive draws give the probability that each fish belongs to every carrier tier.
+    2. The carrier policy assigns a cost to each possible declaration and true tier.
+    3. For every possible declaration, average that cost over the posterior predictive draws.
+    4. **Recommend the tier with the smallest posterior expected carrier cost.**
+
+    The held-out weights are deliberately not used below: they let us evaluate predictions, but cannot be available when declaring a shipment tier.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ### Carrier policy
+
+    The carrier uses these declared-weight tiers:
+
+    | Tier | Declared weight range |
+    |---|---|
+    | 0 | $w < 250$ g |
+    | 1 | $250 \le w < 500$ g |
+    | 2 | $500 \le w < 750$ g |
+    | 3 | $750 \le w < 1000$ g |
+    | 4 | $w \ge 1000$ g |
+
+    For this exercise, a correct declaration costs 0. Declaring too low costs $100 + $50$ for every tier missed because it triggers a re-weigh penalty; declaring too high costs $10 for every unnecessary tier. These are illustrative contract costs—replace them with the carrier's actual price book in production.
+
+    Rows in the table below are **actions** (the declared tier); columns are the carrier's eventual re-weighed tier. The recommendation will minimise the posterior expected cost across each row.
+    """)
+    return
+
+
+@app.cell
+def _(oos_pred_weights):
+    tier_edges = np.array([0, 250, 500, 750, 1000, np.inf])
+    tier_labels = np.array(["<250 g", "250–499 g", "500–749 g", "750–999 g", "≥1000 g"])
+    n_tiers = len(tier_labels)
+
+    carrier_cost_matrix = np.zeros((n_tiers, n_tiers))
+    for declared in range(n_tiers):
+        for actual in range(n_tiers):
+            if declared < actual:
+                carrier_cost_matrix[declared, actual] = 100.0 + 50.0 * (actual - declared)
+            elif declared > actual:
+                carrier_cost_matrix[declared, actual] = 10.0 * (declared - actual)
+
+    posterior_tier_draws = np.digitize(oos_pred_weights, tier_edges[1:-1])
+    posterior_tier_probabilities = np.stack(
+        [(posterior_tier_draws == tier).mean(axis=1) for tier in range(n_tiers)],
+        axis=1,
+    )
+    expected_carrier_cost = posterior_tier_probabilities @ carrier_cost_matrix.T
+    recommended_tier = expected_carrier_cost.argmin(axis=1)
+
+    carrier_cost_table = pl.DataFrame(
+        carrier_cost_matrix,
+        schema=[f"actual tier {tier}" for tier in range(n_tiers)],
+    ).with_columns(pl.Series("declared tier", np.arange(n_tiers))).select(
+        "declared tier", pl.all().exclude("declared tier")
+    )
+    carrier_cost_table
+    return (
+        carrier_cost_matrix,
+        expected_carrier_cost,
+        n_tiers,
+        posterior_tier_probabilities,
+        recommended_tier,
+        tier_labels,
+    )
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ### Recommendations
+
+    For each fish, the table reports the posterior probability of every true tier and the expected carrier cost of every possible declared tier. The final two columns are the operational instruction:
+
+    > **Declare the recommended tier.** It is the action with the smallest posterior expected carrier cost under the stated policy.
+
+    This differs from declaring the tier containing the posterior mean whenever uncertainty crosses a tier boundary and the cost of a low declaration is large.
+    """)
+    return
+
+
+@app.cell
+def _(
+    expected_carrier_cost,
+    n_tiers,
+    posterior_tier_probabilities,
+    recommended_tier,
+    tier_labels,
+):
+    recommended_probability = np.take_along_axis(
+        posterior_tier_probabilities, recommended_tier[:, None], axis=1
+    ).squeeze()
+    minimum_expected_cost = np.take_along_axis(
+        expected_carrier_cost, recommended_tier[:, None], axis=1
+    ).squeeze()
+
+    recommendation_table = pl.DataFrame(
+        {
+            "fish": [f"Fish {fish + 1}" for fish in range(len(recommended_tier))],
+            "recommended_declaration": [
+                f"Tier {tier}: {tier_labels[tier]}" for tier in recommended_tier
+            ],
+            "probability_recommended_tier": recommended_probability.round(2),
+            "minimum_expected_carrier_cost": minimum_expected_cost.round(1),
+            **{
+                f"expected_cost_declare_tier_{tier}": expected_carrier_cost[:, tier].round(1)
+                for tier in range(n_tiers)
+            },
+        }
+    )
+    recommendation_table
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    The `recommendation_table` is the decision output: **declare the listed tier for each fish**. The recommended tier is not a guess at the fish's exact weight; it is the action that minimises expected carrier cost given both predictive uncertainty and the asymmetric contract.
+
+    ## Exercise: Re-tune the Tier Cost Matrix
+
+    Suppose a regulator letter makes under-declaration penalties **five times** larger while over-declaration penalties stay unchanged.
+
+    **Your task:**
+
+    1. Copy `carrier_cost_matrix` and multiply every entry with `declared < actual` by 5.
+    2. Recompute posterior expected carrier costs with `posterior_tier_probabilities`.
+    3. Recommend a new tier for every fish and report how many recommendations change and how many move upward.
+    """)
+    return
+
+
+@app.function
+def exercise_harsh_costs():
+    # YOUR CODE HERE — copy carrier_cost_matrix and scale the entries with
+    # declared < actual by 5.
+    harsh_carrier_cost_matrix = ...
+
+    # YOUR CODE HERE — recompute expected costs from
+    # posterior_tier_probabilities and select new recommendations.
+    new_recommended_tier = ...
+
+    # YOUR CODE HERE — compare the new recommendations with recommended_tier.
+    n_changed = ...
+    n_upward = ...
+    return mo.md(
+        f"**{n_changed}** fish change declared tier; **{n_upward}** move upward."
+    )
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.accordion(
+        {
+            "Hint": mo.md(r"""
+            Only the off-diagonal entries with `declared < actual` change. Multiply those entries by 5; keep `declared > actual` and the diagonal unchanged. Then compute
+
+            ```python
+            new_expected_carrier_cost = (
+                posterior_tier_probabilities @ harsh_carrier_cost_matrix.T
+            )
+            new_recommended_tier = new_expected_carrier_cost.argmin(axis=1)
+            ```
+
+            Compare `new_recommended_tier` with `recommended_tier` to count all switches and upward switches.
+            """)
+        }
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    run_harsh_costs = mo.ui.run_button(label="▶ Run exercise")
+    run_harsh_costs
+    return (run_harsh_costs,)
+
+
+@app.cell(hide_code=True)
+def _(run_harsh_costs):
+    mo.stop(
+        not run_harsh_costs.value,
+        mo.md("*Click ▶ Run exercise once your code is ready.*"),
+    )
+    exercise_harsh_costs()
+    return
+
+
+@app.cell(hide_code=True)
+def _(
+    carrier_cost_matrix,
+    n_tiers,
+    posterior_tier_probabilities,
+    recommended_tier,
+):
+    def solution_harsh_costs():
+        harsh_carrier_cost_matrix = carrier_cost_matrix.copy()
+        for declared in range(n_tiers):
+            for actual in range(n_tiers):
+                if declared < actual:
+                    harsh_carrier_cost_matrix[declared, actual] *= 5
+
+        new_expected_carrier_cost = (
+            posterior_tier_probabilities @ harsh_carrier_cost_matrix.T
+        )
+        new_recommended_tier = new_expected_carrier_cost.argmin(axis=1)
+
+        n_changed = int((new_recommended_tier != recommended_tier).sum())
+        n_upward = int((new_recommended_tier > recommended_tier).sum())
+        return mo.md(
+            f"**{n_changed}** fish change declared tier; **{n_upward}** move upward."
+        )
+
+    mo.accordion(
+        {
+            "Solution": mo.vstack(
+                [
+                    mo.md(f"```python\n{inspect.getsource(solution_harsh_costs)}\n```"),
+                    mo.lazy(solution_harsh_costs, show_loading_indicator=True),
+                    mo.md(
+                        "A higher under-declaration penalty can only make a higher "
+                        "declaration more attractive. Every changed recommendation is "
+                        "therefore upward."
+                    ),
+                ]
+            ),
+        }
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ## Exercise: Refitting the model to new data
+
+    Given the success of the model, you go back and try to fit it to data collected by another vendor, only to find that the predictions aren't nearly as good!
+
+    Frustrated, you go back to the drawing board... they deal with the same type of fish, but what's wrong with their data?
+
+    One of their colleagues mentions something about not having use the same equipment to weight the fish, because the "old manager always tried to cut costs".
+    They used a much cheaper scale ...
+
+    Here is the data:
+    """)
+    return
+
+
+@app.cell
+def _():
+    new_fish = pl.read_csv(data_path / "new_fish.csv")
+    new_fish.describe()
+    return (new_fish,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Here is the model, this time fit to the new data.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(new_fish):
+    new_species_names = new_fish["Species"].unique(maintain_order=True).sort().to_list()
+    new_species_to_idx = {species: idx for idx, species in enumerate(new_species_names)}
+    new_species_idx = np.array([new_species_to_idx[species] for species in new_fish["Species"].to_list()], dtype="int64")
+    new_fish_coords = {"slopes": ["width_effect", "height_effect", "length_effect"], "species": new_species_names, "obs_idx": range(new_fish.height)}
+    with pm.Model(coords=new_fish_coords) as fish_unpooled_new:
+        log_width = pm.Data("log_width", new_fish["log_width"].to_numpy(), dims="obs_idx")
+        log_height = pm.Data("log_height", new_fish["log_height"].to_numpy(), dims="obs_idx")
+        log_length = pm.Data("log_length", new_fish["log_length"].to_numpy(), dims="obs_idx")
+        log_weight = pm.Data("log_weight", new_fish["log_weight"].to_numpy(), dims="obs_idx")
+        species_idx = pm.Data("species_idx", new_species_idx, dims="obs_idx")
+        mu = pm.Normal("mu", mu=5.5, sigma=2.0, dims="species")
+        beta = pm.Normal("beta", sigma=0.5, dims=("slopes", "species"))
+        expected_weight = mu[species_idx] + beta[0, species_idx] * log_width + beta[1, species_idx] * log_height + beta[2, species_idx] * log_length
+        sigma = pm.HalfNormal("sigma", 1.0)
+        pm.Normal("log_obs", mu=expected_weight, sigma=sigma, observed=log_weight, dims="obs_idx")
+        new_fish_normal_trace = pm.sample(random_seed=RANDOM_SEED)
+        pm.sample_posterior_predictive(new_fish_normal_trace, extend_inferencedata=True, random_seed=RANDOM_SEED)
+    fish_unpooled_new
+    return new_fish_coords, new_fish_normal_trace, new_species_idx
+
+
+@app.cell(hide_code=True)
+def _(new_fish_normal_trace):
+    az.plot_ppc_dist(new_fish_normal_trace, var_names=["log_obs"])
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Try to diagnose the issue and make the appropriate modifications to the model to accomodate the new data. Since we are trying to make this model more robust, call this new model `fish_unpooled_robust`.
+    """)
+    return
+
+
+@app.cell
+def _(new_fish, new_fish_coords, new_species_idx):
+    def exercise_refit_new_fish():
+        with pm.Model(coords=new_fish_coords) as fish_unpooled_robust:
+            log_width = pm.Data("log_width", new_fish["log_width"].to_numpy(), dims="obs_idx")
+            log_height = pm.Data("log_height", new_fish["log_height"].to_numpy(), dims="obs_idx")
+            log_length = pm.Data("log_length", new_fish["log_length"].to_numpy(), dims="obs_idx")
+            log_weight = pm.Data("log_weight", new_fish["log_weight"].to_numpy(), dims="obs_idx")
+            species_idx = pm.Data("species_idx", new_species_idx, dims="obs_idx")
+            mu = pm.Normal("mu", mu=5.5, sigma=2.0, dims="species")
+            beta = pm.Normal("beta", sigma=0.5, dims=("slopes", "species"))
+            expected_weight = mu[species_idx] + beta[0, species_idx] * log_width + beta[1, species_idx] * log_height + beta[2, species_idx] * log_length
+            sigma = pm.HalfNormal("sigma", 1.0)
+            # YOUR CODE HERE — define the robust likelihood for log_obs.
+            ...
+            trace = pm.sample(random_seed=RANDOM_SEED)
+            pm.sample_posterior_predictive(trace, extend_inferencedata=True, random_seed=RANDOM_SEED)
+        az.plot_ppc_dist(trace, var_names=["log_obs"])
+        return plt.gcf()
+
+    return (exercise_refit_new_fish,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Run the new model and plot the posterior predictive checks.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    run_refit_new_fish = mo.ui.run_button(label="▶ Run exercise")
+    run_refit_new_fish
+    return (run_refit_new_fish,)
+
+
+@app.cell(hide_code=True)
+def _(exercise_refit_new_fish, run_refit_new_fish):
+    mo.stop(not run_refit_new_fish.value, mo.md("*Click ▶ Run exercise once your code is ready.*"))
+    exercise_output = exercise_refit_new_fish()
+    exercise_output
+    return
+
+
+@app.cell(hide_code=True)
+def _(new_fish, new_fish_coords, new_species_idx):
+    def solution_refit_new_fish():
+        with pm.Model(coords=new_fish_coords) as fish_unpooled_robust:
+            log_width = pm.Data("log_width", new_fish["log_width"].to_numpy(), dims="obs_idx")
+            log_height = pm.Data("log_height", new_fish["log_height"].to_numpy(), dims="obs_idx")
+            log_length = pm.Data("log_length", new_fish["log_length"].to_numpy(), dims="obs_idx")
+            log_weight = pm.Data("log_weight", new_fish["log_weight"].to_numpy(), dims="obs_idx")
+            species_idx = pm.Data("species_idx", new_species_idx, dims="obs_idx")
+            mu = pm.Normal("mu", mu=5.5, sigma=2.0, dims="species")
+            beta = pm.Normal("beta", sigma=0.5, dims=("slopes", "species"))
+            expected_weight = mu[species_idx] + beta[0, species_idx] * log_width + beta[1, species_idx] * log_height + beta[2, species_idx] * log_length
+            sigma = pm.HalfNormal("sigma", 1.0)
+            pm.StudentT("log_obs", nu=2, mu=expected_weight, sigma=sigma, observed=log_weight, dims="obs_idx")
+            trace = pm.sample(random_seed=RANDOM_SEED)
+            pm.sample_posterior_predictive(trace, extend_inferencedata=True, random_seed=RANDOM_SEED)
+        az.plot_ppc_dist(trace, var_names=["log_obs"])
+        return plt.gcf()
+    mo.accordion({"Solution": mo.vstack([mo.md(f"```python\n{inspect.getsource(solution_refit_new_fish)}\n```"), mo.lazy(solution_refit_new_fish, show_loading_indicator=True)])})
     return
 
 
@@ -887,355 +1136,6 @@ def _(
                     mo.lazy(solution_preliz_priors, show_loading_indicator=True),
                     mo.md(
                         "The priors are now **elicited** with `pz.maxent` from stated ranges (no distribution hyperparameters are typed by hand) and converted into PyMC variables with `to_pymc`. The intercept range pins the prior on the correct log-weight scale (centred near 4.5 rather than 0). LOO is usually comparable because the data are informative, but the elicited priors are better located and easier to justify."
-                    ),
-                ]
-            ),
-        }
-    )
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    ---
-
-    ## From Probabilities to Decisions
-
-    Posterior predictive distributions tell us what we *believe* about each fish's weight. But every business question requires a single *action*:
-
-    - We must invoice each restaurant with **one number**.
-    - We must declare each shipment to the carrier in **one tier**.
-
-    Bayesian **decision analysis** turns belief into action. We pair the posterior predictive with a **loss function** that scores actions against outcomes, then choose the action that minimises *expected* loss:
-
-    $$
-    a^* = \arg\min_a \; \mathbb{E}_{y \sim p(y \mid \text{data})}\bigl[\, L(a, y) \,\bigr].
-    $$
-
-    Working with the posterior predictive (not the posterior over parameters) is the key: $y$ is what costs us money.
-    """)
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    ### Loss Functions and Bayes Estimators
-
-    The *form* of $L$ determines which posterior summary is optimal:
-
-    | Loss $L(a, y)$ | Optimal action $a^*$ |
-    |---|---|
-    | $(a - y)^2$ (squared) | Posterior **mean** |
-    | $\lvert a - y \rvert$ (absolute) | Posterior **median** |
-    | $\mathbf{1}[a \neq y]$ (0/1) | Posterior **mode** |
-
-    #### Asymmetric costs
-
-    For billing, the loss has separate rates for undercharging and overcharging:
-
-    $$
-    L(a, y) = c_u \max(y-a, 0) + c_o \max(a-y, 0).
-    $$
-
-    Its optimal action is the posterior quantile
-
-    $$
-    a^* = F^{-1}\!\left(\frac{c_u}{c_u + c_o}\right),
-    $$
-
-    where $F^{-1}$ is the posterior predictive quantile function. When undercharging costs more ($c_u > c_o$), this is a quantile above the posterior median. That is the asymmetric linear (or "pinball") loss we need for billing: undercharging by 50g costs margin, while overcharging by 50g risks the customer relationship.
-    """)
-    return
-
-
-@app.cell
-def _(oos_pred_weights):
-    example_fish = 0
-    example_draws = oos_pred_weights[example_fish]
-
-    c_under_demo, c_over_demo = 2.0, 1.0
-    asym_q = c_under_demo / (c_under_demo + c_over_demo)
-
-    bayes_estimators = {
-        "posterior mean (squared loss)": float(example_draws.mean()),
-        "posterior median (absolute loss)": float(np.median(example_draws)),
-        f"posterior {asym_q:.2f}-quantile (asym, c_u=2, c_o=1)": float(
-            np.quantile(example_draws, asym_q)
-        ),
-    }
-    bayes_estimators
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    ### Decision 1: Optimal Billing Weight
-
-    Each restaurant pays for the weight we declare. Two real-world frictions make the costs asymmetric:
-
-    - **Undercharging** ($c_u$ per gram below the true weight): we forfeit margin.
-    - **Overcharging** ($c_o$ per gram above the true weight): the customer disputes the invoice and we risk the relationship.
-
-    For a single fish, the expected loss of billing weight $a$ is
-
-    $$
-    \mathbb{E}[L(a)] = c_u \cdot \mathbb{E}[\max(y - a, 0)] + c_o \cdot \mathbb{E}[\max(a - y, 0)],
-    $$
-
-    where the expectation is over the posterior predictive distribution of $y$. We approximate it by averaging over posterior predictive draws.
-
-    Below we evaluate this expected loss over a grid of candidate bills under three cost ratios, for a single test fish.
-    """)
-    return
-
-
-@app.cell
-def _(oos_pred_weights):
-    def expected_asym_loss(draws, a, c_u, c_o):
-        return (
-            c_u * np.maximum(draws - a, 0.0).mean()
-            + c_o * np.maximum(a - draws, 0.0).mean()
-        )
-
-    bill_grid = np.linspace(
-        oos_pred_weights.min() * 0.9,
-        oos_pred_weights.max() * 1.1,
-        200,
-    )
-    cost_ratios = [(1.0, 1.0), (2.0, 1.0), (5.0, 1.0)]
-
-    example_draws_d1 = oos_pred_weights[0]
-    loss_curves = {
-        (c_u, c_o): np.array(
-            [expected_asym_loss(example_draws_d1, b, c_u, c_o) for b in bill_grid]
-        )
-        for c_u, c_o in cost_ratios
-    }
-
-    grid_minima = {
-        (c_u, c_o): float(bill_grid[loss_curves[(c_u, c_o)].argmin()])
-        for c_u, c_o in cost_ratios
-    }
-    closed_form = {
-        (c_u, c_o): float(np.quantile(example_draws_d1, c_u / (c_u + c_o)))
-        for c_u, c_o in cost_ratios
-    }
-    {"grid argmin": grid_minima, "closed-form quantile": closed_form}
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    The grid search agrees with the closed-form quantile $q = c_u / (c_u + c_o)$ to numerical precision. As undercharging becomes more costly relative to overcharging, the optimal billed weight shifts upward.
-
-    Now apply this to every fish in the test set under one chosen cost ratio, alongside the naive plug-in choice (posterior mean):
-    """)
-    return
-
-
-@app.cell
-def _(fish_test, oos_pred_weights):
-    c_u_chosen, c_o_chosen = 2.0, 1.0
-    optimal_q = c_u_chosen / (c_u_chosen + c_o_chosen)
-
-    naive_bills = oos_pred_weights.mean(axis=1)
-    optimal_bills_all = np.quantile(oos_pred_weights, optimal_q, axis=1)
-    actual_weights = fish_test["Weight"].to_numpy()
-
-    bill_comparison = pl.DataFrame(
-        {
-            "fish": np.arange(len(actual_weights)),
-            "actual_weight": actual_weights.round(1),
-            "naive_bill_mean": naive_bills.round(1),
-            f"optimal_bill_q{optimal_q:.2f}": optimal_bills_all.round(1),
-            "naive_overcharge": (naive_bills - actual_weights).round(1),
-            "optimal_overcharge": (optimal_bills_all - actual_weights).round(1),
-        }
-    )
-    bill_comparison
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    Because $c_u = 2 c_o$, the optimal rule is the posterior $\tfrac{2}{3}$-quantile. The optimal bills systematically exceed the naive (mean) bills, trading higher overcharge per fish in exchange for avoiding the costlier undercharge.
-
-    ### Decision 2: Shipping-Tier Classification
-
-    The carrier prices by declared weight tier. Five tiers cover the price book:
-
-    | Tier | Range (g) |
-    |---|---|
-    | 0 | $w < 250$ |
-    | 1 | $250 \le w < 500$ |
-    | 2 | $500 \le w < 750$ |
-    | 3 | $750 \le w < 1000$ |
-    | 4 | $w \ge 1000$ |
-
-    Mismatches between the *declared* tier and the *actual* tier carry asymmetric costs:
-
-    - **Under-declaring** triggers a re-weigh fine plus the higher tier charge. Cost rises sharply with the gap.
-    - **Over-declaring** locks us into a more expensive tier; margin is lost but no fine is triggered. Cost rises gently with the gap.
-    - **Correct declaration** is free.
-
-    We encode this in a cost matrix $C[\text{declared}, \text{actual}]$ and choose the declared tier that minimises expected cost under the posterior tier distribution.
-    """)
-    return
-
-
-@app.cell
-def _(oos_pred_weights):
-    tier_edges = np.array([0, 250, 500, 750, 1000, np.inf])
-    n_tiers = len(tier_edges) - 1
-
-    cost_matrix = np.zeros((n_tiers, n_tiers))
-    for declared in range(n_tiers):
-        for actual in range(n_tiers):
-            if declared == actual:
-                cost_matrix[declared, actual] = 0.0
-            elif declared < actual:
-                cost_matrix[declared, actual] = 100.0 + 50.0 * (actual - declared)
-            else:
-                cost_matrix[declared, actual] = 10.0 * (declared - actual)
-
-    actual_tier_draws = np.digitize(oos_pred_weights, tier_edges[1:-1])
-    tier_probs = np.stack(
-        [(actual_tier_draws == k).mean(axis=1) for k in range(n_tiers)],
-        axis=1,
-    )
-
-    expected_cost = tier_probs @ cost_matrix.T
-    optimal_tier = expected_cost.argmin(axis=1)
-
-    cost_matrix
-    return cost_matrix, n_tiers, optimal_tier, tier_edges, tier_probs
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    Compare the decision-theoretic choice against a naive "plug-in" rule that declares the tier containing the posterior mean weight:
-    """)
-    return
-
-
-@app.cell
-def _(fish_test, oos_pred_weights, optimal_tier, tier_edges):
-    posterior_mean_weight = oos_pred_weights.mean(axis=1)
-    naive_tier = np.digitize(posterior_mean_weight, tier_edges[1:-1])
-    actual_weights_d2 = fish_test["Weight"].to_numpy()
-    actual_tier = np.digitize(actual_weights_d2, tier_edges[1:-1])
-
-    decision_table = pl.DataFrame(
-        {
-            "fish": np.arange(len(actual_weights_d2)),
-            "actual_weight": actual_weights_d2.round(1),
-            "actual_tier": actual_tier,
-            "naive_plug_in_tier": naive_tier,
-            "optimal_tier": optimal_tier,
-            "differs": naive_tier != optimal_tier,
-        }
-    )
-    decision_table
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    The naive plug-in rule ignores the *cost* asymmetry. For fish whose posterior straddles a tier boundary, the optimal rule shifts the declaration upward to avoid the steep under-declaration fine. The deeper the posterior probability mass on the higher tier, the more often the optimal and naive choices disagree.
-
-    ## Exercise: Re-tune the Tier Cost Matrix
-
-    Suppose a regulator letter just made under-declaration much harsher: each under-declaration penalty is now **five times** larger than it was before. The over-declaration penalty is unchanged.
-
-    **Your task:**
-
-    1. Build a new cost matrix that scales the under-declaration entries by 5.
-    2. Recompute the optimal declared tier for each test fish.
-    3. Report how many fish have a different declared tier than under the original matrix, and in which direction.
-    """)
-    return
-
-
-@app.function
-def exercise_harsh_costs():
-    # YOUR CODE HERE — copy cost_matrix and scale the under-declaration
-    # entries (declared < actual) by 5
-    harsh_cost_matrix = ...
-
-    # YOUR CODE HERE — recompute expected costs from tier_probs and take
-    # the argmin to get each fish's new optimal declared tier
-    new_optimal_tier = ...
-
-    # YOUR CODE HERE — count switches vs optimal_tier, and upward moves
-    n_changed = ...
-    n_upward = ...
-    return mo.md(
-        f"**{n_changed}** fish change declared tier; **{n_upward}** move upward."
-    )
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.accordion(
-        {
-            "Hint": mo.md(r"""
-        Only the off-diagonal entries with `declared < actual` need to change. Multiply that branch by 5, keep `declared > actual` as-is, leave the diagonal at zero. The expected-cost computation `tier_probs @ new_cost_matrix.T` and the argmin step are unchanged. Use `(new_optimal_tier != optimal_tier).sum()` to count switches and `(new_optimal_tier > optimal_tier).sum()` to confirm switches go upward (toward higher declared tiers).
-        """)
-        }
-    )
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    run_harsh_costs = mo.ui.run_button(label="▶ Run exercise")
-    run_harsh_costs
-    return (run_harsh_costs,)
-
-
-@app.cell(hide_code=True)
-def _(run_harsh_costs):
-    mo.stop(
-        not run_harsh_costs.value,
-        mo.md("*Click ▶ Run exercise once your code is ready.*"),
-    )
-    exercise_harsh_costs()
-    return
-
-
-@app.cell(hide_code=True)
-def _(cost_matrix, n_tiers, optimal_tier, tier_probs):
-    def solution_harsh_costs():
-        harsh_cost_matrix = cost_matrix.copy()
-        for declared in range(n_tiers):
-            for actual in range(n_tiers):
-                if declared < actual:
-                    harsh_cost_matrix[declared, actual] *= 5
-
-        new_expected_cost = tier_probs @ harsh_cost_matrix.T
-        new_optimal_tier = new_expected_cost.argmin(axis=1)
-
-        n_changed = int((new_optimal_tier != optimal_tier).sum())
-        n_upward = int((new_optimal_tier > optimal_tier).sum())
-        return mo.md(
-            f"**{n_changed}** fish change declared tier; **{n_upward}** move upward."
-        )
-
-    mo.accordion(
-        {
-            "Solution": mo.vstack(
-                [
-                    mo.md(f"```python\n{inspect.getsource(solution_harsh_costs)}\n```"),
-                    mo.lazy(solution_harsh_costs, show_loading_indicator=True),
-                    mo.md(
-                        "The harsher under-declaration penalty pushes the optimal declared tier upward for borderline fish. All shifts are non-decreasing (`n_upward == n_changed`), because raising under-declaration cost can only make a higher tier more attractive, never a lower one."
                     ),
                 ]
             ),
